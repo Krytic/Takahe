@@ -3,7 +3,9 @@ from scipy.constants import c, G
 from scipy.integrate import solve_ivp
 from hoki import load
 
-def BinaryStarSystemLoader(bpass_from, mass_fraction=None):
+Solar_Mass = 1.989e30
+
+def BinaryStarSystemLoader(bpass_from="", mass_fraction=None, data=dict()):
 	"""Loads a binary star system from the BPASS dataset.
 	
 	Opens the BPASS file you wish to use, uses hoki to load it into a
@@ -15,20 +17,20 @@ def BinaryStarSystemLoader(bpass_from, mass_fraction=None):
 	Keyword Arguments:
 		mass_fraction {int} -- If not None, assumes that M1 = mass_fraction * M2
 		and uses this to compute the masses. (default: {None})
+
+		data {dict} -- A dictionary of data for the BSS. Keywords used are M1 (primary mass),
+		M2 (secondary mass), e0 (initial eccentricity), and a0 (initial SMA) or T (period).
+		(default: empty)
 	
 	Returns:
 		[mixed] -- A list of BinaryStarSystem objects (if BPASS data is used).
 				   A singular BinaryStarSystem object (if BPASS data is NOT used).
 	"""
 	if mass_fraction is None:
-		# Temporary hack, will be supplanted by something better in a future commit	
-		# Also this is treating beta centauri as a binary system not a triple binary
-		M1 = 10.7 * 2e30 # Kilograms
-		M2 = 10.3 * 2e30 # Kilograms
-		a0 = 454368025.65 # Kilometers
-		e0 = 0.825 # 0 <= e < 1
+		if 'T' in data.keys():
+			data['a0'] = ((G * (data['M1'] + data['M2']))/(4*np.pi**2) * data['T'] ** 2) ** (1/3)
 
-		return BinaryStarSystem(M1, M2, a0, e0)
+		return BinaryStarSystem(data['M1'], data['M2'], data['a0'], data['e0'])
 
 	else:
 		# Todo: Following code returns a flatline on BPASS data. Why?
@@ -58,7 +60,20 @@ class BinaryStarSystem:
 		self.m2 = secondary_mass
 		self.a0 = a0
 		self.e0 = e0
-		self.beta = 64/5 * (G**3*self.m1*self.m2*(self.m1+self.m2))/(c**5)
+		self.beta = (64/5) * (G**3*self.m1*self.m2*(self.m1+self.m2))/(c**5)
+
+	def coalesce(self):
+		"""Computes the coalescence time for the BSS.
+		
+		Uses Eqn 10 from Nyadzani and Razzaque (https://arxiv.org/pdf/1905.06086.pdf) to compute the coalescence
+		time for the binary star system. Although this is strictly speaking an approximation, it converges on the
+		result gained by numerically by Peters in 1964.
+		
+		Returns:
+			float -- the coalescence time for the binary star.
+		"""
+
+		return self.a0**4 / (4*self.beta) * (1-self.e0**2)**(7/2) / ((1-self.e0**(7/4))**(1/5)*(1+121/304 * self.e0**2))
 
 	def evolve(self, evolve_over):
 		"""Evolve the binary star system in time
@@ -87,8 +102,10 @@ class BinaryStarSystem:
 			Output:
 				The quantity da/dt - how the semimajor axis is changing with time.
 			"""
-
-			return -self.beta / (a**3 * (1-e**2)**(7/2)) * (1 + 73/24 * e**2 + 37 / 96 * e ** 4)
+			
+			da = (-self.beta / (a**3 * (1-e**2)**(7/2))) * (1 + 73/24 * e**2 + 37 / 96 * e ** 4)
+			
+			return da
 
 		# Equation (4) from ibid
 		def dedt(t, e, a):
@@ -103,7 +120,10 @@ class BinaryStarSystem:
 			Output:
 				The quantity de/dt - how the eccentricity is changing with time.
 			"""
-			return -19/12 * self.beta / (a**4*(1-e**2)**(5/2)) * (e + 121/304 * e ** 3)
+
+			de = (-19/12 * self.beta / (a**4*(1-e**2)**(5/2))) * (e + 121/304 * e ** 3)
+ 
+			return de
 
 		def coupled_eqs(t, params):
 			"""
@@ -121,6 +141,6 @@ class BinaryStarSystem:
 			e = params[1]
 			return [dadt(t, e, a), dedt(t, e, a)]
 
-		res = solve_ivp(coupled_eqs, (evolve_over[0], evolve_over[-1]), [self.a0, self.e0], t_eval=evolve_over)
+		res = solve_ivp(coupled_eqs, (evolve_over[0], evolve_over[-1]), [self.a0, self.e0], t_eval=evolve_over, atol=696.340)
 
 		return res.t, res.y[0], res.y[1]

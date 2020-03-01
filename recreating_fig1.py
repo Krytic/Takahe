@@ -19,6 +19,13 @@ M2 = 10.3 * 2e30
 a0 = 454368025.65
 e0 = 0.825
 
+# cfg = {
+# 	'M1' : 1.33 * Solar_Mass, # Kilograms
+# 	'M2' : 1.35 * Solar_Mass, # Kilograms
+# 	'a0' : 3.28 * 696340, # Kilometers
+# 	'e0' : 0.274 # 0 <= e < 1
+# }
+
 # Specify the age of the universe as an integration span
 t_span = (0, 13.8e9)
 t_eval = np.linspace(t_span[0], t_span[1], 10000)
