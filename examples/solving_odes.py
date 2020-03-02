@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from uncertainties import ufloat
 
-from BinaryStarSystem import BinaryStarSystemLoader
+from takahe import BinaryStarSystemLoader as load
 
 Solar_Mass = 1.989e30
 
@@ -13,7 +13,7 @@ cfg = {
 	'e0' : 0.274 # 0 <= e < 1
 }
 
-BSS = BinaryStarSystemLoader(data=cfg)
+BSS = load.from_bpass(data=cfg)
 
 # Specify the age of the universe as an integration span
 t_span = (12.8e9, 13.8e9)
