@@ -7,35 +7,38 @@ from takahe import BinaryStarSystemLoader as load
 Solar_Mass = 1.989e30
 
 cfg = {
-	'M1' : 1.33 * Solar_Mass, # Kilogram
-	'M2' : 1.35 * Solar_Mass, # Kilograms
-	'a0' : 3.28 * 696340, # Kilometers
+	'M1' : 1.33, # Solar masses
+	'M2' : 1.35, # Solar masses
+	'a0' : 3.28, # Solar radii
 	'e0' : 0.274 # 0 <= e < 1
 }
 
-BSS = load.from_bpass(data=cfg)
+BSS = load.from_data(data=cfg)
 
-# Specify the age of the universe as an integration span
-t_span = (12.8e9, 13.8e9)
-t_eval = np.linspace(t_span[0], t_span[1], (t_span[1] - t_span[0]) / 1000)
+# Specify the last billion years as an integration span
+t_span = (0, 3e9)
 
 plt.figure()
-t, a, e = BSS.evolve(t_eval)
+t, a, e = BSS.evolve(t_span)
 
-print(BSS.coalesce())
+plt.rcParams['axes.formatter.useoffset'] = False
 
 # Plotting the SMA
 plt.subplot(121)
 plt.plot(t, a)
-plt.xlabel("Time [yrs]")
-plt.ylabel("Semimajor Axis [km]")
+plt.xlabel("Time [ga]")
+plt.ylabel("Semimajor Axis [solar radii]")
+plt.axvline(BSS.coalescence_time(), linestyle='dashed', color='black')
+# plt.ylim(0, a[0])
 
 # Plotting the Eccentricity
 plt.subplot(122)
 plt.plot(t, e)
-plt.xlabel("Time [yrs]")
+plt.xlabel("Time [ga]")
 plt.ylabel("Eccentricity [dimensionless]")
+# plt.ylim(0, e[0])
+plt.axvline(BSS.coalescence_time(), linestyle='dashed', color='black')
 
 # Boilerplate
-plt.suptitle("B1534+12")
+plt.suptitle("Star: B1534+12")
 plt.show()

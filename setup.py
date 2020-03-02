@@ -7,5 +7,10 @@ setup(name='takahe',
 	  author_email='sric560@aucklanduni.ac.nz',
 	  license='MIT',
 	  packages=['takahe'],
-	  zip_safe=False
+	  zip_safe=False,
+	  install_requires=[
+	  	'hoki',
+	  	'numpy',
+	  	'matplotlib'
+	  ]
 	)
