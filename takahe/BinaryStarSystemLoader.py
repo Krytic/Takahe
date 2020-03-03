@@ -19,7 +19,7 @@ def from_data(data):
 					Peroid takes precedence over the SMA, so if one is provided, we use Kepler's law
 					to compute the SMA.
 
-	tw	Returns:
+	Returns:
 		BinaryStarSystem -- An ADT to represent the BSS.
 	"""
 	if 'T' in data.keys():

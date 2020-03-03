@@ -3,7 +3,8 @@ from scipy.constants import c, G
 from scipy.integrate import solve_ivp
 from hoki import load
 
-Solar_Mass = 1.989e30
+Solar_Mass = 1.989e30 #kg
+Solar_Radii = 696340 #km 
 
 class BinaryStarSystem:
 	"""Represents a binary star system."""
@@ -11,9 +12,9 @@ class BinaryStarSystem:
 	def __init__(self, primary_mass, secondary_mass, a0, e0):
 		self.m1 = primary_mass * Solar_Mass # Units: kg
 		self.m2 = secondary_mass * Solar_Mass # Units: kg
-		self.a0 = a0 * 696340 # Units: km
-		self.e0 = e0 # Units: dimensionless
-		self.beta = (64/5) * ((G / (1000**3))**3*self.m1*self.m2*(self.m1+self.m2))/((c/1000)**5) # units: km^4 s^-1
+		self.a0 = np.float128(a0 * Solar_Radii * 1000) # Units: km
+		self.e0 = np.float128(e0) # Units: dimensionless
+		self.beta = (64/5) * (G**3*self.m1*self.m2*(self.m1+self.m2))/(c**5) # units: km^4 s^-1
 
 	def coalescence_time(self):
 		"""Computes the coalescence time for the BSS in gigayears.
@@ -26,7 +27,7 @@ class BinaryStarSystem:
 			float -- the coalescence time for the binary star (units: ga).
 		"""
 
-		return (self.a0**4 / (4*self.beta) * (1-self.e0**2)**(7/2) / ((1-self.e0**(7/4))**(1/5)*(1+121/304 * self.e0**2))) / (31557600000000000) # Units: ga
+		return (self.a0**4 / (4*self.beta) * (1-self.e0**2)**(7/2) / ((1-self.e0**(7/4))**(1/5)*(1+121/304 * self.e0**2))) / 31557600000000000 # Units: ga
 
 	def evolve(self, t_span):
 		"""Evolve the binary star system in time
@@ -42,7 +43,7 @@ class BinaryStarSystem:
 			and the resultant SMA and eccentricity arrays.
 		"""
 
-		def dadt(t, e, a):
+		def dadt(t, a, e):
 			"""
 			Auxiliary function to compute Equation 3.
 
@@ -56,11 +57,11 @@ class BinaryStarSystem:
 			"""
 			
 			da = (-self.beta / (a**3 * (1-e**2)**(7/2))) * (1 + 73/24 * e**2 + 37 / 96 * e ** 4) # Units: km/s
-			
+
 			return da
 
 		# Equation (4) from ibid
-		def dedt(t, e, a):
+		def dedt(t, a, e):
 			"""
 			Auxiliary function to compute Equation 4.
 
@@ -74,7 +75,7 @@ class BinaryStarSystem:
 			"""
 
 			de = (-19/12 * self.beta / (a**4*(1-e**2)**(5/2))) * (e + 121/304 * e ** 3) # Units: s^-1
- 
+
 			return de
 
 		def coupled_eqs(t, params):
@@ -89,14 +90,33 @@ class BinaryStarSystem:
 			Output:
 				A list containing da/dt and de/dt
 			"""
-			a = params[0]
-			e = params[1]
-			return [dadt(t, e, a), dedt(t, e, a)]
+
+			return [dadt(t, *params), dedt(t, *params)]
+
+		def integrate(t_eval):
+			h = t_eval[1] - t_eval[0]
+			print(h)
+			a, e = self.a0, self.e0
+
+			a_arr = []
+			e_arr = []
+			
+			for t in t_eval:
+				da = dadt(t, a, e)
+				de = dedt(t, a, e)
+				# print(da, de)
+				# print(a, e)
+				a = a + h * da
+				e = e + h * de
+				# print(a, e)
+				# print("------")
+				a_arr.append(a)
+				e_arr.append(e)
+
+			return np.array(a_arr), np.array(e_arr)
 
 		evolve_over = np.linspace(t_span[0], t_span[1], 10000)
 
-		res = solve_ivp(coupled_eqs, t_span, [self.a0, self.e0], t_eval=evolve_over)
+		a, e = integrate(evolve_over)
 
-		print(res)
-
-		return res.t / 1e9, np.round(res.y[0] / 696340, 3), np.round(res.y[1], 3)
+		return evolve_over, a, e

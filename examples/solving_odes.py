@@ -15,11 +15,15 @@ cfg = {
 
 BSS = load.from_data(data=cfg)
 
-# Specify the last billion years as an integration span
-t_span = (0, 3e9)
+# Specify  an integration span
+t_span = (0, 3e9 * 60 * 60 * 24 * 365.25)
 
 plt.figure()
 t, a, e = BSS.evolve(t_span)
+
+t /= 31557600000000000
+
+print("coalescence_time: ", BSS.coalescence_time())
 
 plt.rcParams['axes.formatter.useoffset'] = False
 
