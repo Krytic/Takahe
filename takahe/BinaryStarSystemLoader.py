@@ -22,7 +22,16 @@ def from_data(data):
 
     Returns:
         BinaryStarSystem -- An ADT to represent the BSS.
+
+    Raises:
+        KeyError -- if data is not well-formed.
     """
+
+    set_of_data_keys = set(data.keys())
+    if not set_of_data_keys.issubset({'M1', 'M2', 'e0', 'a0', 'T'}):
+        raise KeyError("data must contain definitions for M1, M2, e0, \
+                        and a0/T!")
+
     if 'T' in data.keys():
         first_term = (G * (data['M1'] + data['M2']))/(4*np.pi**2)
         data['a0'] = (first_term * data['T'] ** 2) ** (1/3)
@@ -32,6 +41,28 @@ def from_data(data):
                                              data['a0'],
                                              data['e0']
                                              )
+
+def from_list(data_list):
+    """Creates a binary star system ensemble from a list of configs
+
+    Arguments:
+        data_list {list} -- A list of config values. Each item in the
+                            list must be acceptable by from_data; i.e.,
+                            must contain M1, M2, e0, and a0/T.
+
+    Returns:
+        BinaryStarSystemEnsemble -- an ensemble representing the
+                                    collection of Binary Star System
+                                    objects.
+    """
+    ensemble = BinaryStarSystem.BinaryStarSystemEnsemble()
+
+    for data in data_list:
+        binary_star = from_data(data)
+        ensemble.add(binary_star)
+
+    return ensemble
+
 
 def from_bpass(bpass_from, mass_fraction):
     """Loads a binary star system from the BPASS dataset.
