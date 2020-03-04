@@ -37,7 +37,20 @@ class BinaryStarSystem:
 
         return (circ * (1-self.e0**2)**(7/2) / divisor) / 31557600000000000
 
-    def evolve(self, t_span):
+    def evolve_until_merger(self):
+        """Syntactic sugar for BSS.evolve_until(BSS.coalescence_time())
+
+        Evolves a BSS in time until its coalescence time.
+
+        Returns:
+            mixed -- A 3-tuple containing the resultant time
+                     array (in gigayears), and the resultant SMA (in
+                     solar radii) and eccentricity arrays.
+        """
+        t_span = (0, self.coalescence_time() * 1e9 * 60 * 60 * 24 * 365.25)
+        return self.evolve_until(t_span)
+
+    def evolve_until(self, t_span):
         """Evolve the binary star system in time
 
         Uses a Runge-Kutta algorithm to evolve the binary star system
@@ -91,7 +104,7 @@ class BinaryStarSystem:
 
             initial_term = (-19/12 * self.beta / (a**4*(1-e**2)**(5/2)))
 
-            de = inital_term * (e + 121/304 * e ** 3) # Units: s^-1
+            de = initial_term * (e + 121/304 * e ** 3) # Units: s^-1
 
             return de
 

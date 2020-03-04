@@ -16,7 +16,9 @@ BSS = load.from_data(data=cfg)
 t_span = (0, BSS.coalescence_time() * 1e9 * 60 * 60 * 24 * 365.25)
 
 plt.figure()
-t, a, e = BSS.evolve(t_span)
+t, a, e = BSS.evolve_until(t_span)
+
+print(t,a,e)
 
 print("coalescence_time: ", BSS.coalescence_time())
 
