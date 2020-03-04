@@ -29,6 +29,34 @@ class BinaryStarSystemEnsemble:
         self.__count += 1
 
     def merge_rate(self, t_merge, return_as="rel"):
+        """COmputes the merge rate for this ensemble.
+
+        Computes the merge rate for this system in a given timespan.
+        Merge rate is defined as the number of systems that merge in
+        some timespan t_merge (possibly relative to the number of
+        systems in the ensemble).
+
+        Arguments:
+            t_merge {float} -- The timespan under consideration. Must be
+                               in gigayears; no conversion is
+                               performed before comparison.
+
+        Keyword Arguments:
+            return_as {str} -- "abs" or "rel" depending on whether the
+                               merge rate should be returned as an
+                               absolute count or relative count
+                               (to the number of BSS in the ensemble).
+                               If defined as relative, then the merge
+                               rate is constrained to be in the interval
+                               [0, 1]. (default: {"rel"})
+
+        Returns:
+            flaot -- The merge rate of the ensemble.
+
+        Raises:
+            ValueError -- if return_as is anything other than "abs" or
+                          "rel".
+        """
         count = 0
 
         if return_as.lower() not in ['abs', 'rel']:
@@ -45,8 +73,22 @@ class BinaryStarSystemEnsemble:
         elif return_as == 'rel':
             return count / self.__count
 
-    def __len__(self):
+    def size(self):
+        """Get the size of the ensemble.
+
+        Returns:
+            int -- The number of BSS in the ensemble.
+        """
         return self.__count
+
+    """
+    Magic methods, in order to be able to compute the size of the
+    ensemble, and iterate over it, for example. These are uninteresting
+    and therefore do not contain any docstrings.
+    """
+
+    def __len__(self):
+        return self.size()
 
     def __iter__(self):
         return self
