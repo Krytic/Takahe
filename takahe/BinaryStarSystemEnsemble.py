@@ -7,6 +7,7 @@ class BinaryStarSystemEnsemble:
     generated if the loader encounters a group of BSS objects (e.g.,
     from BPASS).
     """
+
     def __init__(self):
         self.__ensemble = []
         self.__count = 0
@@ -27,6 +28,22 @@ class BinaryStarSystemEnsemble:
 
         self.__ensemble.append(binary_star)
         self.__count += 1
+
+    def average_coalescence_time(self):
+        """Computes the average coalescence time for the binary star
+        system.
+
+        Returns:
+            float -- The average over all the coalescence times in the
+                     ensemble.
+        """
+
+        running_sum = 0
+
+        for binary_star in self.__ensemble:
+            running_sum += binary_star.coalescence_time()
+
+        return running_sum / self.size()
 
     def merge_rate(self, t_merge, return_as="rel"):
         """COmputes the merge rate for this ensemble.

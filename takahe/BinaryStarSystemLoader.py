@@ -64,7 +64,7 @@ def from_list(data_list):
     return ensemble
 
 
-def from_bpass(bpass_from, mass_fraction):
+def from_bpass(bpass_from, mass_fraction, a0_range=(0, 10)):
     """Loads a binary star system from the BPASS dataset.
 
     Opens the BPASS file you wish to use, uses hoki to load it into a
@@ -88,20 +88,28 @@ def from_bpass(bpass_from, mass_fraction):
         [mixed] -- A list of BinaryStarSystem objects (if BPASS data is
                    used). A singular BinaryStarSystem object (if BPASS
                    data is NOT used).
+    Raises:
+        TypeError -- if a0_range is not exactly a 2-tuple of
+                     floats/ints.
     """
 
     data = load._stellar_masses(bpass_from)
 
-    if mass_fraction is None:
-        raise ValueError
+    if type(a0_range) != tuple or len(a0_range) != 2:
+        raise TypeError("a0_range must be a tuple of length 2!")
+
+    if (type(a0_range[0]) not in [int, float] and
+        type(a0_range[1]) not in [int, float]):
+
+        raise TypeError("a0_range must be a 2-tuple of ints or floats!")
 
     star_systems = BinaryStarSystemEnsemble.BinaryStarSystemEnsemble()
 
     for mass in data['stellar_mass']:
-        M2 = mass / (2 * mass_fraction)
-        M1 = mass_fraction * M2
+        M1 = mass_fraction * mass
+        M2 = mass - M1
 
-        a0 = np.random.uniform(454368024.65, 454368026.65)
+        a0 = np.random.uniform(*a0_range)
         e0 = np.random.uniform(0, 1)
 
         BSS = BinaryStarSystem.BinaryStarSystem(M1, M2, a0, e0)
