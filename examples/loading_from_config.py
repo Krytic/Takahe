@@ -1,10 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from uncertainties import ufloat
 
 from takahe import BinaryStarSystemLoader as load
-
-Solar_Mass = 1.989e30
 
 cfg = {
 	'M1' : 1.33, # Solar masses
@@ -16,12 +13,10 @@ cfg = {
 BSS = load.from_data(data=cfg)
 
 # Specify  an integration span
-t_span = (0, 3e9 * 60 * 60 * 24 * 365.25)
+t_span = (0, BSS.coalescence_time() * 1e9 * 60 * 60 * 24 * 365.25)
 
 plt.figure()
 t, a, e = BSS.evolve(t_span)
-
-t /= 31557600000000000
 
 print("coalescence_time: ", BSS.coalescence_time())
 
