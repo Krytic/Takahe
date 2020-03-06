@@ -3,19 +3,19 @@ from scipy.constants import c, G
 from scipy.integrate import solve_ivp
 from hoki import load
 
-Solar_Mass = 1.989e30 #kg
-Solar_Radii = 696340 #km
+Solar_Mass = 1.989e30 # kg
+Solar_Radii = 696340 # km
 
 class BinaryStarSystem:
     """Represents a binary star system."""
 
-    def __init__(self, primary_mass, secondary_mass, a0, e0):
+    def __init__(self, primary_mass, secondary_mass, a0, e0, weight_term=None):
         self.m1 = primary_mass * Solar_Mass # Units: kg
         self.m2 = secondary_mass * Solar_Mass # Units: kg
         self.a0 = np.float128(a0 * Solar_Radii * 1000) # Units: km
         self.e0 = np.float128(e0) # Units: dimensionless
 
-        self.beta = (64/5) * (G**3*self.m1*self.m2*(self.m1+self.m2))/(c**5)
+        self.beta = (64/5) * (G**3*self.m1*self.m2*(self.m1+self.m2)) / (c**5)
         # units: km^4 s^-1
 
     def coalescence_time(self):
@@ -150,6 +150,11 @@ class BinaryStarSystem:
                 de = dedt(t, a, e)
                 a = a + h * da
                 e = e + h * de
+
+                if e > 1:
+                    # runaway integration
+                    t_eval = (t_eval[0], t_eval[-1], len(e_arr))
+                    break
 
                 a_arr.append(a)
                 e_arr.append(e)

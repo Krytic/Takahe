@@ -30,6 +30,8 @@ plt.plot(t, a)
 plt.xlabel("Time [ga]")
 plt.ylabel("Semimajor Axis [solar radii]")
 plt.axvline(BSS.coalescence_time(), linestyle='dashed', color='black')
+midpoint = (max(a) - min(a))/2
+plt.text(BSS.coalescence_time()+0.03, midpoint, "Coalescence Time", rotation=90, verticalalignment='center')
 # plt.ylim(0, a[0])
 
 # Plotting the Eccentricity
@@ -39,7 +41,9 @@ plt.xlabel("Time [ga]")
 plt.ylabel("Eccentricity [dimensionless]")
 # plt.ylim(0, e[0])
 plt.axvline(BSS.coalescence_time(), linestyle='dashed', color='black')
+midpoint = (max(e) - min(e))/2
+plt.text(BSS.coalescence_time()+0.03, midpoint, "Coalescence Time", rotation=90, verticalalignment='center')
 
 # Boilerplate
-plt.suptitle("Star: B1534+12")
+plt.tight_layout()
 plt.show()

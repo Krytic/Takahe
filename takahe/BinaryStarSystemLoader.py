@@ -2,6 +2,7 @@ import numpy as np
 from scipy.constants import c, G
 from scipy.integrate import solve_ivp
 from hoki import load
+import pandas as pd
 
 from takahe import BinaryStarSystem, BinaryStarSystemEnsemble
 
@@ -117,3 +118,15 @@ def from_bpass(bpass_from, mass_fraction, a0_range=(0, 10)):
         star_systems.add(BSS)
 
     return star_systems
+
+def from_file(fname, limit=10):
+    df = pd.read_csv(fname, engine='python', sep="   ", header=0, names=['m1', 'm2', 'a0', 'e0', 'weight'], nrows=limit)
+
+    ensemble = BinaryStarSystemEnsemble.BinaryStarSystemEnsemble()
+
+    for line in df.iterrows():
+        star = line[1]
+        binary_star = BinaryStarSystem.BinaryStarSystem(*star)
+        ensemble.add(binary_star)
+
+    return ensemble

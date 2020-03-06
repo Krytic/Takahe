@@ -3,26 +3,24 @@ import matplotlib.pyplot as plt
 
 from takahe import BinaryStarSystemLoader as load
 
-mass_fraction = np.linspace(0.001, 0.5, 100)
-merge_rate = np.array([])
+import random
 
-for fraction in mass_fraction:
-    ensemble = load.from_bpass('data/starmass-bin-imf_chab100.z001.dat',
-                                fraction,
-                                a0_range=(0,100)
-                                )
+# colors = 'bgrcmyk'
 
-    average_time = ensemble.average_coalescence_time()
-    this_merge_rate = ensemble.merge_rate(average_time)
+ensemble = load.from_file('data/Remnant-Birth-bin-imf135_300-z020_StandardJJ.dat', limit=17)
 
-    merge_rate = np.append(merge_rate, this_merge_rate)
+i = 0
+for star in ensemble:
+    t, a_array, e_array = star.evolve_until_merger()
 
-p = np.polyfit(mass_fraction, list(merge_rate), 1)
+    # a_array = np.round(10*np.log10(a_array))
 
-yhat = np.poly1d(p)
+    plt.plot(a_array, e_array, color="#%06x" % random.randint(0, 0xFFFFFF))
 
-plt.plot(mass_fraction, merge_rate)
-plt.plot(mass_fraction, yhat(mass_fraction), 'k--')
-plt.xlabel("Mass Fraction")
-plt.ylabel("Merge Rate")
+    i += 1
+
+plt.xlabel(r"a ($R_\odot$)")#log(a) (binned) ($R_\odot$)")
+plt.ylabel("eccentricity")
+
+plt.grid('on')
 plt.show()
