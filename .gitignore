@@ -1,7 +1,5 @@
 # takahe-specific
 data/
-# examples is in the process of being moved to it's own repo
-examples/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

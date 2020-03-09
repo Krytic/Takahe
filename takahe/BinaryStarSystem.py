@@ -151,8 +151,8 @@ class BinaryStarSystem:
                 a = a + h * da
                 e = e + h * de
 
-                if e > 1:
-                    # runaway integration
+                if e > 1 or a < 0:
+                    # runaway integration, we should kill it
                     t_eval = (t_eval[0], t_eval[-1], len(e_arr))
                     break
 
