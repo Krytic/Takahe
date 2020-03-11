@@ -122,6 +122,8 @@ def from_bpass(bpass_from, mass_fraction, a0_range=(0, 10)):
 def from_file(fname, limit=10):
     df = pd.read_csv(fname, engine='python', sep="   ", header=0, names=['m1', 'm2', 'a0', 'e0', 'weight'], nrows=limit)
 
+    print(df.weight.sum)
+
     ensemble = BinaryStarSystemEnsemble.BinaryStarSystemEnsemble()
 
     for line in df.iterrows():

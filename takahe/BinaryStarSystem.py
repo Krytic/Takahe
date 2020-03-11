@@ -15,6 +15,8 @@ class BinaryStarSystem:
         self.a0 = np.float128(a0 * Solar_Radii * 1000) # Units: km
         self.e0 = np.float128(e0) # Units: dimensionless
 
+        self.weight = weight_term
+
         self.beta = (64/5) * (G**3*self.m1*self.m2*(self.m1+self.m2)) / (c**5)
         # units: km^4 s^-1
 
@@ -36,6 +38,14 @@ class BinaryStarSystem:
         divisor = ((1-self.e0**(7/4))**(1/5)*(1+121/304 * self.e0**2))
 
         return (circ * (1-self.e0**2)**(7/2) / divisor) / 31557600000000000
+
+    def circularises(self):
+        t, a, e = self.evolve_until_merger()
+
+        if e == 0 and a[-1] > 2*Solar_Radii:
+            return True
+
+        return False
 
     def evolve_until_merger(self):
         """Syntactic sugar for BSS.evolve_until(BSS.coalescence_time())
@@ -122,7 +132,7 @@ class BinaryStarSystem:
                 A list containing da/dt and de/dt
             """
 
-            return [dadt(t, *params), dedt(t, *params)]
+            return np.array([dadt(t, *params), dedt(t, *params)])
 
         def integrate(t_eval):
             """
@@ -145,19 +155,39 @@ class BinaryStarSystem:
             a_arr = []
             e_arr = []
 
+            yk = np.array([a, e])
+
             for t in t_eval:
-                da = dadt(t, a, e)
-                de = dedt(t, a, e)
-                a = a + h * da
-                e = e + h * de
+                k1 = h * coupled_eqs(t, yk)
+                k2 = h * coupled_eqs(t + 1/4 * h, yk + 1/4 * k1)
+
+                k3 = h * coupled_eqs(t + 3/8 * h, yk + 3/32 * k1 \
+                                                     + 9/32 * k2)
+
+                k4 = h * coupled_eqs(t+12/13 * h, yk + 1932/2197 * k1 \
+                                                     - 7200/2197 * k2 \
+                                                     + 7293/2197 * k3)
+
+                k5 = h * coupled_eqs(t + h, yk + 439/216 * k1 \
+                                               - 8*k2 \
+                                               + 3680/513 * k3
+                                               - 845/4104*k4)
+
+                k6 = h * coupled_eqs(t + 1/2 * h, yk - 8/27*k1 \
+                                                     + 2*k2 \
+                                                     - 3544/2565*k3 \
+                                                     + 1859/4104 * k4 \
+                                                     - 11/40 * k5)
 
                 if e > 1 or a < 0:
                     # runaway integration, we should kill it
                     t_eval = (t_eval[0], t_eval[-1], len(e_arr))
                     break
 
-                a_arr.append(a)
-                e_arr.append(e)
+                a_arr.append(yk[0])
+                e_arr.append(yk[1])
+
+                yk = yk + 25/216 * k1 + 1408/2565*k3 + 2197/4101 * k4 - 1/5 * k5
 
             return np.array(a_arr), np.array(e_arr)
 
