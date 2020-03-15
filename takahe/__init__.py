@@ -1,0 +1,19 @@
+"""
+=======================================================================
++ _________     _       ___  ____        _       ____  ____  ________ +
++|  _   _  |   / \     |_  ||_  _|      / \     |_   ||   _||_   __  |+
++|_/ | | \_|  / _ \      | |_/ /       / _ \      | |__| |    | |_ \_|+
++    | |     / ___ \     |  __'.      / ___ \     |  __  |    |  _| _ +
++   _| |_  _/ /   \ \_  _| |  \ \_  _/ /   \ \_  _| |  | |_  _| |__/ |+
++  |_____||____| |____||____||____||____| |____||____||____||________|+
++                                                                     +
+=======================================================================
+
+Takahe is an extension to Heloise Stevance's hoki code, which interfaces
+with BPASS. It is designed to pick up where hoki leaves off, and allow
+the user to specify binary star systems from the BPASS library, and
+propagate those in time to investigate binary star mergers.
+
+Takahe is a part of my Masters of Science thesis at the University of
+Auckland, and is in constant, rolling development.
+"""

@@ -40,9 +40,21 @@ class BinaryStarSystem:
         return (circ * (1-self.e0**2)**(7/2) / divisor) / 31557600000000000
 
     def circularises(self):
+        """Determines if the orbit in question circularises or not.
+
+        This function is reasonably naive at present -- it assumes a BSS
+        circularises if it's eccentricity becomes arbitrarily close to
+        0 and it's final SMA is more than 2 solar radii (such that it
+        does not merge).
+
+        # Todo: Improve the logic here. Should the thresholds be customisable?
+
+        Returns:
+            bool -- True if the orbit circularises.
+        """
         t, a, e = self.evolve_until_merger()
 
-        if e == 0 and a[-1] > 2*Solar_Radii:
+        if np.isclose(e[-1], 0.0) and a[-1] > 2*Solar_Radii:
             return True
 
         return False
@@ -136,8 +148,8 @@ class BinaryStarSystem:
 
         def integrate(t_eval):
             """
-            Auxilary function which uses the euler method to integrate
-            the system of ODEs
+            Auxilary function which uses an RKF45 integrator to
+                integrate the system of ODEs
 
             Arguments:
                 t_eval {ndarray} -- An array of timesteps to compute

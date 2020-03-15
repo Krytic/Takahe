@@ -119,10 +119,27 @@ def from_bpass(bpass_from, mass_fraction, a0_range=(0, 10)):
 
     return star_systems
 
-def from_file(fname, limit=10):
-    df = pd.read_csv(fname, engine='python', sep="   ", header=0, names=['m1', 'm2', 'a0', 'e0', 'weight'], nrows=limit)
+def from_file(fname, limit=10, n=1000):
+    """
+    Loads a random sample of stars from a file.
 
-    print(df.weight.sum)
+    Arguments:
+        fname {string} -- The path to the file you want to load
+
+    Keyword Arguments:
+        limit {number} -- The number of stars to load (default: {10})
+        n {number} -- The number of lines in the file (default: {1000})
+
+    Returns:
+        {BinaryStarSystemEnsemble} -- An ensemble object representing
+                                      the ensemble of objects,
+    """
+    import random
+
+    s = limit
+    skip = sorted(random.sample(range(n),n-s))
+
+    df = pd.read_csv(fname, engine='python', sep="   ", header=0, names=['m1', 'm2', 'a0', 'e0', 'weight'], skiprows=skip)
 
     ensemble = BinaryStarSystemEnsemble.BinaryStarSystemEnsemble()
 

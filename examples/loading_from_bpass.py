@@ -5,21 +5,27 @@ from takahe import BinaryStarSystemLoader as load
 
 import random
 
-binning = False
-
+merge_rate_threshold = 13.8 #gigayears
 limit = 1
 
-ensemble = load.from_file('data/Remnant-Birth-bin-imf135_300-z020_StandardJJ.dat', limit=limit)
+k_arr = list(range(5))
+merge_rates = []
 
-i = 0
+for k in k_arr:
+    ensemble = load.from_file('data/Remnant-Birth-bin-imf135_300-z020_StandardJJ.dat', limit=limit, n=263454)
 
-cts = np.empty((1, limit))[0]
-wts = np.empty((1, limit))[0]
+    i = 0
+    mergers_in_ensemble = 0
 
-for star in ensemble:
-    t, a_array, e_array = star.evolve_until_merger()
+    cts = np.empty((1, limit))[0]
+    wts = np.empty((1, limit))[0]
 
-    if binning:
+    for star in ensemble:
+        t, a_array, e_array = star.evolve_until_merger()
+
+        print(star.circularises())
+        break 2
+
         a_array = np.round(10*np.log10(a_array))
         ls = None
         marker = "."
@@ -32,24 +38,19 @@ for star in ensemble:
         time_step = t[1] - t[0]
 
         estimate = np.sum(time_step * np.array(dp_list))
-        calc = star.coalescence_time()
 
-        cts[i] = estimate
-        wts[i] = star.weight
+        if estimate <= merge_rate_threshold:
+            # Star has merged
+            mergers_in_ensemble += 1
 
-    print(star.coalescence_time())
+        i += 1
 
-    plt.plot(a_array, e_array)
+    merge_rates.append(mergers_in_ensemble)
 
-    i += 1
+plt.plot(k_arr, merge_rates, 'r.')
 
-# plt.plot(cts, wts, 'r.')
-
-# plt.xlabel("coalescence_time [ga]")
-# plt.ylabel("weight")
-
-plt.xlabel("SMA (solar radii)")
-plt.ylabel("Eccentricity")
+plt.xlabel("coalescence_time [ga]")
+plt.ylabel("merge rate")
 
 plt.grid('on')
 plt.tight_layout()
