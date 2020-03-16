@@ -25,7 +25,7 @@ print("coalescence_time: ", BSS.coalescence_time())
 plt.rcParams['axes.formatter.useoffset'] = False
 
 # Plotting the SMA
-plt.subplot(121)
+plt.subplot(221)
 plt.plot(t, a)
 plt.xlabel("Time [ga]")
 plt.ylabel("Semimajor Axis [solar radii]")
@@ -35,7 +35,7 @@ plt.text(BSS.coalescence_time()+0.03, midpoint, "Coalescence Time", rotation=90,
 # plt.ylim(0, a[0])
 
 # Plotting the Eccentricity
-plt.subplot(122)
+plt.subplot(222)
 plt.plot(t, e)
 plt.xlabel("Time [ga]")
 plt.ylabel("Eccentricity [dimensionless]")
@@ -43,6 +43,11 @@ plt.ylabel("Eccentricity [dimensionless]")
 plt.axvline(BSS.coalescence_time(), linestyle='dashed', color='black')
 midpoint = (max(e) - min(e))/2
 plt.text(BSS.coalescence_time()+0.03, midpoint, "Coalescence Time", rotation=90, verticalalignment='center')
+
+plt.subplot(223)
+plt.plot(a, e)
+plt.xlabel("SMA [solar radii]")
+plt.ylabel("Eccentricity [dimensionless]")
 
 # Boilerplate
 plt.tight_layout()

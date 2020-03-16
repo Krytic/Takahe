@@ -17,8 +17,20 @@ class BinaryStarSystem:
 
         self.weight = weight_term
 
+        self.dadt_terms = None
+        self.dedt_terms = None
+
         self.beta = (64/5) * (G**3*self.m1*self.m2*(self.m1+self.m2)) / (c**5)
         # units: km^4 s^-1
+
+        self.__parameter_array = {
+            'beta': self.beta,
+            'm1': self.m1,
+            'm2': self.m2,
+            'a0': self.a0,
+            'e0': self.e0,
+            'weight': self.weight
+        }
 
     def coalescence_time(self):
         """Computes the coalescence time for the BSS in gigayears.
@@ -39,6 +51,37 @@ class BinaryStarSystem:
 
         return (circ * (1-self.e0**2)**(7/2) / divisor) / 31557600000000000
 
+    def specify_additional_term(self, da_or_de, func):
+        """Adds additional terms to the RHS of the ODE governing evolution.
+
+        Assumes that the signature of callable is callable(t, a, e).
+
+        Arguments:
+            da_or_de {string} -- Whether to modify da/dt or de/dt.
+            func {function} -- A callable object to use to modify the ODE.
+
+        Raises:
+            ValueError -- If da_or_de is not 'da' or 'de'.
+            TypeError -- if func is not a callable object.
+
+        Returns:
+            self -- an instance of itself, such that one may use
+                    star.specify_addition_term().evolve_until() if
+                    desired.
+        """
+        if da_or_de not in ['da', 'de']:
+            raise ValueError("da_or_de must be either 'da' or 'de'!")
+
+        if not callable(func):
+            raise TypeError("func is not callable!")
+
+        if da_or_de == 'da':
+            self.dadt_terms = func
+        else:
+            self.dedt_terms = func
+
+        return self
+
     def circularises(self):
         """Determines if the orbit in question circularises or not.
 
@@ -50,7 +93,7 @@ class BinaryStarSystem:
         # Todo: Improve the logic here. Should the thresholds be customisable?
 
         Returns:
-            bool -- True if the orbit circularises.
+            bool -- True if the orbit circularises, False otherwise.
         """
         t, a, e = self.evolve_until_merger()
 
@@ -107,6 +150,9 @@ class BinaryStarSystem:
             da = initial_term * (1 + 73/24 * e**2 + 37 / 96 * e ** 4)
             # Units: km/s
 
+            if self.dadt_terms != None:
+                da += self.dadt_terms(t, a, e)
+
             return da
 
         # Equation (4) from ibid
@@ -127,6 +173,9 @@ class BinaryStarSystem:
             initial_term = (-19/12 * self.beta / (a**4*(1-e**2)**(5/2)))
 
             de = initial_term * (e + 121/304 * e ** 3) # Units: s^-1
+
+            if self.dedt_terms != None:
+                de += self.dedt_terms(t, a, e)
 
             return de
 
@@ -156,8 +205,10 @@ class BinaryStarSystem:
                                     the integrals over
 
             Returns:
+                evolve_over {ndarray} -- An array representing the time
+                                         integrated over (in gigayears)
                 a_arr {ndarray} -- An array representing the SMA of the
-                                   binary orbit
+                                   binary orbit (in solar radii)
                 e_arr {ndarray} -- An array representing the
                                    eccentricity of the binary orbit
             """
@@ -191,7 +242,7 @@ class BinaryStarSystem:
                                                      + 1859/4104 * k4 \
                                                      - 11/40 * k5)
 
-                if e > 1 or a < 0:
+                if e >= 1 or a <= 0:
                     # runaway integration, we should kill it
                     t_eval = (t_eval[0], t_eval[-1], len(e_arr))
                     break

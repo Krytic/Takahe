@@ -46,7 +46,7 @@ class BinaryStarSystemEnsemble:
         return running_sum / self.size()
 
     def merge_rate(self, t_merge, return_as="rel"):
-        """COmputes the merge rate for this ensemble.
+        """Computes the merge rate for this ensemble.
 
         Computes the merge rate for this system in a given timespan.
         Merge rate is defined as the number of systems that merge in
