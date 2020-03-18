@@ -77,9 +77,11 @@ class Universe:
         return self.DH * result
 
     def populate(self):
-        """Populates the Universe with stars.
+        """
+        Populates the Universe with stars.
 
-        [description]
+        Loads from a standard file at the moment. Will be extended in
+        future, to support arbitrary files.
         """
 
         self.populace = load.from_file('data/newdata/Remnant-Birth-bin-imf135_300-z040_StandardJJ.dat')
