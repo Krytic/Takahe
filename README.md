@@ -1,14 +1,16 @@
 # Takahe
 
-Takahe is an extension to Heloise Stevance's [hoki code](http://github.com/HeloiseS/hoki), which interfaces with [BPASS](bpass.auckland.ac.nz). It is designed to pick up where hoki leaves off, and allow the user to specify binary star systems from the BPASS library, and propagate those in time to investigate binary star mergers.
+Takahe is an extension to Heloise Stevance's [hoki code](http://github.com/HeloiseS/hoki), which interfaces with [BPASS](bpass.auckland.ac.nz). It is designed to pick up where hoki leaves off, and allow the user to specify binary star systems from the BPASS library, and propagate those in time to investigate binary star mergers. As part of that, takahe can\* serve as a whole-universe simulation.
+
+\*can implies "will be able to in the nearish future".
 
 ## Installation
 
 Installation is handled via pip. Currently the package is not released on pypi but can be installed with `pip install -e .` in the root directory.
 
-## Usage
+## RTFM
 
-One installed, you have a couple of options as to creating a binary star system. You can create one the "long way" using the signature `BinaryStarSystem(primary_mass, secondary_mass, a0, e0)`. Alternatively, if you wish to use the BPASS database, you can specify the filename through `BinaryStarSystemLoader(bpass_from)`. Note that `bpass_from` is more or less passed directly to hoki's `load` function -- so what you pass to it must be compatible in and of itself.
+You can read the documentation up on my website: [Click Here!](https://krytic.github.io/Takahe/index.html)
 
 ## Contributing
 
@@ -29,4 +31,4 @@ A paper will be forthcoming in the future. In the meantime please use the follow
 
 ### The name "Takahe"
 
-The name Takahe conforms to the naming convention employed by Eldridge, Stanaway, Stevance, et al. BPASS releases are named after native creatures from New Zealand (e.g. Tuatara, the current version, is named for the native reptile known as the "living fossil"), as is hoki (being named for a fish). The Takahe is a native endangered flightless bird to New Zealand.
+The name Takahe conforms to the naming convention employed by Eldridge, Stanway, Stevance, et al. BPASS releases are named after native creatures from New Zealand (e.g. Tuatara, the current version, is named for the native reptile known as the "living fossil"), as is hoki (being named for a fish). The Takahe is a native endangered flightless bird to New Zealand.
