@@ -19,7 +19,8 @@ class Universe:
     def __init__(self, model, hubble_parameter=70):
         """
 
-        Creates the Universe.
+        Creates our Universe, conforming to a given set of physical laws.
+        For instance, one may create an Einstein-de Sitter Universe.
 
         Arguments:
             model {str} -- the model (eds, lowdensity, highlambda) of
