@@ -1,0 +1,936 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
+<meta name="generator" content="pdoc 0.7.5" />
+<title>takahe.BinaryStarSystem API documentation</title>
+<meta name="description" content="" />
+<link href='https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.0/normalize.min.css' rel='stylesheet'>
+<link href='https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/8.0.0/sanitize.min.css' rel='stylesheet'>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css" rel="stylesheet">
+<style>.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:30px;overflow:hidden}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:1em 0 .50em 0}h3{font-size:1.4em;margin:25px 0 10px 0}h4{margin:0;font-size:105%}a{color:#058;text-decoration:none;transition:color .3s ease-in-out}a:hover{color:#e82}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900}pre code{background:#f8f8f8;font-size:.8em;line-height:1.4em}code{background:#f2f2f1;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{background:#f8f8f8;border:0;border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0;padding:1ex}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{font-weight:bold}#index h4 + ul{margin-bottom:.6em}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-weight:bold;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}.admonition{padding:.1em .5em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.item .name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul{padding-left:1.5em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+</head>
+<body>
+<main>
+<article id="content">
+<header>
+<h1 class="title">Module <code>takahe.BinaryStarSystem</code></h1>
+</header>
+<section id="section-intro">
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">import numpy as np
+from scipy.constants import c, G
+from scipy.integrate import solve_ivp
+from hoki import load
+
+Solar_Mass = 1.989e30 # kg
+Solar_Radii = 696340 # km
+
+class BinaryStarSystem:
+    &#34;&#34;&#34;Represents a binary star system.&#34;&#34;&#34;
+
+    def __init__(self, primary_mass, secondary_mass, a0, e0, weight_term=None):
+        self.m1 = primary_mass * Solar_Mass # Units: kg
+        self.m2 = secondary_mass * Solar_Mass # Units: kg
+        self.a0 = np.float128(a0 * Solar_Radii * 1000) # Units: km
+        self.e0 = np.float128(e0) # Units: dimensionless
+
+        self.weight = weight_term
+
+        self.dadt_terms = None
+        self.dedt_terms = None
+
+        self.beta = (64/5) * (G**3*self.m1*self.m2*(self.m1+self.m2)) / (c**5)
+        # units: km^4 s^-1
+
+        self.__parameter_array = {
+            &#39;beta&#39;: self.beta,
+            &#39;m1&#39;: self.m1,
+            &#39;m2&#39;: self.m2,
+            &#39;a0&#39;: self.a0,
+            &#39;e0&#39;: self.e0,
+            &#39;weight&#39;: self.weight
+        }
+
+    def coalescence_time(self):
+        &#34;&#34;&#34;Computes the coalescence time for the BSS in gigayears.
+
+        Uses Eqn 10 from Nyadzani and Razzaque [1] to compute the
+        coalescence time for the binary star system. Although this is
+        strictly speaking an approximation, it converges on the
+        result gained by numerically by Peters in 1964.
+
+        [1] https://arxiv.org/pdf/1905.06086.pdf
+
+        Returns:
+            float -- the coalescence time for the binary star (units: ga).
+        &#34;&#34;&#34;
+
+        circ = self.a0**4 / (4*self.beta)
+        divisor = ((1-self.e0**(7/4))**(1/5)*(1+121/304 * self.e0**2))
+
+        return (circ * (1-self.e0**2)**(7/2) / divisor) / 31557600000000000
+
+    def specify_additional_term(self, da_or_de, func):
+        &#34;&#34;&#34;Adds additional terms to the RHS of the ODE governing evolution.
+
+        Assumes that the signature of callable is callable(t, a, e).
+
+        Arguments:
+            da_or_de {string} -- Whether to modify da/dt or de/dt.
+            func {function} -- A callable object to use to modify the ODE.
+
+        Raises:
+            ValueError -- If da_or_de is not &#39;da&#39; or &#39;de&#39;.
+            TypeError -- if func is not a callable object.
+
+        Returns:
+            self -- an instance of itself, such that one may use
+                    star.specify_addition_term().evolve_until() if
+                    desired.
+        &#34;&#34;&#34;
+        if da_or_de not in [&#39;da&#39;, &#39;de&#39;]:
+            raise ValueError(&#34;da_or_de must be either &#39;da&#39; or &#39;de&#39;!&#34;)
+
+        if not callable(func):
+            raise TypeError(&#34;func is not callable!&#34;)
+
+        if da_or_de == &#39;da&#39;:
+            self.dadt_terms = func
+        else:
+            self.dedt_terms = func
+
+        return self
+
+    def circularises(self):
+        &#34;&#34;&#34;Determines if the orbit in question circularises or not.
+
+        This function is reasonably naive at present -- it assumes a BSS
+        circularises if it&#39;s eccentricity becomes arbitrarily close to
+        0 and it&#39;s final SMA is more than 2 solar radii (such that it
+        does not merge).
+
+        # Todo: Improve the logic here. Should the thresholds be customisable?
+
+        Returns:
+            bool -- True if the orbit circularises, False otherwise.
+        &#34;&#34;&#34;
+        t, a, e = self.evolve_until_merger()
+
+        if np.isclose(e[-1], 0.0) and a[-1] &gt; 2*Solar_Radii:
+            return True
+
+        return False
+
+    def evolve_until_merger(self):
+        &#34;&#34;&#34;Syntactic sugar for BSS.evolve_until(BSS.coalescence_time())
+
+        Evolves a BSS in time until its coalescence time.
+
+        Returns:
+            mixed -- A 3-tuple containing the resultant time
+                     array (in gigayears), and the resultant SMA (in
+                     solar radii) and eccentricity arrays.
+        &#34;&#34;&#34;
+        t_span = (0, self.coalescence_time() * 1e9 * 60 * 60 * 24 * 365.25)
+        return self.evolve_until(t_span)
+
+    def evolve_until(self, t_span):
+        &#34;&#34;&#34;Evolve the binary star system in time
+
+        Uses a Runge-Kutta algorithm to evolve the binary star system
+        over a specified range evolve_over.
+
+        Arguments:
+            t_span {tuple} -- A 2-tuple that corresponds to the start
+                              and end points of integration.
+
+        Returns:
+            mixed -- A 3-tuple containing the resultant time
+                     array (in gigayears), and the resultant SMA (in
+                     solar radii) and eccentricity arrays.
+        &#34;&#34;&#34;
+
+        def dadt(t, a, e):
+            &#34;&#34;&#34;
+            Auxiliary function to compute Equation 3.
+
+            Params:
+                t [ndarray] A vector of times.
+                e [float] The current eccentricity
+                a [float] The current semimajor axis
+
+            Output:
+                The quantity da/dt - how the semimajor axis is changing
+                                     with time.
+            &#34;&#34;&#34;
+
+            initial_term = (-self.beta / (a**3 * (1-e**2)**(7/2)))
+
+            da = initial_term * (1 + 73/24 * e**2 + 37 / 96 * e ** 4)
+            # Units: km/s
+
+            if self.dadt_terms != None:
+                da += self.dadt_terms(t, a, e)
+
+            return da
+
+        # Equation (4) from ibid
+        def dedt(t, a, e):
+            &#34;&#34;&#34;
+            Auxiliary function to compute Equation 4.
+
+            Params:
+                t [ndarray] A vector of times.
+                e [float] The current eccentricity
+                a [float] The current semimajor axis
+
+            Output:
+                The quantity de/dt - how the eccentricity is changing
+                                     with time.
+            &#34;&#34;&#34;
+
+            initial_term = (-19/12 * self.beta / (a**4*(1-e**2)**(5/2)))
+
+            de = initial_term * (e + 121/304 * e ** 3) # Units: s^-1
+
+            if self.dedt_terms != None:
+                de += self.dedt_terms(t, a, e)
+
+            return de
+
+        def coupled_eqs(t, params):
+            &#34;&#34;&#34;
+            Primary workhorse function. Computes the vector
+            [da/dt, de/dt] for use in our integrator.
+
+            Params:
+                t [ndarray] A vector of times
+                params [list] A list or 2-tuple of arguments. Must take
+                              the form [a, e]
+
+            Output:
+                A list containing da/dt and de/dt
+            &#34;&#34;&#34;
+
+            return np.array([dadt(t, *params), dedt(t, *params)])
+
+        def integrate(t_eval):
+            &#34;&#34;&#34;
+            Auxilary function which uses an RKF45 integrator to
+                integrate the system of ODEs
+
+            Arguments:
+                t_eval {ndarray} -- An array of timesteps to compute
+                                    the integrals over
+
+            Returns:
+                evolve_over {ndarray} -- An array representing the time
+                                         integrated over (in gigayears)
+                a_arr {ndarray} -- An array representing the SMA of the
+                                   binary orbit (in solar radii)
+                e_arr {ndarray} -- An array representing the
+                                   eccentricity of the binary orbit
+            &#34;&#34;&#34;
+            h = t_eval[1] - t_eval[0]
+            a, e = self.a0, self.e0
+
+            a_arr = []
+            e_arr = []
+
+            yk = np.array([a, e])
+
+            for t in t_eval:
+                k1 = h * coupled_eqs(t, yk)
+                k2 = h * coupled_eqs(t + 1/4 * h, yk + 1/4 * k1)
+
+                k3 = h * coupled_eqs(t + 3/8 * h, yk + 3/32 * k1 \
+                                                     + 9/32 * k2)
+
+                k4 = h * coupled_eqs(t+12/13 * h, yk + 1932/2197 * k1 \
+                                                     - 7200/2197 * k2 \
+                                                     + 7293/2197 * k3)
+
+                k5 = h * coupled_eqs(t + h, yk + 439/216 * k1 \
+                                               - 8*k2 \
+                                               + 3680/513 * k3
+                                               - 845/4104*k4)
+
+                k6 = h * coupled_eqs(t + 1/2 * h, yk - 8/27*k1 \
+                                                     + 2*k2 \
+                                                     - 3544/2565*k3 \
+                                                     + 1859/4104 * k4 \
+                                                     - 11/40 * k5)
+
+                if e &gt;= 1 or a &lt;= 0:
+                    # runaway integration, we should kill it
+                    t_eval = (t_eval[0], t_eval[-1], len(e_arr))
+                    break
+
+                a_arr.append(yk[0])
+                e_arr.append(yk[1])
+
+                yk = yk + 25/216 * k1 + 1408/2565*k3 + 2197/4101 * k4 - 1/5 * k5
+
+            return np.array(a_arr), np.array(e_arr)
+
+        evolve_over = np.linspace(t_span[0], t_span[1], 10000)
+
+        a, e = integrate(evolve_over)
+
+        evolve_over /= 31557600000000000
+        a /= (Solar_Radii * 1000)
+
+        return evolve_over, a, e</code></pre>
+</details>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-classes">Classes</h2>
+<dl>
+<dt id="takahe.BinaryStarSystem.BinaryStarSystem"><code class="flex name class">
+<span>class <span class="ident">BinaryStarSystem</span></span>
+<span>(</span><span>primary_mass, secondary_mass, a0, e0, weight_term=None)</span>
+</code></dt>
+<dd>
+<section class="desc"><p>Represents a binary star system.</p></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class BinaryStarSystem:
+    &#34;&#34;&#34;Represents a binary star system.&#34;&#34;&#34;
+
+    def __init__(self, primary_mass, secondary_mass, a0, e0, weight_term=None):
+        self.m1 = primary_mass * Solar_Mass # Units: kg
+        self.m2 = secondary_mass * Solar_Mass # Units: kg
+        self.a0 = np.float128(a0 * Solar_Radii * 1000) # Units: km
+        self.e0 = np.float128(e0) # Units: dimensionless
+
+        self.weight = weight_term
+
+        self.dadt_terms = None
+        self.dedt_terms = None
+
+        self.beta = (64/5) * (G**3*self.m1*self.m2*(self.m1+self.m2)) / (c**5)
+        # units: km^4 s^-1
+
+        self.__parameter_array = {
+            &#39;beta&#39;: self.beta,
+            &#39;m1&#39;: self.m1,
+            &#39;m2&#39;: self.m2,
+            &#39;a0&#39;: self.a0,
+            &#39;e0&#39;: self.e0,
+            &#39;weight&#39;: self.weight
+        }
+
+    def coalescence_time(self):
+        &#34;&#34;&#34;Computes the coalescence time for the BSS in gigayears.
+
+        Uses Eqn 10 from Nyadzani and Razzaque [1] to compute the
+        coalescence time for the binary star system. Although this is
+        strictly speaking an approximation, it converges on the
+        result gained by numerically by Peters in 1964.
+
+        [1] https://arxiv.org/pdf/1905.06086.pdf
+
+        Returns:
+            float -- the coalescence time for the binary star (units: ga).
+        &#34;&#34;&#34;
+
+        circ = self.a0**4 / (4*self.beta)
+        divisor = ((1-self.e0**(7/4))**(1/5)*(1+121/304 * self.e0**2))
+
+        return (circ * (1-self.e0**2)**(7/2) / divisor) / 31557600000000000
+
+    def specify_additional_term(self, da_or_de, func):
+        &#34;&#34;&#34;Adds additional terms to the RHS of the ODE governing evolution.
+
+        Assumes that the signature of callable is callable(t, a, e).
+
+        Arguments:
+            da_or_de {string} -- Whether to modify da/dt or de/dt.
+            func {function} -- A callable object to use to modify the ODE.
+
+        Raises:
+            ValueError -- If da_or_de is not &#39;da&#39; or &#39;de&#39;.
+            TypeError -- if func is not a callable object.
+
+        Returns:
+            self -- an instance of itself, such that one may use
+                    star.specify_addition_term().evolve_until() if
+                    desired.
+        &#34;&#34;&#34;
+        if da_or_de not in [&#39;da&#39;, &#39;de&#39;]:
+            raise ValueError(&#34;da_or_de must be either &#39;da&#39; or &#39;de&#39;!&#34;)
+
+        if not callable(func):
+            raise TypeError(&#34;func is not callable!&#34;)
+
+        if da_or_de == &#39;da&#39;:
+            self.dadt_terms = func
+        else:
+            self.dedt_terms = func
+
+        return self
+
+    def circularises(self):
+        &#34;&#34;&#34;Determines if the orbit in question circularises or not.
+
+        This function is reasonably naive at present -- it assumes a BSS
+        circularises if it&#39;s eccentricity becomes arbitrarily close to
+        0 and it&#39;s final SMA is more than 2 solar radii (such that it
+        does not merge).
+
+        # Todo: Improve the logic here. Should the thresholds be customisable?
+
+        Returns:
+            bool -- True if the orbit circularises, False otherwise.
+        &#34;&#34;&#34;
+        t, a, e = self.evolve_until_merger()
+
+        if np.isclose(e[-1], 0.0) and a[-1] &gt; 2*Solar_Radii:
+            return True
+
+        return False
+
+    def evolve_until_merger(self):
+        &#34;&#34;&#34;Syntactic sugar for BSS.evolve_until(BSS.coalescence_time())
+
+        Evolves a BSS in time until its coalescence time.
+
+        Returns:
+            mixed -- A 3-tuple containing the resultant time
+                     array (in gigayears), and the resultant SMA (in
+                     solar radii) and eccentricity arrays.
+        &#34;&#34;&#34;
+        t_span = (0, self.coalescence_time() * 1e9 * 60 * 60 * 24 * 365.25)
+        return self.evolve_until(t_span)
+
+    def evolve_until(self, t_span):
+        &#34;&#34;&#34;Evolve the binary star system in time
+
+        Uses a Runge-Kutta algorithm to evolve the binary star system
+        over a specified range evolve_over.
+
+        Arguments:
+            t_span {tuple} -- A 2-tuple that corresponds to the start
+                              and end points of integration.
+
+        Returns:
+            mixed -- A 3-tuple containing the resultant time
+                     array (in gigayears), and the resultant SMA (in
+                     solar radii) and eccentricity arrays.
+        &#34;&#34;&#34;
+
+        def dadt(t, a, e):
+            &#34;&#34;&#34;
+            Auxiliary function to compute Equation 3.
+
+            Params:
+                t [ndarray] A vector of times.
+                e [float] The current eccentricity
+                a [float] The current semimajor axis
+
+            Output:
+                The quantity da/dt - how the semimajor axis is changing
+                                     with time.
+            &#34;&#34;&#34;
+
+            initial_term = (-self.beta / (a**3 * (1-e**2)**(7/2)))
+
+            da = initial_term * (1 + 73/24 * e**2 + 37 / 96 * e ** 4)
+            # Units: km/s
+
+            if self.dadt_terms != None:
+                da += self.dadt_terms(t, a, e)
+
+            return da
+
+        # Equation (4) from ibid
+        def dedt(t, a, e):
+            &#34;&#34;&#34;
+            Auxiliary function to compute Equation 4.
+
+            Params:
+                t [ndarray] A vector of times.
+                e [float] The current eccentricity
+                a [float] The current semimajor axis
+
+            Output:
+                The quantity de/dt - how the eccentricity is changing
+                                     with time.
+            &#34;&#34;&#34;
+
+            initial_term = (-19/12 * self.beta / (a**4*(1-e**2)**(5/2)))
+
+            de = initial_term * (e + 121/304 * e ** 3) # Units: s^-1
+
+            if self.dedt_terms != None:
+                de += self.dedt_terms(t, a, e)
+
+            return de
+
+        def coupled_eqs(t, params):
+            &#34;&#34;&#34;
+            Primary workhorse function. Computes the vector
+            [da/dt, de/dt] for use in our integrator.
+
+            Params:
+                t [ndarray] A vector of times
+                params [list] A list or 2-tuple of arguments. Must take
+                              the form [a, e]
+
+            Output:
+                A list containing da/dt and de/dt
+            &#34;&#34;&#34;
+
+            return np.array([dadt(t, *params), dedt(t, *params)])
+
+        def integrate(t_eval):
+            &#34;&#34;&#34;
+            Auxilary function which uses an RKF45 integrator to
+                integrate the system of ODEs
+
+            Arguments:
+                t_eval {ndarray} -- An array of timesteps to compute
+                                    the integrals over
+
+            Returns:
+                evolve_over {ndarray} -- An array representing the time
+                                         integrated over (in gigayears)
+                a_arr {ndarray} -- An array representing the SMA of the
+                                   binary orbit (in solar radii)
+                e_arr {ndarray} -- An array representing the
+                                   eccentricity of the binary orbit
+            &#34;&#34;&#34;
+            h = t_eval[1] - t_eval[0]
+            a, e = self.a0, self.e0
+
+            a_arr = []
+            e_arr = []
+
+            yk = np.array([a, e])
+
+            for t in t_eval:
+                k1 = h * coupled_eqs(t, yk)
+                k2 = h * coupled_eqs(t + 1/4 * h, yk + 1/4 * k1)
+
+                k3 = h * coupled_eqs(t + 3/8 * h, yk + 3/32 * k1 \
+                                                     + 9/32 * k2)
+
+                k4 = h * coupled_eqs(t+12/13 * h, yk + 1932/2197 * k1 \
+                                                     - 7200/2197 * k2 \
+                                                     + 7293/2197 * k3)
+
+                k5 = h * coupled_eqs(t + h, yk + 439/216 * k1 \
+                                               - 8*k2 \
+                                               + 3680/513 * k3
+                                               - 845/4104*k4)
+
+                k6 = h * coupled_eqs(t + 1/2 * h, yk - 8/27*k1 \
+                                                     + 2*k2 \
+                                                     - 3544/2565*k3 \
+                                                     + 1859/4104 * k4 \
+                                                     - 11/40 * k5)
+
+                if e &gt;= 1 or a &lt;= 0:
+                    # runaway integration, we should kill it
+                    t_eval = (t_eval[0], t_eval[-1], len(e_arr))
+                    break
+
+                a_arr.append(yk[0])
+                e_arr.append(yk[1])
+
+                yk = yk + 25/216 * k1 + 1408/2565*k3 + 2197/4101 * k4 - 1/5 * k5
+
+            return np.array(a_arr), np.array(e_arr)
+
+        evolve_over = np.linspace(t_span[0], t_span[1], 10000)
+
+        a, e = integrate(evolve_over)
+
+        evolve_over /= 31557600000000000
+        a /= (Solar_Radii * 1000)
+
+        return evolve_over, a, e</code></pre>
+</details>
+<h3>Methods</h3>
+<dl>
+<dt id="takahe.BinaryStarSystem.BinaryStarSystem.circularises"><code class="name flex">
+<span>def <span class="ident">circularises</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<section class="desc"><p>Determines if the orbit in question circularises or not.</p>
+<p>This function is reasonably naive at present &ndash; it assumes a BSS
+circularises if it's eccentricity becomes arbitrarily close to
+0 and it's final SMA is more than 2 solar radii (such that it
+does not merge).</p>
+<h1 id="todo-improve-the-logic-here-should-the-thresholds-be-customisable">Todo: Improve the logic here. Should the thresholds be customisable?</h1>
+<h2 id="returns">Returns</h2>
+<p>bool &ndash; True if the orbit circularises, False otherwise.</p></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def circularises(self):
+    &#34;&#34;&#34;Determines if the orbit in question circularises or not.
+
+    This function is reasonably naive at present -- it assumes a BSS
+    circularises if it&#39;s eccentricity becomes arbitrarily close to
+    0 and it&#39;s final SMA is more than 2 solar radii (such that it
+    does not merge).
+
+    # Todo: Improve the logic here. Should the thresholds be customisable?
+
+    Returns:
+        bool -- True if the orbit circularises, False otherwise.
+    &#34;&#34;&#34;
+    t, a, e = self.evolve_until_merger()
+
+    if np.isclose(e[-1], 0.0) and a[-1] &gt; 2*Solar_Radii:
+        return True
+
+    return False</code></pre>
+</details>
+</dd>
+<dt id="takahe.BinaryStarSystem.BinaryStarSystem.coalescence_time"><code class="name flex">
+<span>def <span class="ident">coalescence_time</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<section class="desc"><p>Computes the coalescence time for the BSS in gigayears.</p>
+<p>Uses Eqn 10 from Nyadzani and Razzaque [1] to compute the
+coalescence time for the binary star system. Although this is
+strictly speaking an approximation, it converges on the
+result gained by numerically by Peters in 1964.</p>
+<p>[1] <a href="https://arxiv.org/pdf/1905.06086.pdf">https://arxiv.org/pdf/1905.06086.pdf</a></p>
+<h2 id="returns">Returns</h2>
+<p>float &ndash; the coalescence time for the binary star (units: ga).</p></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def coalescence_time(self):
+    &#34;&#34;&#34;Computes the coalescence time for the BSS in gigayears.
+
+    Uses Eqn 10 from Nyadzani and Razzaque [1] to compute the
+    coalescence time for the binary star system. Although this is
+    strictly speaking an approximation, it converges on the
+    result gained by numerically by Peters in 1964.
+
+    [1] https://arxiv.org/pdf/1905.06086.pdf
+
+    Returns:
+        float -- the coalescence time for the binary star (units: ga).
+    &#34;&#34;&#34;
+
+    circ = self.a0**4 / (4*self.beta)
+    divisor = ((1-self.e0**(7/4))**(1/5)*(1+121/304 * self.e0**2))
+
+    return (circ * (1-self.e0**2)**(7/2) / divisor) / 31557600000000000</code></pre>
+</details>
+</dd>
+<dt id="takahe.BinaryStarSystem.BinaryStarSystem.evolve_until"><code class="name flex">
+<span>def <span class="ident">evolve_until</span></span>(<span>self, t_span)</span>
+</code></dt>
+<dd>
+<section class="desc"><p>Evolve the binary star system in time</p>
+<p>Uses a Runge-Kutta algorithm to evolve the binary star system
+over a specified range evolve_over.</p>
+<h2 id="arguments">Arguments</h2>
+<p>t_span {tuple} &ndash; A 2-tuple that corresponds to the start
+and end points of integration.</p>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>mixed</code> &ndash; <code>A</code> <code>3</code>-<code>tuple</code> <code>containing</code> <code>the</code> <code>resultant</code> <code>time</code></dt>
+<dd>array (in gigayears), and the resultant SMA (in
+solar radii) and eccentricity arrays.</dd>
+</dl></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def evolve_until(self, t_span):
+    &#34;&#34;&#34;Evolve the binary star system in time
+
+    Uses a Runge-Kutta algorithm to evolve the binary star system
+    over a specified range evolve_over.
+
+    Arguments:
+        t_span {tuple} -- A 2-tuple that corresponds to the start
+                          and end points of integration.
+
+    Returns:
+        mixed -- A 3-tuple containing the resultant time
+                 array (in gigayears), and the resultant SMA (in
+                 solar radii) and eccentricity arrays.
+    &#34;&#34;&#34;
+
+    def dadt(t, a, e):
+        &#34;&#34;&#34;
+        Auxiliary function to compute Equation 3.
+
+        Params:
+            t [ndarray] A vector of times.
+            e [float] The current eccentricity
+            a [float] The current semimajor axis
+
+        Output:
+            The quantity da/dt - how the semimajor axis is changing
+                                 with time.
+        &#34;&#34;&#34;
+
+        initial_term = (-self.beta / (a**3 * (1-e**2)**(7/2)))
+
+        da = initial_term * (1 + 73/24 * e**2 + 37 / 96 * e ** 4)
+        # Units: km/s
+
+        if self.dadt_terms != None:
+            da += self.dadt_terms(t, a, e)
+
+        return da
+
+    # Equation (4) from ibid
+    def dedt(t, a, e):
+        &#34;&#34;&#34;
+        Auxiliary function to compute Equation 4.
+
+        Params:
+            t [ndarray] A vector of times.
+            e [float] The current eccentricity
+            a [float] The current semimajor axis
+
+        Output:
+            The quantity de/dt - how the eccentricity is changing
+                                 with time.
+        &#34;&#34;&#34;
+
+        initial_term = (-19/12 * self.beta / (a**4*(1-e**2)**(5/2)))
+
+        de = initial_term * (e + 121/304 * e ** 3) # Units: s^-1
+
+        if self.dedt_terms != None:
+            de += self.dedt_terms(t, a, e)
+
+        return de
+
+    def coupled_eqs(t, params):
+        &#34;&#34;&#34;
+        Primary workhorse function. Computes the vector
+        [da/dt, de/dt] for use in our integrator.
+
+        Params:
+            t [ndarray] A vector of times
+            params [list] A list or 2-tuple of arguments. Must take
+                          the form [a, e]
+
+        Output:
+            A list containing da/dt and de/dt
+        &#34;&#34;&#34;
+
+        return np.array([dadt(t, *params), dedt(t, *params)])
+
+    def integrate(t_eval):
+        &#34;&#34;&#34;
+        Auxilary function which uses an RKF45 integrator to
+            integrate the system of ODEs
+
+        Arguments:
+            t_eval {ndarray} -- An array of timesteps to compute
+                                the integrals over
+
+        Returns:
+            evolve_over {ndarray} -- An array representing the time
+                                     integrated over (in gigayears)
+            a_arr {ndarray} -- An array representing the SMA of the
+                               binary orbit (in solar radii)
+            e_arr {ndarray} -- An array representing the
+                               eccentricity of the binary orbit
+        &#34;&#34;&#34;
+        h = t_eval[1] - t_eval[0]
+        a, e = self.a0, self.e0
+
+        a_arr = []
+        e_arr = []
+
+        yk = np.array([a, e])
+
+        for t in t_eval:
+            k1 = h * coupled_eqs(t, yk)
+            k2 = h * coupled_eqs(t + 1/4 * h, yk + 1/4 * k1)
+
+            k3 = h * coupled_eqs(t + 3/8 * h, yk + 3/32 * k1 \
+                                                 + 9/32 * k2)
+
+            k4 = h * coupled_eqs(t+12/13 * h, yk + 1932/2197 * k1 \
+                                                 - 7200/2197 * k2 \
+                                                 + 7293/2197 * k3)
+
+            k5 = h * coupled_eqs(t + h, yk + 439/216 * k1 \
+                                           - 8*k2 \
+                                           + 3680/513 * k3
+                                           - 845/4104*k4)
+
+            k6 = h * coupled_eqs(t + 1/2 * h, yk - 8/27*k1 \
+                                                 + 2*k2 \
+                                                 - 3544/2565*k3 \
+                                                 + 1859/4104 * k4 \
+                                                 - 11/40 * k5)
+
+            if e &gt;= 1 or a &lt;= 0:
+                # runaway integration, we should kill it
+                t_eval = (t_eval[0], t_eval[-1], len(e_arr))
+                break
+
+            a_arr.append(yk[0])
+            e_arr.append(yk[1])
+
+            yk = yk + 25/216 * k1 + 1408/2565*k3 + 2197/4101 * k4 - 1/5 * k5
+
+        return np.array(a_arr), np.array(e_arr)
+
+    evolve_over = np.linspace(t_span[0], t_span[1], 10000)
+
+    a, e = integrate(evolve_over)
+
+    evolve_over /= 31557600000000000
+    a /= (Solar_Radii * 1000)
+
+    return evolve_over, a, e</code></pre>
+</details>
+</dd>
+<dt id="takahe.BinaryStarSystem.BinaryStarSystem.evolve_until_merger"><code class="name flex">
+<span>def <span class="ident">evolve_until_merger</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<section class="desc"><p>Syntactic sugar for BSS.evolve_until(BSS.coalescence_time())</p>
+<p>Evolves a BSS in time until its coalescence time.</p>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>mixed</code> &ndash; <code>A</code> <code>3</code>-<code>tuple</code> <code>containing</code> <code>the</code> <code>resultant</code> <code>time</code></dt>
+<dd>array (in gigayears), and the resultant SMA (in
+solar radii) and eccentricity arrays.</dd>
+</dl></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def evolve_until_merger(self):
+    &#34;&#34;&#34;Syntactic sugar for BSS.evolve_until(BSS.coalescence_time())
+
+    Evolves a BSS in time until its coalescence time.
+
+    Returns:
+        mixed -- A 3-tuple containing the resultant time
+                 array (in gigayears), and the resultant SMA (in
+                 solar radii) and eccentricity arrays.
+    &#34;&#34;&#34;
+    t_span = (0, self.coalescence_time() * 1e9 * 60 * 60 * 24 * 365.25)
+    return self.evolve_until(t_span)</code></pre>
+</details>
+</dd>
+<dt id="takahe.BinaryStarSystem.BinaryStarSystem.specify_additional_term"><code class="name flex">
+<span>def <span class="ident">specify_additional_term</span></span>(<span>self, da_or_de, func)</span>
+</code></dt>
+<dd>
+<section class="desc"><p>Adds additional terms to the RHS of the ODE governing evolution.</p>
+<p>Assumes that the signature of callable is callable(t, a, e).</p>
+<h2 id="arguments">Arguments</h2>
+<p>da_or_de {string} &ndash; Whether to modify da/dt or de/dt.
+func {function} &ndash; A callable object to use to modify the ODE.</p>
+<h2 id="raises">Raises</h2>
+<p>ValueError &ndash; If da_or_de is not 'da' or 'de'.
+TypeError &ndash; if func is not a callable object.</p>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><code>self</code> &ndash; <code>an</code> <code>instance</code> of <code>itself</code>, <code>such</code> <code>that</code> <code>one</code> <code>may</code> <code>use</code></dt>
+<dd>star.specify_addition_term().evolve_until() if
+desired.</dd>
+</dl></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def specify_additional_term(self, da_or_de, func):
+    &#34;&#34;&#34;Adds additional terms to the RHS of the ODE governing evolution.
+
+    Assumes that the signature of callable is callable(t, a, e).
+
+    Arguments:
+        da_or_de {string} -- Whether to modify da/dt or de/dt.
+        func {function} -- A callable object to use to modify the ODE.
+
+    Raises:
+        ValueError -- If da_or_de is not &#39;da&#39; or &#39;de&#39;.
+        TypeError -- if func is not a callable object.
+
+    Returns:
+        self -- an instance of itself, such that one may use
+                star.specify_addition_term().evolve_until() if
+                desired.
+    &#34;&#34;&#34;
+    if da_or_de not in [&#39;da&#39;, &#39;de&#39;]:
+        raise ValueError(&#34;da_or_de must be either &#39;da&#39; or &#39;de&#39;!&#34;)
+
+    if not callable(func):
+        raise TypeError(&#34;func is not callable!&#34;)
+
+    if da_or_de == &#39;da&#39;:
+        self.dadt_terms = func
+    else:
+        self.dedt_terms = func
+
+    return self</code></pre>
+</details>
+</dd>
+</dl>
+</dd>
+</dl>
+</section>
+</article>
+<nav id="sidebar">
+<h1>Index</h1>
+<div class="toc">
+<ul></ul>
+</div>
+<ul id="index">
+<li><h3>Super-module</h3>
+<ul>
+<li><code><a title="takahe" href="index.html">takahe</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-classes">Classes</a></h3>
+<ul>
+<li>
+<h4><code><a title="takahe.BinaryStarSystem.BinaryStarSystem" href="#takahe.BinaryStarSystem.BinaryStarSystem">BinaryStarSystem</a></code></h4>
+<ul class="">
+<li><code><a title="takahe.BinaryStarSystem.BinaryStarSystem.circularises" href="#takahe.BinaryStarSystem.BinaryStarSystem.circularises">circularises</a></code></li>
+<li><code><a title="takahe.BinaryStarSystem.BinaryStarSystem.coalescence_time" href="#takahe.BinaryStarSystem.BinaryStarSystem.coalescence_time">coalescence_time</a></code></li>
+<li><code><a title="takahe.BinaryStarSystem.BinaryStarSystem.evolve_until" href="#takahe.BinaryStarSystem.BinaryStarSystem.evolve_until">evolve_until</a></code></li>
+<li><code><a title="takahe.BinaryStarSystem.BinaryStarSystem.evolve_until_merger" href="#takahe.BinaryStarSystem.BinaryStarSystem.evolve_until_merger">evolve_until_merger</a></code></li>
+<li><code><a title="takahe.BinaryStarSystem.BinaryStarSystem.specify_additional_term" href="#takahe.BinaryStarSystem.BinaryStarSystem.specify_additional_term">specify_additional_term</a></code></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</nav>
+</main>
+<footer id="footer">
+<p>Generated by <a href="https://pdoc3.github.io/pdoc"><cite>pdoc</cite> 0.7.5</a>.</p>
+</footer>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+<script>hljs.initHighlightingOnLoad()</script>
+</body>
+</html>
