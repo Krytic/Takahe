@@ -45,7 +45,8 @@ class Universe:
     def __init__(self, model, hubble_parameter=70):
         &#34;&#34;&#34;
 
-        Creates the Universe.
+        Creates our Universe, conforming to a given set of physical laws.
+        For instance, one may create an Einstein-de Sitter Universe.
 
         Arguments:
             model {str} -- the model (eds, lowdensity, highlambda) of
@@ -102,9 +103,11 @@ class Universe:
         return self.DH * result
 
     def populate(self):
-        &#34;&#34;&#34;Populates the Universe with stars.
+        &#34;&#34;&#34;
+        Populates the Universe with stars.
 
-        [description]
+        Loads from a standard file at the moment. Will be extended in
+        future, to support arbitrary files.
         &#34;&#34;&#34;
 
         self.populace = load.from_file(&#39;data/newdata/Remnant-Birth-bin-imf135_300-z040_StandardJJ.dat&#39;)</code></pre>
@@ -128,7 +131,8 @@ class Universe:
 you must first invent the universe" &ndash; Carl Sagan</p>
 <p>Represents the universe writ large and contains all of the
 important physical parameters.</p>
-<p>Creates the Universe.</p>
+<p>Creates our Universe, conforming to a given set of physical laws.
+For instance, one may create an Einstein-de Sitter Universe.</p>
 <h2 id="arguments">Arguments</h2>
 <p>model {str} &ndash; the model (eds, lowdensity, highlambda) of
 the universe under consideration.
@@ -157,7 +161,8 @@ hubble_paramter {float} &ndash; the current value of H0.
     def __init__(self, model, hubble_parameter=70):
         &#34;&#34;&#34;
 
-        Creates the Universe.
+        Creates our Universe, conforming to a given set of physical laws.
+        For instance, one may create an Einstein-de Sitter Universe.
 
         Arguments:
             model {str} -- the model (eds, lowdensity, highlambda) of
@@ -214,9 +219,11 @@ hubble_paramter {float} &ndash; the current value of H0.
         return self.DH * result
 
     def populate(self):
-        &#34;&#34;&#34;Populates the Universe with stars.
+        &#34;&#34;&#34;
+        Populates the Universe with stars.
 
-        [description]
+        Loads from a standard file at the moment. Will be extended in
+        future, to support arbitrary files.
         &#34;&#34;&#34;
 
         self.populace = load.from_file(&#39;data/newdata/Remnant-Birth-bin-imf135_300-z040_StandardJJ.dat&#39;)</code></pre>
@@ -268,15 +275,18 @@ universe.</p>
 </code></dt>
 <dd>
 <section class="desc"><p>Populates the Universe with stars.</p>
-<p>[description]</p></section>
+<p>Loads from a standard file at the moment. Will be extended in
+future, to support arbitrary files.</p></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def populate(self):
-    &#34;&#34;&#34;Populates the Universe with stars.
+    &#34;&#34;&#34;
+    Populates the Universe with stars.
 
-    [description]
+    Loads from a standard file at the moment. Will be extended in
+    future, to support arbitrary files.
     &#34;&#34;&#34;
 
     self.populace = load.from_file(&#39;data/newdata/Remnant-Birth-bin-imf135_300-z040_StandardJJ.dat&#39;)</code></pre>
