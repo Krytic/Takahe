@@ -9,11 +9,12 @@ from takahe import BinaryStarSystem, BinaryStarSystemEnsemble
 Solar_Mass = 1.989e30
 
 def from_data(data):
-    """Loads a binary star system from a dictionary of data.
+    """
+    Loads a binary star system from a dictionary of data.
 
     Arguments:
         data {dict} -- A dictionary containing the 4 elements necessary
-        to solve the 2body problem:
+        to solve the two body problem:
                        - M1 (mass of primary star)
                        - M2 (mass of secondary star)
                        - e0 (current eccentricity)
@@ -119,7 +120,35 @@ def from_bpass(bpass_from, mass_fraction, a0_range=(0, 10)):
 
     return star_systems
 
-def from_file(fname, name_hints=[], n_stars=1000):
+def from_file(fname, name_hints=[], n_stars=100, mass=1e6):
+    """
+    Loads the first n_stars in a given file into a pandas dataframe.
+
+    General utility loader for most cases. Can be replaced with a more
+    flexible one, such as from_bpass().
+
+    Arguments:
+        fname {string} -- the path to the file we wish to open.
+
+    Keyword Arguments:
+        name_hints {list} -- A list of column names for pandas.
+                             (default: {[]})
+        n_stars {number} -- The number of stars (rows in file) to load
+                            (default: {100})
+        mass {number} -- The total mass of the ensemble. This is used to
+                         populate the ensemble with weight*mass stars of
+                         a given stellar configuration (default: {1e6})
+    """
+
+    df = pd.read_csv(fname, names=name_hints, nrows=n_stars, sep="   ")
+
+    for row in df.iterrows():
+        number_of_stars_of_type = row[1]['weight'] * mass
+        print(number_of_stars_of_type)
+
+
+
+def random_from_file(fname, name_hints=[], n_stars=100, mass=1e6):
     """
     Loads a random sample of stars from a file.
 
@@ -137,6 +166,7 @@ def from_file(fname, name_hints=[], n_stars=1000):
     import mmap, linecache
     ensemble = BinaryStarSystemEnsemble.BinaryStarSystemEnsemble()
 
+    # Determine the number of lines in the file requested.
     n_lines = 0
     f = open(fname, "r+")
     buf = mmap.mmap(f.fileno(), 0)
@@ -146,6 +176,7 @@ def from_file(fname, name_hints=[], n_stars=1000):
     f.close()
     lines = np.random.randint(1, n_lines, n_stars)
 
+    j = 0
     for line in lines:
         l = linecache.getline(fname, line).strip()
         m = l.strip()
@@ -153,8 +184,11 @@ def from_file(fname, name_hints=[], n_stars=1000):
 
         star = list(map(float, n))
 
-        binary_star = BinaryStarSystem.BinaryStarSystem(*star[0:4])
+        for i in range(int(star[5] * mass)): # Add weight * mass stars
+            binary_star = BinaryStarSystem.BinaryStarSystem(*star[0:4])
+            ensemble.add(binary_star)
 
-        ensemble.add(binary_star)
+        print(f"{j/n_stars * 100}%\r")
+        j += 1
 
     return ensemble

@@ -8,8 +8,8 @@ from os import path
 
 G = 6.67e-11
 
-k_simulations = 1
-n_stars = 1
+k_simulations = 200
+n_stars = 1000
 
 Solar_Radii = 695500
 
@@ -21,7 +21,7 @@ total_iterations = k_simulations * n_stars
 merge_rate_array = []
 ct = []
 
-regenerate = True
+regenerate = False
 cnt = 0
 
 if regenerate:

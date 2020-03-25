@@ -9,13 +9,48 @@ Solar_Radii = 696340 # km
 class BinaryStarSystem:
     """Represents a binary star system."""
 
-    def __init__(self, primary_mass, secondary_mass, a0, e0, weight_term=None):
+    def __init__(self, primary_mass, secondary_mass, a0, e0, extra_terms=dict()):
+        """Creates a given Binary Star System from provided data.
+
+        Represents a binary star system in the Universe.
+
+        All physical parameters are expected to be in Solar units. i.e.,
+        - Mass in Solar Mass
+        - a0 in Solar Radii
+
+        Arguments:
+            primary_mass {float} -- The mass of the primary star
+            secondary_mass {float} -- The mass of the secondary star
+            a0 {float} -- The semimajor axis (SMA) of the binary
+            e0 {float} -- The eccentricity of the binary system.
+
+        Keyword Arguments:
+            extra_terms {dict} -- A dictionary of extra parameters for
+                                  the system. Acceptable extra parameters
+                                  are: weight, evolution_age,
+                                  and rejuvenation_age
+                                  (default: {empty dict})
+
+        Raises:
+            ValueError -- if e0 is not in the interval [0, 1]
+        """
+
+        if e0 > 1 or e0 < 0:
+            raise ValueError("Eccentricity must be between 0 and 1.")
+
         self.m1 = primary_mass * Solar_Mass # Units: kg
         self.m2 = secondary_mass * Solar_Mass # Units: kg
         self.a0 = np.float128(a0 * Solar_Radii * 1000) # Units: km
         self.e0 = np.float128(e0) # Units: dimensionless
 
-        self.weight = weight_term
+        extra_keys = ['weight', 'evolution_age', 'rejuvenation_age']
+
+        self.extra_terms = {k: v for k, v in extra_terms.items()
+                                 if k in extra_keys}
+
+        for key in extra_keys:
+            if key not in self.extra_terms.keys():
+                self.extra_terms[key] = 0 if key != 'weight' else 1
 
         self.dadt_terms = None
         self.dedt_terms = None
@@ -29,7 +64,9 @@ class BinaryStarSystem:
             'm2': self.m2,
             'a0': self.a0,
             'e0': self.e0,
-            'weight': self.weight
+            'weight': self.extra_terms['weight'],
+            'evolution_age': self.extra_terms['evolution_age'],
+            'rejuvenation_age': self.extra_terms['rejuvenation_age']
         }
 
     def coalescence_time(self):
