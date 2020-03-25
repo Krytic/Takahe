@@ -140,17 +140,40 @@ def from_file(fname, name_hints=[], n_stars=100, mass=1e6):
                          a given stellar configuration (default: {1e6})
     """
 
-    df = pd.read_csv(fname, names=name_hints, nrows=n_stars, sep="   ")
+    df = pd.read_csv(fname,
+                     names=name_hints,
+                     nrows=n_stars,
+                     sep="   ",
+                     engine='python')
+
+    ensemble = BinaryStarSystemEnsemble.BinaryStarSystemEnsemble()
 
     for row in df.iterrows():
-        number_of_stars_of_type = row[1]['weight'] * mass
-        print(number_of_stars_of_type)
+        number_of_stars_of_type = int(np.ceil(row[1]['weight'] * mass))
+
+        for n in range(number_of_stars_of_type):
+            extra_terms = {k:v for k,v in row[1].items()
+                               if k not in ['m1', 'm2', 'a0', 'e0']
+                          }
+
+            star = BinaryStarSystem.BinaryStarSystem(row[1]['m1'],
+                                                     row[1]['m2'],
+                                                     row[1]['a0'],
+                                                     row[1]['e0'],
+                                                     extra_terms)
+
+            ensemble.add(star)
+
+    return ensemble
 
 
 
 def random_from_file(fname, name_hints=[], n_stars=100, mass=1e6):
     """
     Loads a random sample of stars from a file.
+
+    This code is particularly hacky. We should find a better way to
+    accomplish this.
 
     Arguments:
         fname {string} -- The path to the file you want to load
