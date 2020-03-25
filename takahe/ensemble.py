@@ -1,4 +1,15 @@
-from takahe import BinaryStarSystem
+import takahe
+
+def create():
+    """Creates a BinaryStarSystemEnsemble object (i.e., a collection of
+    binary star systems).
+
+    Wrapper for BinaryStarSystemEnsemble()
+
+    Returns:
+        BinaryStarSystemEnsemble -- The ensemble object.
+    """
+    return BinaryStarSystemEnsemble()
 
 class BinaryStarSystemEnsemble:
     """Represents a collection of binary star systems.
@@ -21,9 +32,9 @@ class BinaryStarSystemEnsemble:
 
         Raises:
             TypeError -- If the Binary Star System is not an instance of
-                         BinaryStarSystem.BinaryStarSystem.
+                         BinaryStarSystem.
         """
-        if type(binary_star) != BinaryStarSystem.BinaryStarSystem:
+        if type(binary_star) != takahe.BSS.BinaryStarSystem:
             raise TypeError("binary_star must be an instance of BinaryStarSystem!")
 
         self.__ensemble.append(binary_star)

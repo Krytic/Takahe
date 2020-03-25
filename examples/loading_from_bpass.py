@@ -1,8 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from takahe import BinaryStarSystemLoader as load
-
+import takahe
 import random
 
 merge_rate_threshold = 13.8 #gigayears
@@ -12,7 +11,7 @@ number_of_ensembles_to_simulate = list(range(5))
 merge_rates = []
 
 for k in number_of_ensembles_to_simulate:
-    ensemble = load.from_file('data/Remnant-Birth-bin-imf135 \
+    ensemble = takahe.load.from_file('data/Remnant-Birth-bin-imf135 \
                                _300-z020_StandardJJ.dat',
                                limit=stars_in_ensemble,
                                n=263454)

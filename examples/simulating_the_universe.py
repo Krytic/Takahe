@@ -1,4 +1,4 @@
-from takahe import Universe
+import takahe
 
-uni = Universe.Universe('eds')
+uni = takahe.universe.create('eds')
 uni.populate()

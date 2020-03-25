@@ -1,16 +1,8 @@
 import numpy as np
-from scipy.constants import c, G
-from scipy.integrate import solve_ivp
-from hoki import load
+from takahe.constants import *
 
-Solar_Mass = 1.989e30 # kg
-Solar_Radii = 696340 # km
-
-class BinaryStarSystem:
-    """Represents a binary star system."""
-
-    def __init__(self, primary_mass, secondary_mass, a0, e0, extra_terms=dict()):
-        """Creates a given Binary Star System from provided data.
+def create(primary_mass, secondary_mass, a0, e0, extra_terms=dict()):
+    """Creates a given Binary Star System from provided data.
 
         Represents a binary star system in the Universe.
 
@@ -33,7 +25,20 @@ class BinaryStarSystem:
 
         Raises:
             ValueError -- if e0 is not in the interval [0, 1]
+
+        Returns:
+            BinaryStarSystem
         """
+    return BinaryStarSystem(primary_mass,
+                            secondary_mass,
+                            a0,
+                            e0,
+                            extra_terms)
+
+class BinaryStarSystem:
+    """Represents a binary star system."""
+
+    def __init__(self, primary_mass, secondary_mass, a0, e0, extra_terms=dict()):
 
         if e0 > 1 or e0 < 0:
             raise ValueError("Eccentricity must be between 0 and 1.")

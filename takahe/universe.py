@@ -1,10 +1,19 @@
 import numpy as np
-from scipy.constants import c, G
 from scipy.integrate import quad
-from takahe import BinaryStarSystemLoader as load
+import takahe
+from takahe.constants import *
 
-Solar_Mass = 1.989e30 # kg
-Solar_Radii = 696340 # km
+def create(model, hubble_parameter=70):
+    """
+
+    "if you want to make an apple pie from scratch,
+    you must first invent the universe" -- Carl Sagan
+
+    Represents the universe writ large and contains all of the
+    important physical parameters.
+
+    """
+    return Universe(model, hubble_parameter)
 
 class Universe:
     """
@@ -89,4 +98,4 @@ class Universe:
         future, to support arbitrary files.
         """
 
-        self.populace = load.from_file('data/newdata/Remnant-Birth-bin-imf135_300-z040_StandardJJ.dat', name_hints=['m1', 'm2', 'a0', 'e0', 'weight', 'evolution_age', 'rejuvenation_age'])
+        self.populace = takahe.load.from_file('data/newdata/Remnant-Birth-bin-imf135_300-z040_StandardJJ.dat', name_hints=['m1', 'm2', 'a0', 'e0', 'weight', 'evolution_age', 'rejuvenation_age'])

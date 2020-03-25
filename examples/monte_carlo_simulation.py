@@ -1,17 +1,13 @@
 import numpy as np
 import linecache
-from takahe import BinaryStarSystemEnsemble, BinaryStarSystem
+import takahe
+from takahe.constants import *
 import matplotlib.pyplot as plt
 import pickle
-import matplotlib.transforms as transforms
 from os import path
-
-G = 6.67e-11
 
 k_simulations = 200
 n_stars = 1000
-
-Solar_Radii = 695500
 
 total_iterations = k_simulations * n_stars
 
@@ -26,13 +22,13 @@ cnt = 0
 
 if regenerate:
     for k in range(k_simulations):
-        ensemble = BinaryStarSystemEnsemble.BinaryStarSystemEnsemble()
+        ensemble = takahe.ensemble.create()
         lines = np.random.randint(1, 263454, n_stars)
 
         for line in lines:
             star = list(map(float, linecache.getline('data/Remnant-Birth-bin-imf135_300-z020_StandardJJ.dat', line).split()))
 
-            binary_star = BinaryStarSystem.BinaryStarSystem(*star)
+            binary_star = takahe.BSS.create(*star)
 
             t, a, e = binary_star.evolve_until_merger()
 
@@ -45,6 +41,9 @@ if regenerate:
             plt.ylabel("period")
             plt.show()
 
+            # cheap and nasty hack.
+            # just needed to kill iteration here to test
+            # todo: fix
             raise ValueError()
 
             ensemble.add(binary_star)

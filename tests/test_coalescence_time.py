@@ -1,5 +1,5 @@
 import numpy as np
-from takahe import BinaryStarSystemLoader as load
+import takahe
 
 def test_ct():
     cfg = {
@@ -9,6 +9,6 @@ def test_ct():
         'e0' : 0.274 # 0 <= e < 1
     }
 
-    BSS = load.from_data(data=cfg)
+    BSS = takahe.load.from_data(data=cfg)
 
     assert np.isclose(BSS.coalescence_time(), 2.734, atol=1e-2)

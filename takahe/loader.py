@@ -1,12 +1,8 @@
 import numpy as np
-from scipy.constants import c, G
-from scipy.integrate import solve_ivp
 from hoki import load
 import pandas as pd
-
-from takahe import BinaryStarSystem, BinaryStarSystemEnsemble
-
-Solar_Mass = 1.989e30
+import takahe
+from takahe.constants impirt *
 
 def from_data(data):
     """
@@ -38,11 +34,11 @@ def from_data(data):
         first_term = (G * (data['M1'] + data['M2']))/(4*np.pi**2)
         data['a0'] = (first_term * data['T'] ** 2) ** (1/3)
 
-    return BinaryStarSystem.BinaryStarSystem(data['M1'],
-                                             data['M2'],
-                                             data['a0'],
-                                             data['e0']
-                                             )
+    return takahe.BSS.create(data['M1'],
+                             data['M2'],
+                             data['a0'],
+                             data['e0']
+                            )
 
 def from_list(data_list):
     """Creates a binary star system ensemble from a list of configs
@@ -57,7 +53,7 @@ def from_list(data_list):
                                     collection of Binary Star System
                                     objects.
     """
-    ensemble = BinaryStarSystem.BinaryStarSystemEnsemble()
+    ensemble = takahe.ensemble.create()
 
     for data in data_list:
         binary_star = from_data(data)
@@ -71,6 +67,8 @@ def from_bpass(bpass_from, mass_fraction, a0_range=(0, 10)):
 
     Opens the BPASS file you wish to use, uses hoki to load it into a
     dataframe, and returns a list of BSS objects.
+
+    @ TODO: This loader is bad and I should feel bad
 
     Arguments:
         bpass_from {str} -- the filename of the BPASS file to use
@@ -105,7 +103,7 @@ def from_bpass(bpass_from, mass_fraction, a0_range=(0, 10)):
 
         raise TypeError("a0_range must be a 2-tuple of ints or floats!")
 
-    star_systems = BinaryStarSystemEnsemble.BinaryStarSystemEnsemble()
+    star_systems = takahe.ensemble.create()
 
     for mass in data['stellar_mass']:
         M1 = mass_fraction * mass
@@ -114,9 +112,9 @@ def from_bpass(bpass_from, mass_fraction, a0_range=(0, 10)):
         a0 = np.random.uniform(*a0_range)
         e0 = np.random.uniform(0, 1)
 
-        BSS = BinaryStarSystem.BinaryStarSystem(M1, M2, a0, e0)
+        star = takahe.BSS.create(M1, M2, a0, e0)
 
-        star_systems.add(BSS)
+        star_systems.add(star)
 
     return star_systems
 
@@ -146,7 +144,7 @@ def from_file(fname, name_hints=[], n_stars=100, mass=1e6):
                      sep="   ",
                      engine='python')
 
-    ensemble = BinaryStarSystemEnsemble.BinaryStarSystemEnsemble()
+    ensemble = takahe.ensemble.create()
 
     for row in df.iterrows():
         number_of_stars_of_type = int(np.ceil(row[1]['weight'] * mass))
@@ -156,11 +154,11 @@ def from_file(fname, name_hints=[], n_stars=100, mass=1e6):
                                if k not in ['m1', 'm2', 'a0', 'e0']
                           }
 
-            star = BinaryStarSystem.BinaryStarSystem(row[1]['m1'],
-                                                     row[1]['m2'],
-                                                     row[1]['a0'],
-                                                     row[1]['e0'],
-                                                     extra_terms)
+            star = takahe.BSS.create(row[1]['m1'],
+                                     row[1]['m2'],
+                                     row[1]['a0'],
+                                     row[1]['e0'],
+                                     extra_terms)
 
             ensemble.add(star)
 
@@ -177,7 +175,7 @@ def random_from_file(fname, name_hints=[], n_stars=100, mass=1e6):
 
     Arguments:
         fname {string} -- The path to the file you want to load
-
+2d8de97c80d43ac518cc82196ffd26bf4772a7b1
     Keyword Arguments:
         limit {number} -- The number of stars to load (default: {10})
         n {number} -- The number of lines in the file (default: {1000})
@@ -187,7 +185,7 @@ def random_from_file(fname, name_hints=[], n_stars=100, mass=1e6):
                                       the ensemble of objects,
     """
     import mmap, linecache
-    ensemble = BinaryStarSystemEnsemble.BinaryStarSystemEnsemble()
+    ensemble = takahe.ensemble.create()
 
     # Determine the number of lines in the file requested.
     n_lines = 0
@@ -208,7 +206,7 @@ def random_from_file(fname, name_hints=[], n_stars=100, mass=1e6):
         star = list(map(float, n))
 
         for i in range(int(star[5] * mass)): # Add weight * mass stars
-            binary_star = BinaryStarSystem.BinaryStarSystem(*star[0:4])
+            binary_star = takahe.BSS.create(*star[0:4])
             ensemble.add(binary_star)
 
         print(f"{j/n_stars * 100}%\r")
