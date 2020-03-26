@@ -43,6 +43,7 @@ class BinaryStarSystem:
         if e0 > 1 or e0 < 0:
             raise ValueError("Eccentricity must be between 0 and 1.")
 
+        # Unit conversion into quasi-SI units.
         self.m1 = primary_mass * Solar_Mass # Units: kg
         self.m2 = secondary_mass * Solar_Mass # Units: kg
         self.a0 = np.float128(a0 * Solar_Radii * 1000) # Units: km
@@ -50,9 +51,15 @@ class BinaryStarSystem:
 
         extra_keys = ['weight', 'evolution_age', 'rejuvenation_age']
 
+        # only permit terms that are in the extra_keys list to appear
+        # in self.extra_terms
+        # Todo: this seems arbitrary and restrictive. Is this a good idea?
         self.extra_terms = {k: v for k, v in extra_terms.items()
                                  if k in extra_keys}
 
+        # If weight, evolution_age or rejuvenation)age are missing,
+        # assign them default values. weight is 1 by default, others
+        # are zero.
         for key in extra_keys:
             if key not in self.extra_terms.keys():
                 self.extra_terms[key] = 0 if key != 'weight' else 1
@@ -73,6 +80,20 @@ class BinaryStarSystem:
             'evolution_age': self.extra_terms['evolution_age'],
             'rejuvenation_age': self.extra_terms['rejuvenation_age']
         }
+
+    def lifetime(self):
+        """Computes the total lifetime of a binary star system.
+
+        Calculates the total lifetime of the BSS. Assumes the total
+        lifetime is the rejuvenation age + evolution_age + coalescence
+        time.
+
+        Returns:
+            {float} -- The lifetime of the BSS, in gigayears.
+        """
+        early_lifetime = self.rejuvenation_age + self.evolution_age
+        early_lifetime /= 31557600000000000
+        return early_lifetime + self.coalescence_time()
 
     def coalescence_time(self):
         """Computes the coalescence time for the BSS in gigayears.
@@ -260,6 +281,7 @@ class BinaryStarSystem:
             a_arr = []
             e_arr = []
 
+            # Implement the RKF45 algorithm.
             yk = np.array([a, e])
 
             for t in t_eval:
@@ -300,6 +322,7 @@ class BinaryStarSystem:
 
         a, e = integrate(evolve_over)
 
+        # Convert quantities back into Solar Units
         evolve_over /= 31557600000000000
         a /= (Solar_Radii * 1000)
 

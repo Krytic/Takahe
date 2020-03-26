@@ -9,52 +9,26 @@ from os import path
 k_simulations = 200
 n_stars = 1000
 
-total_iterations = k_simulations * n_stars
-
 # if path.exists('examples/computermodernstyle.mplstyle'):
 #     plt.style.use('examples/computermodernstyle.mplstyle')
 
 merge_rate_array = []
 ct = []
 
-regenerate = False
+regenerate = True
+
 cnt = 0
 
 if regenerate:
     for k in range(k_simulations):
-        ensemble = takahe.ensemble.create()
-        lines = np.random.randint(1, 263454, n_stars)
-
-        for line in lines:
-            star = list(map(float, linecache.getline('data/Remnant-Birth-bin-imf135_300-z020_StandardJJ.dat', line).split()))
-
-            binary_star = takahe.BSS.create(*star)
-
-            t, a, e = binary_star.evolve_until_merger()
-
-            first = G * (binary_star.m1 +binary_star.m2)/(4*np.pi**2)
-
-            T = ((a / Solar_Radii) ** 3 / first)**(1/2)
-
-            plt.plot(e, T)
-            plt.xlabel("eccentricity")
-            plt.ylabel("period")
-            plt.show()
-
-            # cheap and nasty hack.
-            # just needed to kill iteration here to test
-            # todo: fix
-            raise ValueError()
-
-            ensemble.add(binary_star)
-
-            cnt += 1
-
-            if cnt % 100 == 0:
-                print(f"{cnt/total_iterations*100:.2f}% complete", end="\r")
+        ensemble = takahe.load.random_from_file('data/Remnant-Birth-bin-imf135_300-z020_StandardJJ.dat', n_stars=n_stars)
 
         merge_rate_array.append(ensemble.merge_rate(13.8))
         ct.append(ensemble.average_coalescence_time())
+
+        cnt += 1
+
+        print(f"Completed simulation {cnt} of {k_simulations}", end="\r")
 
     save_data = [merge_rate_array, ct]
 

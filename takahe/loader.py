@@ -164,8 +164,6 @@ def from_file(fname, name_hints=[], n_stars=100, mass=1e6):
 
     return ensemble
 
-
-
 def random_from_file(fname, name_hints=[], n_stars=100, mass=1e6):
     """
     Loads a random sample of stars from a file.
@@ -175,7 +173,7 @@ def random_from_file(fname, name_hints=[], n_stars=100, mass=1e6):
 
     Arguments:
         fname {string} -- The path to the file you want to load
-2d8de97c80d43ac518cc82196ffd26bf4772a7b1
+
     Keyword Arguments:
         limit {number} -- The number of stars to load (default: {10})
         n {number} -- The number of lines in the file (default: {1000})
@@ -197,19 +195,16 @@ def random_from_file(fname, name_hints=[], n_stars=100, mass=1e6):
     f.close()
     lines = np.random.randint(1, n_lines, n_stars)
 
-    j = 0
     for line in lines:
         l = linecache.getline(fname, line).strip()
         m = l.strip()
-        n = m.split("   ")
+        n = m.split(' ')
 
         star = list(map(float, n))
+        number_of_stars_of_type = int(np.ceil(star[4] * mass))
 
-        for i in range(int(star[5] * mass)): # Add weight * mass stars
+        for i in range(number_of_stars_of_type):
             binary_star = takahe.BSS.create(*star[0:4])
             ensemble.add(binary_star)
-
-        print(f"{j/n_stars * 100}%\r")
-        j += 1
 
     return ensemble
