@@ -1,21 +1,16 @@
 import numpy as np
-import linecache
 import takahe
 from takahe.constants import *
 import matplotlib.pyplot as plt
 import pickle
-from os import path
 
 k_simulations = 200
 n_stars = 1000
 
-# if path.exists('examples/computermodernstyle.mplstyle'):
-#     plt.style.use('examples/computermodernstyle.mplstyle')
-
 merge_rate_array = []
 ct = []
 
-regenerate = True
+regenerate = False
 
 cnt = 0
 
@@ -28,7 +23,7 @@ if regenerate:
 
         cnt += 1
 
-        print(f"Completed simulation {cnt} of {k_simulations}", end="\r")
+        print(f"Completed simulation {cnt} of {k_simulations} ({cnt/k_simulations * 100:.2f}% complete)", end="\r")
 
     save_data = [merge_rate_array, ct]
 

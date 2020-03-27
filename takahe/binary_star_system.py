@@ -81,6 +81,30 @@ class BinaryStarSystem:
             'rejuvenation_age': self.extra_terms['rejuvenation_age']
         }
 
+    def get(self, parameter):
+        """Retrieve a given parameter.
+
+        Fast and clean fetching of a given parameter in the config of
+        the BSS.
+
+        Arguments:
+            parameter {string} -- The parameter to fetch. Call
+                                  star.get('show') to see all allowed
+                                  parameters.
+
+        Returns:
+            {float} -- the given parameter.
+
+        Raises:
+            ValueError -- If the parameter requested does not exist.
+        """
+        if parameter == 'show':
+            return self.__parameter_array.keys()
+        elif parameter not in self.__parameter_array.keys():
+            raise ValueError("Key does not exist!")
+
+        return self.__parameter_array[parameter]
+
     def lifetime(self):
         """Computes the total lifetime of a binary star system.
 
@@ -89,10 +113,12 @@ class BinaryStarSystem:
         time.
 
         Returns:
-            {float} -- The lifetime of the BSS, in gigayears.
+            {float} -- The lifetime ofcoalescence_ the BSS, in gigayears.
         """
-        early_lifetime = self.rejuvenation_age + self.evolution_age
-        early_lifetime /= 31557600000000000
+        early_lifetime = self.get('rejuvenation_age') \
+                       + self.get('evolution_age')
+
+        early_lifetime /= (1e9)
         return early_lifetime + self.coalescence_time()
 
     def coalescence_time(self):

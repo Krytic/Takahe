@@ -1,4 +1,6 @@
+import numpy as np
 import takahe
+from takahe.constants import *
 
 def create():
     """Creates a BinaryStarSystemEnsemble object (i.e., a collection of
@@ -23,6 +25,8 @@ class BinaryStarSystemEnsemble:
         self.__ensemble = []
         self.__count = 0
         self.__pointer = 0
+        self.__min_coalescence_time = np.infty
+        self.__max_coalescence_time = 0
 
     def add(self, binary_star):
         """Add a BSS to the current ensemble.
@@ -36,6 +40,13 @@ class BinaryStarSystemEnsemble:
         """
         if type(binary_star) != takahe.BSS.BinaryStarSystem:
             raise TypeError("binary_star must be an instance of BinaryStarSystem!")
+
+        ct = binary_star.lifetime()
+
+        if ct > self.__max_coalescence_time:
+            self.__max_coalescence_time = ct
+        elif ct < self.__min_coalescence_time:
+            self.__min_coalescence_time = ct
 
         self.__ensemble.append(binary_star)
         self.__count += 1
@@ -79,7 +90,7 @@ class BinaryStarSystemEnsemble:
                                [0, 1]. (default: {"rel"})
 
         Returns:
-            flaot -- The merge rate of the ensemble.
+            float -- The merge rate of the ensemble.
 
         Raises:
             ValueError -- if return_as is anything other than "abs" or
@@ -92,7 +103,7 @@ class BinaryStarSystemEnsemble:
 
         for i in range(self.__count):
             binary_star = self.__ensemble[i]
-            valid = (binary_star.coalescence_time() <= t_merge)
+            valid = (binary_star.lifetime() <= t_merge)
             if valid:
                 count += 1
 
@@ -100,6 +111,39 @@ class BinaryStarSystemEnsemble:
             return count
         elif return_as == 'rel':
             return count / self.__count
+
+    def compute_event_rate_plot(self):
+        """Generates the event rate plot for this ensemble.
+
+        VERY INCORRECT CALCULATION!!!!
+
+        This needs serious improvement, it is a "first guess" at the code.
+
+        Returns:
+            x_axis -- the x axis (log-binned time array) for the plot
+            y_axis -- the y axis (event rate in events per solar mass
+                      per year) for the plot.
+        """
+        from collections import Counter
+
+        time_array = np.linspace(self.__min_coalescence_time,
+                                 self.__max_coalescence_time)
+
+        time_array *= 1e9
+
+        x_axis = np.round(np.log10(time_array))
+        y_axis = np.array([])
+
+        bin_sizes = Counter(x_axis)
+
+        for bin_i in x_axis:
+            mr = self.merge_rate(bin_i, return_as='abs')
+
+            bin_size = bin_sizes[bin_i]
+
+            y_axis = np.append(y_axis, mr / bin_size)
+
+        return [x_axis, y_axis / (1e6 * Solar_Mass)]
 
     def size(self):
         """Get the size of the ensemble.
