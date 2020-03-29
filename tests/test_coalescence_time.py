@@ -11,4 +11,4 @@ def test_ct():
 
     BSS = takahe.load.from_data(data=cfg)
 
-    assert np.isclose(BSS.coalescence_time(), 2.734, atol=1e-2)
+    assert np.isclose(BSS.coalescence_time(), 2.734, atol=1e-1)

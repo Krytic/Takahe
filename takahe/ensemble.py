@@ -1,6 +1,7 @@
 import numpy as np
 import takahe
 from takahe.constants import *
+from kea import hist
 
 def create():
     """Creates a BinaryStarSystemEnsemble object (i.e., a collection of
@@ -25,8 +26,8 @@ class BinaryStarSystemEnsemble:
         self.__ensemble = []
         self.__count = 0
         self.__pointer = 0
-        self.__min_coalescence_time = np.infty
-        self.__max_coalescence_time = 0
+        self.__min_lifetime = np.infty
+        self.__max_lifetime = 0
 
     def add(self, binary_star):
         """Add a BSS to the current ensemble.
@@ -39,14 +40,15 @@ class BinaryStarSystemEnsemble:
                          BinaryStarSystem.
         """
         if type(binary_star) != takahe.BSS.BinaryStarSystem:
-            raise TypeError("binary_star must be an instance of BinaryStarSystem!")
+            raise TypeError("binary_star must be an instance \
+                             of BinaryStarSystem!")
 
-        ct = binary_star.lifetime()
+        lifetime = binary_star.lifetime()
 
-        if ct > self.__max_coalescence_time:
-            self.__max_coalescence_time = ct
-        elif ct < self.__min_coalescence_time:
-            self.__min_coalescence_time = ct
+        if lifetime > self.__max_lifetime:
+            self.__max_lifetime = lifetime
+        elif lifetime < self.__min_lifetime:
+            self.__min_lifetime = lifetime
 
         self.__ensemble.append(binary_star)
         self.__count += 1
@@ -115,35 +117,39 @@ class BinaryStarSystemEnsemble:
     def compute_event_rate_plot(self):
         """Generates the event rate plot for this ensemble.
 
-        VERY INCORRECT CALCULATION!!!!
-
-        This needs serious improvement, it is a "first guess" at the code.
-
         Returns:
             x_axis -- the x axis (log-binned time array) for the plot
             y_axis -- the y axis (event rate in events per solar mass
                       per year) for the plot.
         """
-        from collections import Counter
+        time_array = np.linspace(1, 13.8, 1000)
 
-        time_array = np.linspace(self.__min_coalescence_time,
-                                 self.__max_coalescence_time)
+        mergers = np.array([])
 
-        time_array *= 1e9
+        for t in time_array:
+            # compute number of mergers occuring before current time
+            mr = self.merge_rate(t, return_as='abs')
 
-        x_axis = np.round(np.log10(time_array))
-        y_axis = np.array([])
+            # remove all mergers that occurred before the current time
+            # to get just the mergers that occur in this time bin
+            if t != time_array[0]:
+                mr = mr - np.sum(mergers)
 
-        bin_sizes = Counter(x_axis)
+            mergers = np.append(mergers, mr)
 
-        for bin_i in x_axis:
-            mr = self.merge_rate(bin_i, return_as='abs')
+        nbins = int(np.sqrt(len(time_array)))
 
-            bin_size = bin_sizes[bin_i]
+        histogram = hist.histogram(xlow=time_array[0],
+                                   xup=time_array[-1],
+                                   nr_bins=nbins)
 
-            y_axis = np.append(y_axis, mr / bin_size)
+        bin_size = (time_array[-1] - time_array[0]) / nbins
 
-        return [x_axis, y_axis / (1e6 * Solar_Mass)]
+        histogram.Fill(time_array, mergers / (1e6 * bin_size))
+
+        histogram.plot()
+
+        return histogram
 
     def size(self):
         """Get the size of the ensemble.

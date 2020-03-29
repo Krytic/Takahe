@@ -138,6 +138,9 @@ def from_file(fname, name_hints=[], n_stars=100, mass=1e6):
                          a given stellar configuration (default: {1e6})
     """
 
+    if n_stars == 'all':
+        n_stars = None
+
     df = pd.read_csv(fname,
                      names=name_hints,
                      nrows=n_stars,

@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.optimize import root_scalar
 from scipy.integrate import quad
 import takahe
 from takahe.constants import *
@@ -66,6 +67,30 @@ class Universe:
 
         self.__count = 0
 
+    def compute_redshift(self, d):
+        """Computes the redshift at a given comoving distance d.
+
+        Uses scipy.optimize.root_scalar and Newton's method to find
+        the redshift, via eqn(15) and eqn(14) of [1].
+
+        Note that as this involves finding a root of a function that
+        must be continually numerically evaluated, this function can be
+        both unstable and computationally expensive.
+
+        [1] https://arxiv.org/pdf/astro-ph/9905116.pdf
+
+        Arguments:
+            d {float} -- The comoving distance to compute redshift at.
+                         (units: Mpc)
+
+        Returns:
+            float -- The redshift at distance d.
+        """
+        f = lambda x: self.compute_comoving_distance(x) - d
+        res = root_scalar(f, x0=0, x1=0.001)
+
+        return res.root
+
     def compute_comoving_distance(self, z):
         """Computes the comoving distance between two objects in this
         universe.
@@ -79,7 +104,7 @@ class Universe:
             z {float} -- The redshift to compute DC for.
 
         Returns:
-            number -- The comoving radial distance
+            number -- The comoving radial distance (units: Mpc)
         """
         def integrand(z):
             return 1 / np.sqrt(self.omega_m * (1+z)**3
