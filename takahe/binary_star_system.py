@@ -38,7 +38,12 @@ def create(primary_mass, secondary_mass, a0, e0, extra_terms=dict()):
 class BinaryStarSystem:
     """Represents a binary star system."""
 
-    def __init__(self, primary_mass, secondary_mass, a0, e0, extra_terms=dict()):
+    def __init__(self,
+                 primary_mass,
+                 secondary_mass,
+                 a0,
+                 e0,
+                 extra_terms=dict()):
 
         if e0 > 1 or e0 < 0:
             raise ValueError("Eccentricity must be between 0 and 1.")
@@ -53,7 +58,7 @@ class BinaryStarSystem:
 
         # only permit terms that are in the extra_keys list to appear
         # in self.extra_terms
-        # Todo: this seems arbitrary and restrictive. Is this a good idea?
+        # @TODO: this seems arbitrary and restrictive.
         self.extra_terms = {k: v for k, v in extra_terms.items()
                                  if k in extra_keys}
 

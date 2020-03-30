@@ -30,14 +30,14 @@ class Universe:
         """
 
         Creates our Universe, conforming to a given set of physical laws.
-        For instance, one may create an Einstein-de Sitter Universe.
+        For instance, one may create an Einstein-de Sitte
 
         Arguments:
             model {str} -- the model (eds, lowdensity, highlambda) of
                            the universe under consideration.
 
         Keyword Arguments:
-            hubble_paramter {float} -- the current value of H0.
+            hubble_parameter {float} -- the current value of H0.
                                        (default: 70)
 
         Raises:
@@ -54,10 +54,9 @@ class Universe:
             Omega_M = 0.2
             Omega_Lambda = 0.8
         else:
-            raise ValueError("model must be eds (Einstein-de Sitter), \
-                              lowdensity (Low Density), or highlambda \
-                              (High lambda).")
+            raise ValueError("Incorrect model type!")
 
+        # Universal physical constants.
         self.omega_m = Omega_M
         self.omega_lambda = Omega_Lambda
         self.omega_k = 1 - self.omega_m - self.omega_lambda
@@ -67,11 +66,41 @@ class Universe:
 
         self.__count = 0
 
+    def stellar_formation_rate(self, z=None, d=None):
+        """Computes the SFRD for the universe at a given redshift.
+
+        Uses eqn(15) of [1] to compute the SFRD at redshift z. You may
+        specify either z (redshift) or d (comoving distance) as a keyword
+        argument. If d is provided, z is computed via self.compute_redshift.
+
+        [1] https://www.annualreviews.org?cid=75#/doi/pdf/10.1146/annurev-astro-081811-125615
+
+        Keyword Arguments:
+            z {float} -- The redshift to consider
+                         (default: {None})
+            d {float} -- The comoving distance to consider
+                         (default: {None})
+
+        Returns:
+            float -- the SFRD for the universe at z
+
+        Raises:
+            ValueError -- If z or d are not provided.
+        """
+        if z == None and d == None:
+            raise ValueError("Either z or d must be provided!")
+        elif z == None:
+            z = self.compute_redshift(d)
+
+        SFRD = 0.015 * (1+z)**2.7 / (1+((1+z)/2.9)**5.6)
+
+        return SFRD
+
     def compute_redshift(self, d):
         """Computes the redshift at a given comoving distance d.
 
-        Uses scipy.optimize.root_scalar and Newton's method to find
-        the redshift, via eqn(15) and eqn(14) of [1].
+        Uses scipy.optimize.root_scalar to find the redshift, via
+        eqn(15) and eqn(14) of [1].
 
         Note that as this involves finding a root of a function that
         must be continually numerically evaluated, this function can be
@@ -115,12 +144,22 @@ class Universe:
 
         return self.DH * result
 
-    def populate(self, mass=1e6):
+    def populate(self, loader, mass=1e6, name_hints=None, n_stars=1000):
         """
         Populates the Universe with stars.
 
-        Loads from a standard file at the moment. Will be extended in
-        future, to support arbitrary files.
+        Arguments:
+            loader {str} -- a path to the file to load
+
+        Keyword Arguments:
+            mass {float} -- the total mass you wish to generate. This
+                            generates a total of mass*weight stars for
+                            each star type in the dataset.
+            name_hints {list} -- a list of column names to pass to the
+                                 loader.
         """
 
-        self.populace = takahe.load.from_file('data/newdata/Remnant-Birth-bin-imf135_300-z040_StandardJJ.dat', name_hints=['m1', 'm2', 'a0', 'e0', 'weight', 'evolution_age', 'rejuvenation_age'])
+        self.populace = takahe.load.from_file(loader,
+                                              name_hints=name_hints,
+                                              mass=mass,
+                                              n_stars=n_stars)
