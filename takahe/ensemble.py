@@ -118,9 +118,7 @@ class BinaryStarSystemEnsemble:
         """Generates the event rate plot for this ensemble.
 
         Returns:
-            x_axis -- the x axis (log-binned time array) for the plot
-            y_axis -- the y axis (event rate in events per solar mass
-                      per year) for the plot.
+            histogram -- the (kea-generated) histogram object.
         """
         time_array = np.linspace(1, 13.8, 1000)
 
@@ -137,15 +135,20 @@ class BinaryStarSystemEnsemble:
 
             mergers = np.append(mergers, mr)
 
+        bins = 10*np.log10(time_array)
+
         nbins = int(np.sqrt(len(time_array)))
 
-        histogram = hist.histogram(xlow=time_array[0],
-                                   xup=time_array[-1],
+        bin_sizes = bins[1:] - bins[0:-1]
+
+        # janky hack to make the bin_sizes array the right length
+        bin_sizes = np.append(bin_sizes, bin_sizes[-1])
+
+        histogram = hist.histogram(xlow=bins[0],
+                                   xup=bins[-1],
                                    nr_bins=nbins)
 
-        bin_size = (time_array[-1] - time_array[0]) / nbins
-
-        histogram.Fill(time_array, mergers / (1e6 * bin_size))
+        histogram.Fill(bins, mergers / (1e6 * bin_sizes))
 
         histogram.plot()
 
