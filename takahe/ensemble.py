@@ -1,7 +1,7 @@
 import numpy as np
 import takahe
 from takahe.constants import *
-from kea import hist
+from kea.hist import BPASS_hist
 
 def create():
     """Creates a BinaryStarSystemEnsemble object (i.e., a collection of
@@ -114,45 +114,46 @@ class BinaryStarSystemEnsemble:
         elif return_as == 'rel':
             return count / self.__count
 
-    def compute_event_rate_plot(self):
+    def compute_delay_time_distribution(self, *argv, **kwargs):
         """Generates the event rate plot for this ensemble.
 
+        Computes the instantaneous delay-time distribution for this
+        ensemble. Returns the histogram generated, however the histogram
+        is saved internally in Kea as a matplotlib plot.
+
+        Thus, given an ensemble called ens, one may use
+
+        >>> ens.compute_delay_time_distribution()
+        >>> plt.show()
+
+        to render it.
+
+        Note that the binning is logarithmic so bin size does vary
+        across the plot.
+
+        Thanks to Max Briel (https://github.com/maxbriel/) for his
+        assistance in writing this function.
+
         Returns:
-            histogram -- the (kea-generated) histogram object.
+            hist -- the (kea-generated) histogram object.
         """
-        time_array = np.linspace(1, 13.8, 1000)
 
-        mergers = np.array([])
+        hist = BPASS_hist()
+        old_mr = 0
+        edges = hist.getLinEdges()
 
-        for t in time_array:
-            # compute number of mergers occuring before current time
-            mr = self.merge_rate(t, return_as='abs')
+        for bin in range(0, hist.getNBins()-1):
+            mr = self.merge_rate(edges[bin+1], return_as='abs')
+            this_mr = mr - old_mr
+            hist.Fill(edges[bin], this_mr, ty="lin")
+            old_mr += this_mr
 
-            # remove all mergers that occurred before the current time
-            # to get just the mergers that occur in this time bin
-            if t != time_array[0]:
-                mr = mr - np.sum(mergers)
+        bin_widths = [hist.getBinWidth(i) for i in range(0,hist.getNBins())]
+        hist = hist / 1e6 / bin_widths
 
-            mergers = np.append(mergers, mr)
+        hist.plotLog(*argv, **kwargs)
 
-        bins = 10*np.log10(time_array)
-
-        nbins = int(np.sqrt(len(time_array)))
-
-        bin_sizes = bins[1:] - bins[0:-1]
-
-        # janky hack to make the bin_sizes array the right length
-        bin_sizes = np.append(bin_sizes, bin_sizes[-1])
-
-        histogram = hist.histogram(xlow=bins[0],
-                                   xup=bins[-1],
-                                   nr_bins=nbins)
-
-        histogram.Fill(bins, mergers / (1e6 * bin_sizes))
-
-        histogram.plot()
-
-        return histogram
+        return hist
 
     def size(self):
         """Get the size of the ensemble.
