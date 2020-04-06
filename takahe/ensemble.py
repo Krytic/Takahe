@@ -71,6 +71,13 @@ class BinaryStarSystemEnsemble:
 
         return running_sum / self.size()
 
+    def get_cts(self):
+        cts = []
+        for star in self:
+            cts.append(star.coalescence_time())
+
+        return cts
+
     def merge_rate(self, t_merge, return_as="rel"):
         """Computes the merge rate for this ensemble.
 
