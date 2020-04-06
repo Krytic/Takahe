@@ -30,18 +30,23 @@ class Universe:
         """
 
         Creates our Universe, conforming to a given set of physical laws.
-        For instance, one may create an Einstein-de Sitte
+        For instance, one may create an Einstein-de Sitter universe,
+        one with a large cosmological constant (high lambda), low density
+        or real (in which parameters are aligned as closely to reality
+        as possible)
 
         Arguments:
-            model {str} -- the model (eds, lowdensity, highlambda) of
-                           the universe under consideration.
+            model {str} -- the model (eds, lowdensity, highlambda, real)
+                           of the universe under consideration.
 
         Keyword Arguments:
             hubble_parameter {float} -- the current value of H0.
-                                       (default: 70)
+                                        units are km/s/Mpc.
+                                        (default: 70)
 
         Raises:
-            ValueError -- if model is not eds / lowdensity / highlambda
+            ValueError -- if model is not eds / lowdensity /
+                                          highlambda / real
         """
 
         if model.lower() == 'eds':
@@ -53,6 +58,10 @@ class Universe:
         elif model.lower() == 'highlambda':
             Omega_M = 0.2
             Omega_Lambda = 0.8
+        elif model.lower() == 'real':
+            Omega_M = 0.286
+            Omega_Lambda = 0.714
+            hubble_parameter = 69.6
         else:
             raise ValueError("Incorrect model type!")
 
@@ -63,6 +72,8 @@ class Universe:
         self.H0 = hubble_parameter
 
         self.DH = (c/1000) / self.H0 # Megaparsecs
+
+        self.tH = 1 / (self.H0 / 3.086e+19) # seconds
 
         self.__count = 0
 

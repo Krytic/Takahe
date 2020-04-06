@@ -28,6 +28,7 @@ class BinaryStarSystemEnsemble:
         self.__pointer = 0
         self.__min_lifetime = np.infty
         self.__max_lifetime = 0
+        self.__total_mass = 0
 
     def add(self, binary_star):
         """Add a BSS to the current ensemble.
@@ -52,6 +53,7 @@ class BinaryStarSystemEnsemble:
 
         self.__ensemble.append(binary_star)
         self.__count += 1
+        self.__total_mass += binary_star.get('m1') + binary_star.get('m2')
 
     def average_coalescence_time(self):
         """Computes the average coalescence time for the binary star
@@ -74,7 +76,7 @@ class BinaryStarSystemEnsemble:
 
         Computes the merge rate for this system in a given timespan.
         Merge rate is defined as the number of systems that merge in
-        some timespan t_merge (possibly relative to the number of
+        some timespan t_merge (optionally relative to the number of
         systems in the ensemble).
 
         Arguments:
@@ -113,6 +115,25 @@ class BinaryStarSystemEnsemble:
             return count
         elif return_as == 'rel':
             return count / self.__count
+
+    def compute_existence_time_distribution(self, *argv, **kwargs):
+        hist = BPASS_hist()
+        edges = hist.getLinEdges()
+
+        old_mr = 0
+        for bin in range(0, hist.getNBins()-1):
+            mr = self.merge_rate(edges[bin+1], return_as='abs')
+            this_mr = (mr - old_mr)
+            plt_mr = self.size() - this_mr
+            hist.Fill(edges[bin], plt_mr, ty="lin")
+            old_mr += this_mr
+
+        bin_widths = [hist.getBinWidth(i) for i in range(0,hist.getNBins())]
+        hist = hist / 1e6 / bin_widths
+
+        hist.plotLog(*argv, **kwargs)
+
+        return hist
 
     def compute_delay_time_distribution(self, *argv, **kwargs):
         """Generates the event rate plot for this ensemble.
