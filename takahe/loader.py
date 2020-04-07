@@ -4,7 +4,7 @@ import pandas as pd
 import takahe
 from takahe.constants import *
 
-def from_data(data):
+def from_data(data, extra_terms=dict()):
     """
     Loads a binary star system from a dictionary of data.
 
@@ -15,8 +15,12 @@ def from_data(data):
                        - M2 (mass of secondary star)
                        - e0 (current eccentricity)
                        - a0/T (current semimajor axis / Period)
-                    Peroid takes precedence over the SMA, so if one is provided, we use Kepler's law
+                    Period takes precedence over the SMA, so if one is provided, we use Kepler's law
                     to compute the SMA.
+
+    Keyword Arguments:
+        extra_terms {dict} -- A dictionary containing any extra terms
+                              you wish to add to the BSS.
 
     Returns:
         BinaryStarSystem -- An ADT to represent the BSS.
@@ -26,6 +30,8 @@ def from_data(data):
     """
 
     set_of_data_keys = set(data.keys())
+
+    # Need to refactor. M1, M2, e0 are requried. a0 can be subbed for T
     if not set_of_data_keys.issubset({'M1', 'M2', 'e0', 'a0', 'T'}):
         raise KeyError("data must contain definitions for M1, M2, e0, \
                         and a0/T!")
@@ -37,7 +43,8 @@ def from_data(data):
     return takahe.BSS.create(data['M1'],
                              data['M2'],
                              data['a0'],
-                             data['e0']
+                             data['e0'],
+                             extra_terms
                             )
 
 def from_list(data_list):
@@ -60,63 +67,6 @@ def from_list(data_list):
         ensemble.add(binary_star)
 
     return ensemble
-
-
-def from_bpass(bpass_from, mass_fraction, a0_range=(0, 10)):
-    """Loads a binary star system from the BPASS dataset.
-
-    Opens the BPASS file you wish to use, uses hoki to load it into a
-    dataframe, and returns a list of BSS objects.
-
-    @ TODO: This loader is bad and I should feel bad
-
-    Arguments:
-        bpass_from {str} -- the filename of the BPASS file to use
-
-    Keyword Arguments:
-        mass_fraction {int} -- If not None, assumes that
-                               M1 = mass_fraction * M2 and uses this
-                               to compute the masses. (default: {None})
-
-        data {dict} -- A dictionary of data for the BSS.
-                       Keywords used are M1 (primary mass),
-                       M2 (secondary mass), e0 (initial eccentricity),
-                       and a0 (initial SMA) or T (period).
-                       (default: empty)
-
-    Returns:
-        [mixed] -- A list of BinaryStarSystem objects (if BPASS data is
-                   used). A singular BinaryStarSystem object (if BPASS
-                   data is NOT used).
-    Raises:
-        TypeError -- if a0_range is not exactly a 2-tuple of
-                     floats/ints.
-    """
-
-    data = load._stellar_masses(bpass_from)
-
-    if type(a0_range) != tuple or len(a0_range) != 2:
-        raise TypeError("a0_range must be a tuple of length 2!")
-
-    if (type(a0_range[0]) not in [int, float] and
-        type(a0_range[1]) not in [int, float]):
-
-        raise TypeError("a0_range must be a 2-tuple of ints or floats!")
-
-    star_systems = takahe.ensemble.create()
-
-    for mass in data['stellar_mass']:
-        M1 = mass_fraction * mass
-        M2 = mass - M1
-
-        a0 = np.random.uniform(*a0_range)
-        e0 = np.random.uniform(0, 1)
-
-        star = takahe.BSS.create(M1, M2, a0, e0)
-
-        star_systems.add(star)
-
-    return star_systems
 
 def from_file(fname, name_hints=[], n_stars=100, mass=1e6):
     """
@@ -157,11 +107,7 @@ def from_file(fname, name_hints=[], n_stars=100, mass=1e6):
                                if k not in ['m1', 'm2', 'a0', 'e0']
                           }
 
-            star = takahe.BSS.create(row[1]['m1'],
-                                     row[1]['m2'],
-                                     row[1]['a0'],
-                                     row[1]['e0'],
-                                     extra_terms)
+            star = from_data(row[1], extra_terms)
 
             ensemble.add(star)
 
