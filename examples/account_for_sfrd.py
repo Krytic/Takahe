@@ -24,6 +24,9 @@ Mass formed in each time bin
 
 """
 
+takahe.load.random_from_file("data/newdata/Remnant-Birth-bin-imf135_300-z020_StandardJJ.dat", 100,
+    name_hints=['m1', 'm2', 'a0', 'e0', 'weight', 'evolution_age', 'rejuvenation_age'])
+
 n_stars = 4000
 
 universe = takahe.universe.create('real')
@@ -74,4 +77,3 @@ plt.suptitle(rf"$Z=Z_\odot, n\approx {universe.populace.size()}$")
 plt.subplots_adjust(wspace=0)
 
 plt.show()
-

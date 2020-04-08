@@ -1,10 +1,12 @@
+import linecache
+
 import numpy as np
 from hoki import load
 import pandas as pd
 import takahe
 from takahe.constants import *
 
-def from_data(data, extra_terms=dict()):
+def from_data(data):
     """
     Loads a binary star system from a dictionary of data.
 
@@ -15,12 +17,11 @@ def from_data(data, extra_terms=dict()):
                        - M2 (mass of secondary star)
                        - e0 (current eccentricity)
                        - a0/T (current semimajor axis / Period)
-                    Period takes precedence over the SMA, so if one is provided, we use Kepler's law
-                    to compute the SMA.
+                    Period takes precedence over the SMA, so if one is provided, we use Kepler's law to compute the SMA.
 
-    Keyword Arguments:
-        extra_terms {dict} -- A dictionary containing any extra terms
-                              you wish to add to the BSS.
+                    Note that extra parameters can be provided in the
+                    data dictionary, these are passed through to
+                    BSS.create as the extra_terms array.
 
     Returns:
         BinaryStarSystem -- An ADT to represent the BSS.
@@ -29,23 +30,26 @@ def from_data(data, extra_terms=dict()):
         KeyError -- if data is not well-formed.
     """
 
-    set_of_data_keys = set(data.keys())
+    keys = [k.lower for k in data.keys()]
 
-    # Need to refactor. M1, M2, e0 are requried. a0 can be subbed for T
-    if not set_of_data_keys.issubset({'M1', 'M2', 'e0', 'a0', 'T'}):
-        raise KeyError("data must contain definitions for M1, M2, e0, \
-                        and a0/T!")
+    base_array = ['m1', 'm2', 'e0', 'a0']
 
-    if 'T' in data.keys():
-        first_term = (G * (data['M1'] + data['M2']))/(4*np.pi**2)
-        data['a0'] = (first_term * data['T'] ** 2) ** (1/3)
+    if 'M1' in keys and 'M2' in keys and 'e0' in keys:
+        if 'T' in keys:
+            first_term = (G * (data['M1'] + data['M2']))/(4*np.pi**2)
+            data['a0'] = (first_term * data['T'] ** 2) ** (1/3)
 
-    return takahe.BSS.create(data['M1'],
+        if 'a0' in keys:
+            extra_terms = {k:v for k,v in data.items() if k not in base_array}
+            return takahe.BSS.create(data['M1'],
                              data['M2'],
                              data['a0'],
                              data['e0'],
                              extra_terms
                             )
+
+    # If we reach here, the data is not well-formed.
+    raise KeyError("data must contain definitions for M1, M2, e0, and a0/T!")
 
 def from_list(data_list):
     """Creates a binary star system ensemble from a list of configs
@@ -104,7 +108,7 @@ def from_file(fname, name_hints=[], n_stars=100, mass=1e6):
 
         for n in range(number_of_stars_of_type):
             extra_terms = {k:v for k,v in row[1].items()
-                               if k not in ['m1', 'm2', 'a0', 'e0']
+                               if k not in ['m1', 'm2', 'a0', 'e0', 'T']
                           }
 
             star = from_data(row[1], extra_terms)
@@ -113,47 +117,50 @@ def from_file(fname, name_hints=[], n_stars=100, mass=1e6):
 
     return ensemble
 
-def random_from_file(fname, name_hints=[], n_stars=100, mass=1e6):
+def random_from_file(fname, draw_from, name_hints=[], n_stars=100, mass=1e6):
     """
     Loads a random sample of stars from a file.
 
-    This code is particularly hacky. We should find a better way to
-    accomplish this.
-
     Arguments:
         fname {string} -- The path to the file you want to load
+        draw_from {int} -- How many lines of the file to sample from. For
+                           instance, random_from_file("somefile.dat",
+                                                      10,
+                                                      n_stars=7)
+                           means "uniformly draw 7 stars from the first
+                           10 lines of the file somefile.dat."
 
-    Keyword Arguments:
-        limit {number} -- The number of stars to load (default: {10})
-        n {number} -- The number of lines in the file (default: {1000})
+    Keword Arguments:
+        name_hints {list} -- A list of hints for each column name for
+                             pandas. Takahe can infer the name hints in
+                             some instances however the name_hints
+                             provided will take precedence if provided.
+        n_stars {int} -- How many star *types* to sample from. Note that
+                         the size of the ensemble will be different to
+                         the size you pass in here, this is because
+                         takahe accounts for the weight (number of systems
+                         of this type per 10^6 solar masses).
+        mass {float} -- The total mass to create.
 
     Returns:
         {BinaryStarSystemEnsemble} -- An ensemble object representing
                                       the ensemble of objects,
     """
-    import mmap, linecache
+
     ensemble = takahe.ensemble.create()
 
-    # Determine the number of lines in the file requested.
-    n_lines = 0
-    f = open(fname, "r+")
-    buf = mmap.mmap(f.fileno(), 0)
-    readline = buf.readline
-    while readline():
-        n_lines += 1
-    f.close()
-    lines = np.random.randint(1, n_lines, n_stars)
+    df = pd.read_csv(fname,
+                     nrows=draw_from,
+                     names=name_hints,
+                     sep=r'\s+',
+                     engine='python')
 
-    for line in lines:
-        l = linecache.getline(fname, line).strip()
-        m = l.strip()
-        n = m.split(' ')
+    sample = df.sample(n_stars)
 
-        star = list(map(float, n))
-        number_of_stars_of_type = int(np.ceil(star[4] * mass))
-
-        for i in range(number_of_stars_of_type):
-            binary_star = takahe.BSS.create(*star[0:4])
+    for star_line in sample.iterrows():
+        star_line = star_line[1]
+        for n in range(int(np.ceil(star_line['weight'] * mass))):
+            binary_star = from_data(star_line)
             ensemble.add(binary_star)
 
     return ensemble
