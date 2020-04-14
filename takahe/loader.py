@@ -158,7 +158,7 @@ def random_from_file(fname, draw_from, name_hints=[], n_stars=100, mass=1e6):
     sample = df.sample(n_stars)
 
     for star_line in sample.iterrows():
-        star_line = star_line[1]
+        star_line = star_line[1] # pandas returns a tuple from iterrows()
         for n in range(int(np.ceil(star_line['weight'] * mass))):
             binary_star = from_data(star_line)
             ensemble.add(binary_star)

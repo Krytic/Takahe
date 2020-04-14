@@ -1,5 +1,6 @@
 import numpy as np
 from takahe.constants import *
+from numba import njit
 
 def create(primary_mass, secondary_mass, a0, e0, extra_terms=dict()):
     """Creates a given Binary Star System from provided data.
@@ -176,15 +177,20 @@ class BinaryStarSystem:
 
         return self
 
-    def circularises(self):
+    def circularises(self, thresholds=(0.0, 2*Solar_Radii)):
         """Determines if the orbit in question circularises or not.
 
-        This function is reasonably naive at present -- it assumes a BSS
-        circularises if it's eccentricity becomes arbitrarily close to
-        0 and it's final SMA is more than 2 solar radii (such that it
-        does not merge).
+        By default, this function assumes a BSS circularises if it's
+        eccentricity becomes arbitrarily close to 0 and it's final SMA
+        is more than 2 solar radii (such that it does not merge).
 
-        # Todo: Improve the logic here. Should the thresholds be customisable?
+        Keyword Arguments:
+            thresholds {tuple} -- The thresholds to determine if the
+                                  system merges. The first entry in the
+                                  tuple is the threshold for the
+                                  eccentricity, the second is the
+                                  threshold for the SMA.
+                                  Default: (0, 2*Solar_Radii)
 
         Returns:
             bool -- True if the orbit circularises, False otherwise.
@@ -209,11 +215,16 @@ class BinaryStarSystem:
         t_span = (0, self.coalescence_time() * 1e9 * 60 * 60 * 24 * 365.25)
         return self.evolve_until(t_span)
 
+    @njit
     def evolve_until(self, t_span):
-        """Evolve the binary star system in time
+        """Evolve the binary star system in time.
 
         Uses a Runge-Kutta algorithm to evolve the binary star system
         over a specified range evolve_over.
+
+        This function adopts the Peters prescription, with customisable
+        terms for da/dt and de/dt. This function is compiled using
+        numba to achieve performance gains
 
         Arguments:
             t_span {tuple} -- A 2-tuple that corresponds to the start

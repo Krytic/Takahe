@@ -40,7 +40,7 @@ class BinaryStarSystemEnsemble:
             TypeError -- If the Binary Star System is not an instance of
                          BinaryStarSystem.
         """
-        if type(binary_star) != takahe.BSS.BinaryStarSystem:
+        if not isinstance(binary_star, takahe.BSS.BinaryStarSystem):
             raise TypeError("binary_star must be an instance \
                              of BinaryStarSystem!")
 
