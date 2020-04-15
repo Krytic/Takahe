@@ -24,8 +24,8 @@ Mass formed in each time bin
 
 """
 
-takahe.load.random_from_file("data/newdata/Remnant-Birth-bin-imf135_300-z020_StandardJJ.dat", 100,
-    name_hints=['m1', 'm2', 'a0', 'e0', 'weight', 'evolution_age', 'rejuvenation_age'])
+# takahe.load.random_from_file("data/newdata/Remnant-Birth-bin-imf135_300-z020_StandardJJ.dat", 100,
+#     name_hints=['m1', 'm2', 'a0', 'e0', 'weight', 'evolution_age', 'rejuvenation_age'])
 
 n_stars = 4000
 
@@ -38,9 +38,10 @@ def integrand(z):
                      + universe.omega_lambda)
     return 1 / ((1+z) * E(z))
 
-z = np.linspace(0, 20)
+z = np.linspace(0, 5, n_stars)
 
 t_arr = []
+SFR_arr = []
 
 for zi in z:
     result, err = quad(integrand, 0, zi)
@@ -49,31 +50,19 @@ for zi in z:
 
     t_arr.append(tL)
 
+    V_C = universe.comoving_volume(z=zi)
+
+    SFRD = universe.stellar_formation_rate(z=zi) / 1e9
+
+    SFR = V_C * SFRD
+
+    SFR_arr.append(SFR)
+
 # a star at distance z will be tL Gyr old
-# ENDS SFRD CODE
 
-universe.populate('data/newdata/Remnant-Birth-bin-imf135_300-z020_StandardJJ.dat',
-    n_stars=n_stars,
-    name_hints=['m1', 'm2', 'a0', 'e0', 'weight', 'evolution_age', 'rejuvenation_age'])
-
-plt.subplot(212)
-cts = universe.populace.get_cts()
-plt.hist(cts, bins=[x for x in range(0, int(13.8e9), int(3e7))])
-plt.xlabel("Coalescence Time")
-plt.ylabel("Frequency")
-
-plt.subplot(221)
-plt.title("Existence time plot")
-universe.populace.compute_existence_time_distribution()
-plt.ylabel(r"Events [# / $M_\odot$ / GYr]")
+plt.plot(t_arr, SFR_arr)
+plt.xlabel("Lookback time [Gyr]")
+plt.ylabel(r"Stellar Formation Rate [$M_\odot$ / Gyr]")
+plt.title(r"SFR against $t_L$ for $0 < z < 5$")
 plt.yscale('log')
-
-plt.subplot(222)
-plt.title("Delay time plot")
-universe.populace.compute_delay_time_distribution()
-plt.yscale("log")
-
-plt.suptitle(rf"$Z=Z_\odot, n\approx {universe.populace.size()}$")
-plt.subplots_adjust(wspace=0)
-
 plt.show()

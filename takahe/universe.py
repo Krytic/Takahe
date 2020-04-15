@@ -77,6 +77,72 @@ class Universe:
 
         self.__count = 0
 
+    def comoving_volume(self, z=None, d=None):
+        """Computes the comoving volume, all-sky, out to redshift z.
+
+        Rather chonky function that uses eqn(29) of [1] to compute the
+        comoving volume of a region of space out to redshift z.
+
+        If a redshift is provided, takahe computes the comoving distance
+        via eqn(15) and eqn(14) of [1]. Alternatively, it uses the
+        comoving distance provided to it.
+
+        As an auxiliary calculation it does also compute the transverse
+        comoving distance D_M defined by eqn(16) of [1].
+
+        As with all functions in this class, the value will vary
+        depending on the type of universe created (eds / real / lowdens
+        / highlambda).
+
+        [1] https://arxiv.org/pdf/astro-ph/9905116.pdf
+
+        Keyword Arguments:
+            z {float} -- The redshift to compute V_C for
+                         (default: {None})
+            d {float} -- The comoving distance to compute V_C for
+                         (default: {None})
+
+        Returns:
+            float -- The comoving volume element in units of Mpc^-3
+
+        Raises:
+            ValueError -- If one of z or d are missing
+        """
+
+        if z == None and d == None:
+            raise ValueError("Either z or d must be provided!")
+        elif z == None:
+            DC = d
+        else:
+            DC = self.compute_comoving_distance(z)
+
+        if self.omega_k > 0:
+            OK = np.sqrt(self.omega_k)
+            DM = self.DH / OK * np.sinh(OK * DC / self.DH)
+        elif self.omega_k == 0:
+            DM = DC
+        elif self.omega_k < 0:
+            OK = np.sqrt(np.abs(self.omega_k))
+            DM = self.DH / OK * np.sin(OK * DC / self.DH)
+
+        if self.omega_k == 0:
+            VC = 4*np.pi/3 * DM**3
+        else:
+            DH = self.DH
+            OK = np.sqrt(np.abs(self.omega_k))
+
+            coeff = 4*np.pi * DH**3 / (2*self.omega_k)
+            term1 = DM / DH * np.sqrt(1+self.omega_k*(DM/DH))**2
+
+            if self.omega_k > 0:
+                term2 = 1/OK * np.arcsinh(OK * DM / DH)
+            else:
+                term2 = 1/OK * np.arcsin(OK * DM / DH)
+
+            VC = coeff * (term1 - term2)
+
+        return VC
+
     def stellar_formation_rate(self, z=None, d=None):
         """Computes the SFRD for the universe at a given redshift.
 
