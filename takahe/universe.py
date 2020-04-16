@@ -3,6 +3,7 @@ from scipy.optimize import root_scalar
 from scipy.integrate import quad
 import takahe
 from takahe.constants import *
+from numba import njit
 
 def create(model, hubble_parameter=70):
     """
@@ -15,6 +16,35 @@ def create(model, hubble_parameter=70):
 
     """
     return Universe(model, hubble_parameter)
+
+@njit
+def _comoving_vol(DH, omega_k, DC):
+    if omega_k > 0:
+        OK = np.sqrt(omega_k)
+        DM = DH / OK * np.sinh(OK * DC / DH)
+    elif omega_k == 0:
+        DM = DC
+    elif omega_k < 0:
+        OK = np.sqrt(np.abs(omega_k))
+        DM = DH / OK * np.sin(OK * DC / DH)
+
+    if omega_k == 0:
+        VC = 4*np.pi/3 * DM**3
+    else:
+        DH = DH
+        OK = np.sqrt(np.abs(omega_k))
+
+        coeff = 4*np.pi * DH**3 / (2*omega_k)
+        term1 = DM / DH * np.sqrt(1+omega_k*(DM/DH))**2
+
+        if omega_k > 0:
+            term2 = 1/OK * np.arcsinh(OK * DM / DH)
+        else:
+            term2 = 1/OK * np.arcsin(OK * DM / DH)
+
+        VC = coeff * (term1 - term2)
+
+    return VC
 
 class Universe:
     """
@@ -94,6 +124,9 @@ class Universe:
         depending on the type of universe created (eds / real / lowdens
         / highlambda).
 
+        This function is a wrapper for an internal Numba-compiled
+        function.
+
         [1] https://arxiv.org/pdf/astro-ph/9905116.pdf
 
         Keyword Arguments:
@@ -116,50 +149,34 @@ class Universe:
         else:
             DC = self.compute_comoving_distance(z)
 
-        if self.omega_k > 0:
-            OK = np.sqrt(self.omega_k)
-            DM = self.DH / OK * np.sinh(OK * DC / self.DH)
-        elif self.omega_k == 0:
-            DM = DC
-        elif self.omega_k < 0:
-            OK = np.sqrt(np.abs(self.omega_k))
-            DM = self.DH / OK * np.sin(OK * DC / self.DH)
+        return _comoving_vol(self.DH, self.omega_k, DC)
 
-        if self.omega_k == 0:
-            VC = 4*np.pi/3 * DM**3
-        else:
-            DH = self.DH
-            OK = np.sqrt(np.abs(self.omega_k))
-
-            coeff = 4*np.pi * DH**3 / (2*self.omega_k)
-            term1 = DM / DH * np.sqrt(1+self.omega_k*(DM/DH))**2
-
-            if self.omega_k > 0:
-                term2 = 1/OK * np.arcsinh(OK * DM / DH)
-            else:
-                term2 = 1/OK * np.arcsin(OK * DM / DH)
-
-            VC = coeff * (term1 - term2)
-
-        return VC
-
-    def stellar_formation_rate(self, z=None, d=None):
+    def stellar_formation_rate(self, z=None, d=None, u=5.6):
         """Computes the SFRD for the universe at a given redshift.
 
         Uses eqn(15) of [1] to compute the SFRD at redshift z. You may
         specify either z (redshift) or d (comoving distance) as a keyword
         argument. If d is provided, z is computed via self.compute_redshift.
 
+        Following the argument in [2], we use u as a parameter of the eqn
+        to adjust the peak of SFRD. To reproduce [1], leave u = 5.6.
+
         [1] https://www.annualreviews.org?cid=75#/doi/pdf/10.1146/annurev-astro-081811-125615
+
+        [2] Tang, N (2019). Uncertainty in the Gravitational Wave Event Rates from the History of Star Formation in the Universe (MSc Thesis, The University of Auckland, Auckland, New Zealand). Retrieved from http://hdl.handle.net/2292/47490.
 
         Keyword Arguments:
             z {float} -- The redshift to consider
                          (default: {None})
             d {float} -- The comoving distance to consider
                          (default: {None})
+            u {float} -- A parameterisation relating to when the peak
+                         SFRD occurs.
+                         (default: 5.6)
 
         Returns:
             float -- the SFRD for the universe at z
+                     (units: M_sun / yr / Mpc^3).
 
         Raises:
             ValueError -- If z or d are not provided.
@@ -169,7 +186,7 @@ class Universe:
         elif z == None:
             z = self.compute_redshift(d)
 
-        SFRD = 0.015 * (1+z)**2.7 / (1+((1+z)/2.9)**5.6)
+        SFRD = 0.015 * (1+z)**2.7 / (1+((1+z)/2.9)**u)
 
         return SFRD
 
