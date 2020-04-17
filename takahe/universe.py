@@ -1,8 +1,9 @@
 import numpy as np
-from scipy.optimize import root_scalar
-from scipy.integrate import quad
+import matplotlib.pyplot as plt
 import takahe
 from takahe.constants import *
+from scipy.optimize import root_scalar
+from scipy.integrate import quad
 from numba import njit
 
 def create(model, hubble_parameter=70):
@@ -16,6 +17,13 @@ def create(model, hubble_parameter=70):
 
     """
     return Universe(model, hubble_parameter)
+
+"""
+Internal functions.
+
+These functions are defined here such that we can numba-fy them to make
+them computationally faster.
+"""
 
 @njit
 def _comoving_vol(DH, omega_k, DC):
@@ -45,6 +53,10 @@ def _comoving_vol(DH, omega_k, DC):
         VC = coeff * (term1 - term2)
 
     return VC
+
+"""
+Begin definition of Universe class.
+"""
 
 class Universe:
     """
@@ -150,6 +162,39 @@ class Universe:
             DC = self.compute_comoving_distance(z)
 
         return _comoving_vol(self.DH, self.omega_k, DC)
+
+    def plot_merge_rate(self):
+        dtd_hist = self.populace.compute_delay_time_distribution()
+
+        edges = dtd_hist.getLinEdges()
+        bin_widths = [dtd_hist.getBinWidth(i) for i in range(0, \
+                      dtd_hist.getNBins())]
+        for bin in range(0, dtd_hist.getNBins()-1):
+            tL = edges[bin+1]
+            z = self.__lookback_to_redshift(tL) ** 10 / 10
+
+            SFRD = self.stellar_formation_rate(z=z)
+            SFR = SFRD * self.comoving_volume(z=z)
+
+            solar_masses_formed = SFR * bin_widths[bin] * 1e9
+
+            print(solar_masses_formed)
+
+    def __lookback_to_redshift(self, tL):
+        def integrand(z):
+            def E(z):
+                return np.sqrt(self.omega_m * (1+z)**3
+                             + self.omega_k * (1+z)**2
+                             + self.omega_lambda)
+            return 1 / ((1+z) * E(z))
+
+        def f(z):
+            rest, err = quad(integrand, 0, z)
+            return tL-self.tH*rest
+
+        res = root_scalar(f, x0=0, x1=0.001)
+
+        return res.root
 
     def stellar_formation_rate(self, z=None, d=None, u=5.6):
         """Computes the SFRD for the universe at a given redshift.
