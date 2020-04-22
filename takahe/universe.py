@@ -115,7 +115,7 @@ class Universe:
 
         self.DH = (c/1000) / self.H0 # Megaparsecs
 
-        self.tH = 1 / (self.H0 / 3.086e+19) # seconds
+        self.tH = 1 / (self.H0 / 3.086e+19 * 31557600000000000) # seconds
 
         self.__count = 0
 
@@ -166,21 +166,50 @@ class Universe:
     def plot_merge_rate(self):
         dtd_hist = self.populace.compute_delay_time_distribution()
 
-        edges = dtd_hist.getLinEdges()
+        edges = dtd_hist.getLogEdges()
         bin_widths = [dtd_hist.getBinWidth(i) for i in range(0, \
                       dtd_hist.getNBins())]
+
+        solar_mass_arr = []
+        edge_arr = []
+        sfr_arr = []
         for bin in range(0, dtd_hist.getNBins()-1):
-            tL = edges[bin+1]
+            tL = edges[bin]
+
             z = self.__lookback_to_redshift(tL) ** 10 / 10
 
             SFRD = self.stellar_formation_rate(z=z)
             SFR = SFRD * self.comoving_volume(z=z)
+            sfr_arr.append(SFRD)
 
-            solar_masses_formed = SFR * bin_widths[bin] * 1e9
+            # todo: wrong
+            solar_masses_formed = SFR * bin_widths[bin] / 1e9
 
-            print(solar_masses_formed)
+            solar_mass_arr.append(solar_masses_formed)
+            edge_arr.append(tL)
+
+        plt.figure()
+        # plt.plot(edge_arr, solar_mass_arr, 'r-')
+        plt.plot(edge_arr, sfr_arr, 'k--')
+
+        plt.show()
 
     def __lookback_to_redshift(self, tL):
+        """Internal function to convert a lookback time into a redshift.
+
+        Used by plot_merge_rate in furtherance of computing the SFRD.
+
+        Arguments:
+            tL {float} -- A lookback time within the range (0, 14).
+
+        Returns:
+            {float} -- The redshift z, corresponding to the lookback time
+                       tL
+        """
+
+        if tL > 14 or tL < 0:
+            raise ValueError(f"Invalid lookback time of {tL:.2f} Gyr!")
+
         def integrand(z):
             def E(z):
                 return np.sqrt(self.omega_m * (1+z)**3
@@ -190,9 +219,9 @@ class Universe:
 
         def f(z):
             rest, err = quad(integrand, 0, z)
-            return tL-self.tH*rest
+            return tL - self.tH*rest
 
-        res = root_scalar(f, x0=0, x1=0.001)
+        res = root_scalar(f, bracket=[0, tL])
 
         return res.root
 

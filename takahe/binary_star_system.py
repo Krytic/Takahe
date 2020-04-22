@@ -1,6 +1,8 @@
 import numpy as np
+import matplotlib.pyplot as plt
+
 from takahe.constants import *
-from numba import njit
+from mpl_toolkits.mplot3d import Axes3D
 
 def create(primary_mass, secondary_mass, a0, e0, extra_terms=dict()):
     """Creates a given Binary Star System from provided data.
@@ -86,6 +88,47 @@ class BinaryStarSystem:
             'evolution_age': self.extra_terms['evolution_age'],
             'rejuvenation_age': self.extra_terms['rejuvenation_age']
         }
+
+    def track_evolution(self, ax=None):
+        """Tracks the evolution of a BSS in phase space.
+
+        Propagates the BSS in time, generating the SMA and eccentricity
+        arrays, and then plots this in 3D space. The units are Gyr (time),
+        and Yr (period).
+
+        Keyword Arguments:
+            ax {matplotlib.axes3D} -- An axis object to plot on. Set to
+                                      None to allow takahe to generate
+                                      its own. (default: {None})
+
+        Returns:
+            {matplotlib.axes3D} -- The axis object generated.
+        """
+        ct = self.coalescence_time()
+
+        if ax == None:
+            fig = plt.figure()
+            ax = fig.add_subplot(111, projection='3d')
+
+        t, a, e = self.evolve_until_merger()
+
+        m1 = self.get('m1')
+        m2 = self.get('m2')
+        a *= (Solar_Radii * 1000)
+
+        k = G*(m1 + m2) / (4*np.pi**2)
+
+        T = np.sqrt(a**3 / k)
+
+        T /= 31557600000000000
+        T *= 1e9
+
+        ax.plot(t, T, e)
+        ax.set_xlabel('age (Gyr)')
+        ax.set_ylabel("period (yr)")
+        ax.set_zlabel("eccentricity")
+
+        return ax
 
     def get(self, parameter):
         """Retrieve a given parameter.
@@ -215,7 +258,6 @@ class BinaryStarSystem:
         t_span = (0, self.coalescence_time() * 1e9 * 60 * 60 * 24 * 365.25)
         return self.evolve_until(t_span)
 
-    @njit
     def evolve_until(self, t_span):
         """Evolve the binary star system in time.
 

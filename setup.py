@@ -8,8 +8,12 @@ try:
 except FileNotFoundError:
 	long_description = description
 
+try:
+	with open('takahe/__version__.py', 'r') as f:
+		version = f.read()
+
 setup(name='takahe',
-	  version='1.0.0alpha',
+	  version=version,
 	  description=description,
 	  long_description=long_description,
 	  author='Sean Richards',
