@@ -25,9 +25,6 @@ Mass formed in each time bin
 
 """
 
-# takahe.load.random_from_file("data/newdata/Remnant-Birth-bin-imf135_300-z020_StandardJJ.dat", 100,
-#     name_hints=['m1', 'm2', 'a0', 'e0', 'weight', 'evolution_age', 'rejuvenation_age'])
-
 n_stars = 4000
 
 universe = takahe.universe.create('real')
@@ -35,73 +32,74 @@ universe.populate('data/newdata/Remnant-Birth-bin-imf135_300-z014_StandardJJ.dat
     n_stars=n_stars,
     name_hints=['m1', 'm2', 'a0', 'e0', 'weight', 'evolution_age', 'rejuvenation_age'])
 
-universe.plot_merge_rate()
-raise ValueError()
+print(universe.populace.get('mass'))
 
-def integrand(z):
-    def E(z):
-        return np.sqrt(universe.omega_m * (1+z)**3
-                     + universe.omega_k * (1+z)**2
-                     + universe.omega_lambda)
-    return 1 / ((1+z) * E(z))
+universe.plot_event_rate()
 
-znum = 100
-z = np.linspace(0, 5, znum)
+# def integrand(z):
+#     def E(z):
+#         return np.sqrt(universe.omega_m * (1+z)**3
+#                      + universe.omega_k * (1+z)**2
+#                      + universe.omega_lambda)
+#     return 1 / ((1+z) * E(z))
 
-t_arr = []
-SFR_arr = []
-mr_arr = []
+# znum = 100
+# z = np.linspace(0, 5, znum)
 
-i = 0
+# t_arr = []
+# SFR_arr = []
+# mr_arr = []
 
-hist = histogram(xlow=0, xup=14, nr_bins=50)
-edges = hist.getBinEdges()
-old_mr = 0
+# i = 0
 
-for zi in z:
-    result, err = quad(integrand, 0, zi)
+# hist = histogram(xlow=0, xup=14, nr_bins=50)
+# edges = hist.getBinEdges()
+# old_mr = 0
 
-    tL = universe.tH * result / 31557600000000000
+# for zi in z:
+#     result, err = quad(integrand, 0, zi)
 
-    t_arr.append(tL)
+#     tL = universe.tH * result / 31557600000000000
 
-    V_C = universe.comoving_volume(z=zi)
+#     t_arr.append(tL)
 
-    SFRD = universe.stellar_formation_rate(z=zi) / 1e9
+#     V_C = universe.comoving_volume(z=zi)
 
-    SFR = V_C * SFRD
+#     SFRD = universe.stellar_formation_rate(z=zi) / 1e9
 
-    SFR_arr.append(SFRD)
+#     SFR = V_C * SFRD
 
-    mr = universe.populace.merge_rate(tL)
+#     SFR_arr.append(SFRD)
 
-    mr_arr.append(mr)
+#     mr = universe.populace.merge_rate(tL)
 
-    # TODO: make binary search (speed)
-    this_mr = mr - old_mr
-    for j in range(len(edges)):
-        if edges[j] < tL and tL < edges[j+1]:
-            # edges[j] or edges[j+1]?
-            hist.Fill(edges[j], this_mr)
+#     mr_arr.append(mr)
 
-    old_mr += this_mr
-    i += 1
+#     # TODO: make binary search (speed)
+#     this_mr = mr - old_mr
+#     for j in range(len(edges)):
+#         if edges[j] < tL and tL < edges[j+1]:
+#             # edges[j] or edges[j+1]?
+#             hist.Fill(edges[j], this_mr)
 
-    print(f"{i/znum*100:.2f}%", end="\r")
+#     old_mr += this_mr
+#     i += 1
 
-bin_widths = [hist.getBinWidth(i) for i in range(0,hist.getNBins())]
-hist = hist / 1e6 / bin_widths
-# hist.plot()
+#     print(f"{i/znum*100:.2f}%", end="\r")
 
-# # plt.yscale('log')
-# plt.ylabel(r'Merge Rate [events / $M_\odot$ / Gyr]')
-# plt.xlabel("Lookback time")
+# bin_widths = [hist.getBinWidth(i) for i in range(0,hist.getNBins())]
+# hist = hist / 1e6 / bin_widths
+# # hist.plot()
+
+# # # plt.yscale('log')
+# # plt.ylabel(r'Merge Rate [events / $M_\odot$ / Gyr]')
+# # plt.xlabel("Lookback time")
+# # plt.show()
+
+# plt.plot(t_arr, np.log10(SFR_arr))
+# plt.xlabel("Lookback time (Gyr) (Inverted axis)")
+# plt.xlim(t_arr[-1], t_arr[0])
+# plt.ylabel(r"$\log(\psi(z)/Gyr)$")
 # plt.show()
 
-plt.plot(t_arr, np.log10(SFR_arr))
-plt.xlabel("Lookback time (Gyr) (Inverted axis)")
-plt.xlim(t_arr[-1], t_arr[0])
-plt.ylabel(r"$\log(\psi(z)/Gyr)$")
-plt.show()
-
-# a star at distance z will be tL Gyr old
+# # a star at distance z will be tL Gyr old

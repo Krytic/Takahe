@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import takahe
+from kea.hist import histogram
 from takahe.constants import *
 from scipy.optimize import root_scalar
 from scipy.integrate import quad
@@ -24,6 +25,14 @@ Internal functions.
 These functions are defined here such that we can numba-fy them to make
 them computationally faster.
 """
+
+def _format_z(z):
+    if z[:2] == "em":
+        exp = z[-1]
+        fmt = rf"$1\times 10^{{-{exp}}}$"
+    else:
+        fmt = f"0.{z}"
+    return fmt
 
 @njit
 def _comoving_vol(DH, omega_k, DC):
@@ -118,6 +127,7 @@ class Universe:
         self.tH = 1 / (self.H0 / 3.086e+19 * 31557600000000000) # seconds
 
         self.__count = 0
+        self.__z = None
 
     def comoving_volume(self, z=None, d=None):
         """Computes the comoving volume, all-sky, out to redshift z.
@@ -163,8 +173,12 @@ class Universe:
 
         return _comoving_vol(self.DH, self.omega_k, DC)
 
-    def plot_merge_rate(self):
-        dtd_hist = self.populace.compute_delay_time_distribution()
+    def plot_event_rate(self):
+        """WIP method to plot the event rate distribution
+
+        [description]
+        """
+        dtd_hist = self.populace.compute_delay_time_distribution(color='blue')
 
         edges = dtd_hist.getLogEdges()
         bin_widths = [dtd_hist.getBinWidth(i) for i in range(0, \
@@ -188,9 +202,21 @@ class Universe:
             solar_mass_arr.append(solar_masses_formed)
             edge_arr.append(tL)
 
-        plt.figure()
-        # plt.plot(edge_arr, solar_mass_arr, 'r-')
-        plt.plot(edge_arr, sfr_arr, 'k--')
+        hist = histogram(edges=edge_arr)
+        hist.Fill(edge_arr, w=solar_mass_arr)
+        plt.ylabel(r"Mergers [# of events / $M_\odot$ / Gyr]", color='blue')
+        plt.yscale('log')
+        ax = plt.gca()
+        ax.tick_params(axis='y', labelcolor='blue')
+        plt.twinx()
+        hist.plot(color='red')
+        plt.ylabel("Solar Masses Formed", color='red')
+        ax = plt.gca()
+        plt.yscale('log')
+        ax.tick_params(axis='y', labelcolor='red')
+
+        if self.__z != None:
+            plt.title(rf"$Z=${_format_z(self.__z)}$Z_\odot$")
 
         plt.show()
 
@@ -331,3 +357,12 @@ class Universe:
                                               name_hints=name_hints,
                                               mass=mass,
                                               n_stars=n_stars)
+
+        fname = loader.split("/")[-1].split(".")[0].rsplit("_", 1)[0]
+        parts = fname.split("-")
+        self.__z = None
+
+        for part in parts:
+            if part[0] == "z":
+                # metallicity term in fname
+                self.__z = part[1:]

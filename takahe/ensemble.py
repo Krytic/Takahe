@@ -60,6 +60,22 @@ class BinaryStarSystemEnsemble:
 
         return ax
 
+    def get(self, key):
+        """Fetches a given parameter of the binary system.
+
+        Allowed parameters are:
+            mass: The total mass of the ensemble (in Solar Masses)
+            size: The size of the ensemble (same as self.size())
+            lifetime: A 2-tuple representing (youngest, oldest) for the
+                      ages of stars in the system (in gigayears)
+
+        Arguments:
+            key {string} -- The key to look up.
+        """
+        return {'mass': self.__total_mass / Solar_Mass,
+                'size': self.size(),
+                'lifetime': (self.__min_lifetime, self.__max_lifetime)
+                }[key]
 
     def find_coalescence_between(self, in_range, find_all=False):
         """Find a system that coalesces within a range of time.
