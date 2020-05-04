@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import takahe
-from kea.hist import histogram
+from kea.hist import histogram, BPASS_hist
 from takahe.constants import *
 from scipy.optimize import root_scalar
 from scipy.integrate import quad
@@ -28,11 +28,11 @@ them computationally faster.
 
 def _format_z(z):
     if z[:2] == "em":
-        exp = z[-1]
-        fmt = rf"$1\times 10^{{-{exp}}}$"
+        div = 1*10**int(-z[-1])
     else:
-        fmt = f"0.{z}"
-    return fmt
+        div = float("0." + z)
+    res = div / 0.020
+    return rf"{res}Z_\odot"
 
 @njit
 def _comoving_vol(DH, omega_k, DC):
@@ -158,7 +158,7 @@ class Universe:
                          (default: {None})
 
         Returns:
-            float -- The comoving volume element in units of Mpc^-3
+            float -- The comoving volume element in units of Mpc^3
 
         Raises:
             ValueError -- If one of z or d are missing
@@ -174,51 +174,63 @@ class Universe:
         return _comoving_vol(self.DH, self.omega_k, DC)
 
     def plot_event_rate(self):
-        """WIP method to plot the event rate distribution
+        """Generates and plots the event rate distribution for this universe.
 
-        [description]
+        Computes the event rate distribution for this universe. Assumes
+        SFRD as given by eqn(15) in Madau & Dickinson 2014 [1], with
+        u = 5.6 (see self.stellar_formation_rate for details).
+
+        Returns the given histogram for further manipulation, if required.
+
+        [1] https://www.annualreviews.org?cid=75#/doi/pdf/10.1146/annurev-astro-081811-125615
+
+        Returns:
+            {kea.hist.histogram} -- the generated histogram.
         """
-        dtd_hist = self.populace.compute_delay_time_distribution(color='blue')
+        plt.figure()
+
+        dtd_hist = self.populace.compute_delay_time_distribution(color='blue', label=r'DTD [events / $M_\odot$ / Gyr]')
 
         edges = dtd_hist.getLogEdges()
+
         bin_widths = [dtd_hist.getBinWidth(i) for i in range(0, \
                       dtd_hist.getNBins())]
 
-        solar_mass_arr = []
+        events_arr = []
         edge_arr = []
-        sfr_arr = []
-        for bin in range(0, dtd_hist.getNBins()-1):
-            tL = edges[bin]
 
-            z = self.__lookback_to_redshift(tL) ** 10 / 10
+        for bin in range(0, dtd_hist.getNBins()):
+            tL = dtd_hist.getBinCenter(bin)
 
-            SFRD = self.stellar_formation_rate(z=z)
-            SFR = SFRD * self.comoving_volume(z=z)
-            sfr_arr.append(SFRD)
+            DTD_content = dtd_hist.getBinContent(bin)
 
-            # todo: wrong
-            solar_masses_formed = SFR * bin_widths[bin] / 1e9
+            if tL > self.__redshift_to_lookback(100):
+                continue
 
-            solar_mass_arr.append(solar_masses_formed)
-            edge_arr.append(tL)
+            z = self.__lookback_to_redshift(tL)
 
+            SFRD = self.stellar_formation_rate(z=z) # M_sun / yr / Mpc^3
+
+            SFRD /= 1e9 # M_sun / Gyr / Mpc^3
+
+            events = SFRD * DTD_content # events / Mpc^3
+
+            events_arr.append(events)
+            edge_arr.append(np.log10(tL*1e9))
+
+        plt.clf()
         hist = histogram(edges=edge_arr)
-        hist.Fill(edge_arr, w=solar_mass_arr)
-        plt.ylabel(r"Mergers [# of events / $M_\odot$ / Gyr]", color='blue')
+        hist.Fill(edge_arr, w=events_arr)
+        hist.plot(color='red', label="Mergers [# of events / Mpc^3]")
+
+        plt.xlabel("log(age/yrs)")
         plt.yscale('log')
-        ax = plt.gca()
-        ax.tick_params(axis='y', labelcolor='blue')
-        plt.twinx()
-        hist.plot(color='red')
-        plt.ylabel("Solar Masses Formed", color='red')
-        ax = plt.gca()
-        plt.yscale('log')
-        ax.tick_params(axis='y', labelcolor='red')
+        plt.legend()
 
         if self.__z != None:
-            plt.title(rf"$Z=${_format_z(self.__z)}$Z_\odot$")
+            plt.title(rf"$Z={_format_z(self.__z)}, n={self.populace.size()}$")
 
-        plt.show()
+        return hist
 
     def __lookback_to_redshift(self, tL):
         """Internal function to convert a lookback time into a redshift.
@@ -250,6 +262,34 @@ class Universe:
         res = root_scalar(f, bracket=[0, tL])
 
         return res.root
+
+    def __redshift_to_lookback(self, z):
+        """Internal function to convert a redshift into a lookback time.
+
+        Used by plot_merge_rate in furtherance of computing the SFRD.
+
+        Arguments:
+            z {float} -- A redshift value in the range (0, 100).
+
+        Returns:
+            {float} -- The redshift z, corresponding to the lookback time
+                       tL
+        """
+
+        if z < 0 or z > 100:
+            raise ValueError(f"Invalid redshift of {z:.2f}!")
+
+
+        def integrand(z):
+            def E(z):
+                return np.sqrt(self.omega_m * (1+z)**3
+                             + self.omega_k * (1+z)**2
+                             + self.omega_lambda)
+            return 1 / ((1+z) * E(z))
+
+        rest, err = quad(integrand, 0, z)
+
+        return self.tH*rest
 
     def stellar_formation_rate(self, z=None, d=None, u=5.6):
         """Computes the SFRD for the universe at a given redshift.
@@ -338,7 +378,7 @@ class Universe:
 
         return self.DH * result
 
-    def populate(self, loader, mass=1e6, name_hints=None, n_stars=1000):
+    def populate(self, loader, mass=1e6, name_hints=None, n_stars=1000, load_type='linear'):
         """
         Populates the Universe with stars.
 
@@ -353,10 +393,17 @@ class Universe:
                                  loader.
         """
 
-        self.populace = takahe.load.from_file(loader,
-                                              name_hints=name_hints,
-                                              mass=mass,
-                                              n_stars=n_stars)
+        if load_type == 'linear':
+            self.populace = takahe.load.from_file(loader,
+                                                  name_hints=name_hints,
+                                                  mass=mass,
+                                                  n_stars=n_stars)
+        elif load_type == 'random':
+            self.populace = takahe.load.random_from_file(loader,
+                                                         10 * n_stars,
+                                                         name_hints=name_hints,
+                                                         mass=mass,
+                                                         n_stars=n_stars)
 
         fname = loader.split("/")[-1].split(".")[0].rsplit("_", 1)[0]
         parts = fname.split("-")
