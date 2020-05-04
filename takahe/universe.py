@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import takahe
 from kea.hist import histogram, BPASS_hist
 from takahe.constants import *
-from scipy.optimize import root_scalar
+from scipy.optimize import root_scalar, fminbound
 from scipy.integrate import quad
 from numba import njit
 
@@ -191,46 +191,42 @@ class Universe:
 
         dtd_hist = self.populace.compute_delay_time_distribution(color='blue', label=r'DTD [events / $M_\odot$ / Gyr]')
 
-        edges = dtd_hist.getLogEdges()
+        edges = dtd_hist.getBinEdges()
 
-        bin_widths = [dtd_hist.getBinWidth(i) for i in range(0, \
-                      dtd_hist.getNBins())]
+        events = histogram(0, self.tH, len(edges)-1)
+        ev_edges = events.getBinEdges()
 
-        events_arr = []
-        edge_arr = []
+        for i in range(1, events.getNBins()+1):
+            t1 = ev_edges[i-1]
+            t2 = ev_edges[i]
 
-        for bin in range(0, dtd_hist.getNBins()):
-            tL = dtd_hist.getBinCenter(bin)
+            z_low = self.__lookback_to_redshift(t1)
+            z_high = self.__lookback_to_redshift(t2)
 
-            DTD_content = dtd_hist.getBinContent(bin)
+            SFRD, _ = quad(self.stellar_formation_rate, z_low, z_high)
 
-            if tL > self.__redshift_to_lookback(100):
-                continue
+            SFRD /= (1e-3)**3
 
-            z = self.__lookback_to_redshift(tL)
-
-            SFRD = self.stellar_formation_rate(z=z) # M_sun / yr / Mpc^3
-
-            SFRD /= 1e9 # M_sun / Gyr / Mpc^3
-
-            events = SFRD * DTD_content # events / Mpc^3
-
-            events_arr.append(events)
-            edge_arr.append(np.log10(tL*1e9))
+            for j in range(i):
+                t1_prime = t2 - ev_edges[j]
+                t2_prime = t2 - ev_edges[j+1]
+                events_in_bin = dtd_hist.integral(t2_prime, t1_prime)
+                events.Fill(ev_edges[j], events_in_bin*SFRD)
 
         plt.clf()
-        hist = histogram(edges=edge_arr)
-        hist.Fill(edge_arr, w=events_arr)
-        hist.plot(color='red', label="Mergers [# of events / Mpc^3]")
 
-        plt.xlabel("log(age/yrs)")
+        bins = np.array([events.getBinWidth(i)*1e9 for i in range(0, events.getNBins())])
+        events /= bins # Normalise to years
+
+        events.plot(color='red', label="Mergers [# of events / yr / Gpc^3]")
+
         plt.yscale('log')
         plt.legend()
 
         if self.__z != None:
             plt.title(rf"$Z={_format_z(self.__z)}, n={self.populace.size()}$")
 
-        return hist
+        return events
 
     def __lookback_to_redshift(self, tL):
         """Internal function to convert a lookback time into a redshift.
@@ -245,23 +241,11 @@ class Universe:
                        tL
         """
 
-        if tL > 14 or tL < 0:
-            raise ValueError(f"Invalid lookback time of {tL:.2f} Gyr!")
+        f = lambda z: np.abs(self.__redshift_to_lookback(z) - tL)
 
-        def integrand(z):
-            def E(z):
-                return np.sqrt(self.omega_m * (1+z)**3
-                             + self.omega_k * (1+z)**2
-                             + self.omega_lambda)
-            return 1 / ((1+z) * E(z))
+        zbest, _, _, _ = fminbound(f, 1e-8, 1000, maxfun=500, full_output=1, xtol=1e-8)
 
-        def f(z):
-            rest, err = quad(integrand, 0, z)
-            return tL - self.tH*rest
-
-        res = root_scalar(f, bracket=[0, tL])
-
-        return res.root
+        return zbest
 
     def __redshift_to_lookback(self, z):
         """Internal function to convert a redshift into a lookback time.
@@ -275,10 +259,6 @@ class Universe:
             {float} -- The redshift z, corresponding to the lookback time
                        tL
         """
-
-        if z < 0 or z > 100:
-            raise ValueError(f"Invalid redshift of {z:.2f}!")
-
 
         def integrand(z):
             def E(z):
