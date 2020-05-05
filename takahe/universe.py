@@ -124,7 +124,9 @@ class Universe:
 
         self.DH = (c/1000) / self.H0 # Megaparsecs
 
-        self.tH = 1 / (self.H0 / 3.086e+19 * 31557600000000000) # seconds
+        self.tH = 1 / (self.H0 / 3.086e+19 * 31557600000000000) # Gyr
+
+        self.__resolution = 51
 
         self.__count = 0
         self.__z = None
@@ -173,6 +175,58 @@ class Universe:
 
         return _comoving_vol(self.DH, self.omega_k, DC)
 
+    def set_bin_size(self, resolution):
+        if isinstance(resolution, int):
+            self.__resolution = resolution
+        else:
+            raise TypeError("The supplied resolution is not an int!")
+
+    def compute_delay_time_distribution(self, *argv, **kwargs):
+        """Generates the event rate plot for this ensemble.
+
+        Computes the instantaneous delay-time distribution for this
+        ensemble. Returns the histogram generated, however the histogram
+        is saved internally in Kea as a matplotlib plot.
+
+        Thus, given an ensemble called ens, one may use
+
+        >>> ens.compute_delay_time_distribution()
+        >>> plt.show()
+
+        to render it.
+
+        Note that the binning is logarithmic so bin size does vary
+        across the plot.
+
+        Thanks to Max Briel (https://github.com/maxbriel/) for his
+        assistance in writing this function.
+
+        Returns:
+            hist -- the (kea-generated) histogram object.
+        """
+
+        hist = histogram(0, self.tH, self.__resolution)
+        culmulative_merge_rate = 0
+        edges = hist.getBinEdges()
+
+        NBins = self.__resolution
+
+        for i in range(0, NBins-1):
+            merge_rate_up_to_bin = self.populace.merge_rate(edges[i+1], return_as='abs')
+            merge_rate_in_bin = merge_rate_up_to_bin - culmulative_merge_rate
+            hist.Fill(edges[i], w=merge_rate_in_bin)
+            culmulative_merge_rate += merge_rate_in_bin
+
+        # Normalisation
+        bin_widths = [hist.getBinWidth(i) for i in range(0, self.__resolution)]
+        hist = hist / 1e6 / bin_widths
+
+        hist.plot(*argv, **kwargs)
+        plt.yscale('log')
+        plt.xlabel("age / Gyr")
+
+        return hist
+
     def plot_event_rate(self):
         """Generates and plots the event rate distribution for this universe.
 
@@ -190,20 +244,18 @@ class Universe:
         plt.figure()
 
         plt.subplot(311)
-        dtd_hist = self.populace.compute_delay_time_distribution(color='blue')
+        dtd_hist = self.compute_delay_time_distribution(color='blue')
         plt.ylabel(r'DTD [events / $M_\odot$ / Gyr]')
-        plt.yscale('log')
-        plt.xlabel("log(age/yrs)")
 
         edges = dtd_hist.getBinEdges()
 
-        events = histogram(0, self.tH, dtd_hist.getNBins())
+        events = histogram(0, self.tH, self.__resolution)
         ev_edges = events.getBinEdges()
 
-        SFRD_hist = histogram(0, self.tH, dtd_hist.getNBins())
+        SFRD_hist = histogram(0, self.tH, self.__resolution)
         SFRD_edges = SFRD_hist.getBinEdges()
 
-        for i in range(1, events.getNBins()+1):
+        for i in range(1, self.__resolution+1):
             t1 = ev_edges[i-1]
             t2 = ev_edges[i]
 
@@ -214,7 +266,7 @@ class Universe:
 
             SFRD /= (1e-3)**3
 
-            SFRD_hist.Fill(SFRD_edges[i], w=SFRD)
+            SFRD_hist.Fill(SFRD_edges[i-1], w=self.stellar_formation_rate(self.__lookback_to_redshift(SFRD_hist.getBinCenter(i-1))))
 
             for j in range(i):
                 t1_prime = t2 - ev_edges[j]
@@ -222,7 +274,7 @@ class Universe:
                 events_in_bin = dtd_hist.integral(t2_prime, t1_prime)
                 events.Fill(ev_edges[j], events_in_bin*SFRD)
 
-        bins = np.array([events.getBinWidth(i)*1e9 for i in range(0, events.getNBins())])
+        bins = np.array([events.getBinWidth(i)*1e9 for i in range(0, self.__resolution)])
         events /= bins # Normalise to years
 
         plt.subplot(312)
@@ -240,7 +292,7 @@ class Universe:
         plt.subplots_adjust(hspace=0.5)
 
         if self.__z != None:
-            plt.suptitle(rf"$Z={_format_z(self.__z)}, n={self.populace.size()}$")
+            plt.suptitle(rf"$Z={_format_z(self.__z)}, n={self.populace.size()}$, NBins={self.__resolution}")
 
         return events
 

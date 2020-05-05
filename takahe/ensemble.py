@@ -1,7 +1,9 @@
 import numpy as np
+import matplotlib.pyplot as plt
+
 import takahe
 from takahe.constants import *
-from kea.hist import BPASS_hist
+from kea.hist import BPASS_hist, histogram
 
 def create():
     """Creates a BinaryStarSystemEnsemble object (i.e., a collection of
@@ -235,8 +237,12 @@ class BinaryStarSystemEnsemble:
 
         return hist
 
-    def compute_delay_time_distribution(self, *argv, **kwargs):
+    def legacy_compute_delay_time_distribution(self, *argv, **kwargs):
         """Generates the event rate plot for this ensemble.
+
+        LEGACY FUNCTION, this is here as it is of potential use for
+        those using the BPASS time bins, however it's unlikely to be
+        developed further, and may be removed in a future release.
 
         Computes the instantaneous delay-time distribution for this
         ensemble. Returns the histogram generated, however the histogram
