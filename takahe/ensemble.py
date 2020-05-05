@@ -272,7 +272,16 @@ class BinaryStarSystemEnsemble:
         bin_widths = [hist.getBinWidth(i) for i in range(0,hist.getNBins())]
         hist = hist / 1e6 / bin_widths
 
-        hist.plotLog(*argv, **kwargs)
+        if 'space' in kwargs.keys():
+            plotting_method = kwargs['space']
+            del kwargs['space']
+        else:
+            plotting_method = 'log'
+
+        if plotting_method == 'lin':
+            hist.plotLin(*argv, **kwargs)
+        else:
+            hist.plotLog(*argv, **kwargs)
 
         return hist
 

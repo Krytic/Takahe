@@ -189,12 +189,19 @@ class Universe:
         """
         plt.figure()
 
-        dtd_hist = self.populace.compute_delay_time_distribution(color='blue', label=r'DTD [events / $M_\odot$ / Gyr]')
+        plt.subplot(311)
+        dtd_hist = self.populace.compute_delay_time_distribution(color='blue')
+        plt.ylabel(r'DTD [events / $M_\odot$ / Gyr]')
+        plt.yscale('log')
+        plt.xlabel("log(age/yrs)")
 
         edges = dtd_hist.getBinEdges()
 
-        events = histogram(0, self.tH, len(edges)-1)
+        events = histogram(0, self.tH, dtd_hist.getNBins())
         ev_edges = events.getBinEdges()
+
+        SFRD_hist = histogram(0, self.tH, dtd_hist.getNBins())
+        SFRD_edges = SFRD_hist.getBinEdges()
 
         for i in range(1, events.getNBins()+1):
             t1 = ev_edges[i-1]
@@ -207,24 +214,33 @@ class Universe:
 
             SFRD /= (1e-3)**3
 
+            SFRD_hist.Fill(SFRD_edges[i], w=SFRD)
+
             for j in range(i):
                 t1_prime = t2 - ev_edges[j]
                 t2_prime = t2 - ev_edges[j+1]
                 events_in_bin = dtd_hist.integral(t2_prime, t1_prime)
                 events.Fill(ev_edges[j], events_in_bin*SFRD)
 
-        plt.clf()
-
         bins = np.array([events.getBinWidth(i)*1e9 for i in range(0, events.getNBins())])
         events /= bins # Normalise to years
 
-        events.plot(color='red', label="Mergers [# of events / yr / Gpc^3]")
-
+        plt.subplot(312)
+        events.plot(color='red')
+        plt.ylabel(r"Events [# / yr / Gpc$^3$]")
         plt.yscale('log')
-        plt.legend()
+        plt.xlabel("Lookback Time / Gyr")
+
+        plt.subplot(313)
+        SFRD_hist.plot(color='green')
+        plt.ylabel(r"SFH [$M_\odot$ / Gpc^3]")
+        plt.yscale('log')
+        plt.xlabel("Lookback Time / Gyr")
+
+        plt.subplots_adjust(hspace=0.5)
 
         if self.__z != None:
-            plt.title(rf"$Z={_format_z(self.__z)}, n={self.populace.size()}$")
+            plt.suptitle(rf"$Z={_format_z(self.__z)}, n={self.populace.size()}$")
 
         return events
 
