@@ -11,6 +11,6 @@ universe.populate(f'data/newdata/Remnant-Birth-bin-imf135_300-z014_StandardJJ.da
     n_stars=n_stars,
     name_hints=['m1', 'm2', 'a0', 'e0', 'weight', 'evolution_age', 'rejuvenation_age'])
 
-universe.set_bin_size(100)
 universe.plot_event_rate()
+universe.plot_event_rate_BPASS()
 plt.show()

@@ -289,6 +289,8 @@ class BinaryStarSystemEnsemble:
         else:
             hist.plotLog(*argv, **kwargs)
 
+        plt.yscale('log')
+
         return hist
 
     def size(self):

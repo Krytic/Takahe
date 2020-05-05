@@ -227,6 +227,83 @@ class Universe:
 
         return hist
 
+    def plot_event_rate_BPASS(self):
+        """Generates and plots the event rate distribution for this universe.
+
+        Computes the event rate distribution for this universe. Assumes
+        SFRD as given by eqn(15) in Madau & Dickinson 2014 [1], with
+        u = 5.6 (see self.stellar_formation_rate for details).
+
+        Returns the given histogram for further manipulation, if required.
+
+        [1] https://www.annualreviews.org?cid=75#/doi/pdf/10.1146/annurev-astro-081811-125615
+
+        Returns:
+            {kea.hist.histogram} -- the generated histogram.
+        """
+
+        fig, axes = plt.subplots(3,1, sharex=True)
+        dtd_ax = axes[0]
+        ev_ax = axes[1]
+        sfh_ax = axes[2]
+
+        plt.setp(axes, xlim=(-1, self.tH+1))
+
+        plt.sca(dtd_ax)
+        dtd_hist = self.populace.legacy_compute_delay_time_distribution(color='blue', space='lin')
+        plt.ylabel(r'DTD [events / $M_\odot$ / Gyr]')
+
+        NBins = dtd_hist.getNBins()
+
+        edges = dtd_hist.getBinEdges()
+
+        events = BPASS_hist()
+        ev_edges = events.getLinEdges()
+
+        SFRD_hist = BPASS_hist()
+        SFRD_edges = SFRD_hist.getLinEdges()
+
+        for i in range(1, NBins+1):
+            t1 = ev_edges[i-1]
+            t2 = ev_edges[i]
+
+            z_low = self.__lookback_to_redshift(t1)
+            z_high = self.__lookback_to_redshift(t2)
+
+            SFRD, _ = quad(self.stellar_formation_rate, z_low, z_high)
+
+            SFRD /= (1e-3)**3
+
+            SFRD_hist.Fill(SFRD_edges[i-1], w=self.stellar_formation_rate(self.__lookback_to_redshift(SFRD_hist.getBinCenter(i-1))), ty='lin')
+
+            for j in range(i):
+                t1_prime = t2 - ev_edges[j]
+                t2_prime = t2 - ev_edges[j+1]
+                events_in_bin = dtd_hist.integral(t2_prime, t1_prime)
+                events.Fill(ev_edges[j], events_in_bin*SFRD, ty='lin')
+
+        bins = np.array([events.getBinWidth(i)*1e9 for i in range(0, NBins)])
+        events /= bins # Normalise to years
+
+        plt.sca(ev_ax)
+        events.plotLin(color='red')
+        plt.ylabel(r"Events [# / yr / Gpc$^3$]")
+        plt.yscale('log')
+        plt.xlabel("Lookback Time / Gyr")
+
+        plt.sca(sfh_ax)
+        SFRD_hist.plotLin(color='green')
+        plt.ylabel(r"SFH [$M_\odot$ / Gpc^3]")
+        plt.yscale('log')
+        plt.xlabel("Lookback Time / Gyr")
+
+        plt.subplots_adjust(hspace=0.5)
+
+        if self.__z != None:
+            plt.suptitle(rf"$Z={_format_z(self.__z)}, n={self.populace.size()}$, BPASS binning")
+
+        return events
+
     def plot_event_rate(self):
         """Generates and plots the event rate distribution for this universe.
 
@@ -241,9 +318,15 @@ class Universe:
         Returns:
             {kea.hist.histogram} -- the generated histogram.
         """
-        plt.figure()
 
-        plt.subplot(311)
+        fig, axes = plt.subplots(3,1, sharex=True)
+        dtd_ax = axes[0]
+        ev_ax = axes[1]
+        sfh_ax = axes[2]
+
+        plt.setp(axes, xlim=(-1, self.tH+1))
+
+        plt.sca(dtd_ax)
         dtd_hist = self.compute_delay_time_distribution(color='blue')
         plt.ylabel(r'DTD [events / $M_\odot$ / Gyr]')
 
@@ -271,19 +354,19 @@ class Universe:
             for j in range(i):
                 t1_prime = t2 - ev_edges[j]
                 t2_prime = t2 - ev_edges[j+1]
-                events_in_bin = dtd_hist.integral(t2_prime, t1_prime)
+                events_in_bin = dtd_hist.integral(t2_prime, t1_prime) * 1e9
                 events.Fill(ev_edges[j], events_in_bin*SFRD)
 
         bins = np.array([events.getBinWidth(i)*1e9 for i in range(0, self.__resolution)])
         events /= bins # Normalise to years
 
-        plt.subplot(312)
+        plt.sca(ev_ax)
         events.plot(color='red')
         plt.ylabel(r"Events [# / yr / Gpc$^3$]")
         plt.yscale('log')
         plt.xlabel("Lookback Time / Gyr")
 
-        plt.subplot(313)
+        plt.sca(sfh_ax)
         SFRD_hist.plot(color='green')
         plt.ylabel(r"SFH [$M_\odot$ / Gpc^3]")
         plt.yscale('log')
