@@ -1,16 +1,30 @@
+from os import listdir
+from os.path import isfile, join
+
 import numpy as np
 import matplotlib.pyplot as plt
 import takahe
 
-n_stars = 1000
+n_stars = 100
 
 plt.style.use('krytic')
 
-universe = takahe.universe.create('real')
-universe.populate(f'data/newdata/Remnant-Birth-bin-imf135_300-z014_StandardJJ.dat',
-    n_stars=n_stars,
-    name_hints=['m1', 'm2', 'a0', 'e0', 'weight', 'evolution_age', 'rejuvenation_age'])
+data_dir = 'data/newdata'
 
-universe.plot_event_rate()
-universe.plot_event_rate_BPASS()
-plt.show()
+files = [f for f in listdir(data_dir) if isfile(join(data_dir, f))]
+
+for file in files:
+    universe = takahe.universe.create('real')
+
+    universe.populate(f"{data_dir}/{file}", n_stars=n_stars)
+
+    z = universe.get_metallicity()
+
+    universe.set_nbins(51)
+    universe.plot_event_rate()
+    plt.tight_layout()
+    plt.savefig(f"output/{z}.png")
+
+    universe.plot_event_rate_BPASS()
+    plt.tight_layout()
+    plt.savefig(f"output/{z}_BPASS.png")

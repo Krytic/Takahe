@@ -175,11 +175,23 @@ class Universe:
 
         return _comoving_vol(self.DH, self.omega_k, DC)
 
-    def set_bin_size(self, resolution):
+    def set_nbins(self, resolution):
         if isinstance(resolution, int):
             self.__resolution = resolution
         else:
             raise TypeError("The supplied resolution is not an int!")
+
+    def events_today(self):
+        events = self.plot_event_rate()
+
+        i = events.getBin(0)
+        return events.getBinContent(i)
+
+    def events_today_BPASS(self):
+        events = self.plot_event_rate_BPASS()
+
+        i = events.getBin(0)
+        return events.getBinContent(i)
 
     def compute_delay_time_distribution(self, *argv, **kwargs):
         """Generates the event rate plot for this ensemble.
@@ -226,6 +238,9 @@ class Universe:
         plt.xlabel("age / Gyr")
 
         return hist
+
+    def get_metallicity(self):
+        return self.__z
 
     def plot_event_rate_BPASS(self):
         """Generates and plots the event rate distribution for this universe.
@@ -523,6 +538,10 @@ class Universe:
             name_hints {list} -- a list of column names to pass to the
                                  loader.
         """
+
+        if name_hints == None and "StandardJJ" in loader:
+            name_hints = ['m1', 'm2', 'a0', 'e0',
+                          'weight', 'evolution_age', 'rejuvenation_age']
 
         if load_type == 'linear':
             self.populace = takahe.load.from_file(loader,
