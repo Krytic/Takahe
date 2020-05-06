@@ -543,6 +543,9 @@ class Universe:
             name_hints = ['m1', 'm2', 'a0', 'e0',
                           'weight', 'evolution_age', 'rejuvenation_age']
 
+        if "_ct" in loader:
+            name_hints.append("coalescence_time")
+
         if load_type == 'linear':
             self.populace = takahe.load.from_file(loader,
                                                   name_hints=name_hints,

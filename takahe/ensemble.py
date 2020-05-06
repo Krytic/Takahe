@@ -114,7 +114,8 @@ class BinaryStarSystemEnsemble:
         found = takahe.ensemble.create()
 
         for star in self:
-            if star.coalescence_time() < high and star.coalescence_time() > low:
+            coalescence_time = star.get('coalescence_time')
+            if coalescence_time < high and coalescence_time > low:
                 if not find_all:
                     return i, star
                 found.add(star)
@@ -162,14 +163,14 @@ class BinaryStarSystemEnsemble:
         running_sum = 0
 
         for binary_star in self.__ensemble:
-            running_sum += binary_star.coalescence_time()
+            running_sum += binary_star.get('coalescence_time')
 
         return running_sum / self.size()
 
     def get_cts(self):
         cts = []
         for star in self:
-            cts.append(star.coalescence_time())
+            cts.append(star.get('coalescence_time'))
 
         return cts
 

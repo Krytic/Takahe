@@ -57,7 +57,8 @@ class BinaryStarSystem:
         self.a0 = np.float128(a0 * Solar_Radii * 1000) # Units: km
         self.e0 = np.float128(e0) # Units: dimensionless
 
-        extra_keys = ['weight', 'evolution_age', 'rejuvenation_age']
+        extra_keys = ['weight', 'evolution_age',
+                      'rejuvenation_age', 'coalescence_time']
 
         # only permit terms that are in the extra_keys list to appear
         # in self.extra_terms
@@ -78,6 +79,11 @@ class BinaryStarSystem:
         self.beta = (64/5) * (G**3*self.m1*self.m2*(self.m1+self.m2)) / (c**5)
         # units: km^4 s^-1
 
+        if 'coalescence_time' in self.extra_terms.keys():
+            coalescence_time = self.extra_terms['coalescence_time']
+        else:
+            coalescence_time = self.coalescence_time()
+
         self.__parameter_array = {
             'beta': self.beta,
             'm1': self.m1,
@@ -86,7 +92,8 @@ class BinaryStarSystem:
             'e0': self.e0,
             'weight': self.extra_terms['weight'],
             'evolution_age': self.extra_terms['evolution_age'],
-            'rejuvenation_age': self.extra_terms['rejuvenation_age']
+            'rejuvenation_age': self.extra_terms['rejuvenation_age'],
+            'coalescence_time': coalescence_time
         }
 
     def track_evolution(self, ax=None):
@@ -104,7 +111,7 @@ class BinaryStarSystem:
         Returns:
             {matplotlib.axes3D} -- The axis object generated.
         """
-        ct = self.coalescence_time()
+        ct = self.get('coalescence_time')
 
         if ax == None:
             fig = plt.figure()
@@ -168,7 +175,7 @@ class BinaryStarSystem:
                        + self.get('evolution_age')
 
         early_lifetime /= (1e9)
-        return early_lifetime + self.coalescence_time()
+        return early_lifetime + self.get('coalescence_time')
 
     def coalescence_time(self):
         """Computes the coalescence time for the BSS in gigayears.
@@ -255,7 +262,7 @@ class BinaryStarSystem:
                      array (in gigayears), and the resultant SMA (in
                      solar radii) and eccentricity arrays.
         """
-        t_span = (0, self.coalescence_time() * 1e9 * 60 * 60 * 24 * 365.25)
+        t_span = (0, self.get('coalescence_time') * 1e9 * 60 * 60 * 24 * 365.25)
         return self.evolve_until(t_span)
 
     def evolve_until(self, t_span):
