@@ -315,7 +315,7 @@ class Universe:
         plt.subplots_adjust(hspace=0.5)
 
         if self.__z != None:
-            plt.suptitle(rf"$Z={_format_z(self.__z)}, n={self.populace.size()}$, BPASS binning")
+            plt.suptitle(rf"$Z={_format_z(self.__z)}, n={self.populace.size()}$, BPASS binning, today: {int(events.getBinContent(0))}")
 
         return events
 
@@ -390,7 +390,7 @@ class Universe:
         plt.subplots_adjust(hspace=0.5)
 
         if self.__z != None:
-            plt.suptitle(rf"$Z={_format_z(self.__z)}, n={self.populace.size()}$, NBins={self.__resolution}")
+            plt.suptitle(rf"$Z={_format_z(self.__z)}, n={self.populace.size()}$, NBins={self.__resolution}, today: {int(events.getBinContent(0))}")
 
         return events
 
