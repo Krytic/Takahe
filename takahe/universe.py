@@ -1,3 +1,5 @@
+import pickle
+
 import numpy as np
 import matplotlib.pyplot as plt
 import takahe
@@ -28,7 +30,7 @@ them computationally faster.
 
 def _format_z(z):
     if z[:2] == "em":
-        div = 1*10**int(-z[-1])
+        div = 1*10**(-int(z[-1]))
     else:
         div = float("0." + z)
     res = div / 0.020
@@ -242,7 +244,7 @@ class Universe:
     def get_metallicity(self):
         return self.__z
 
-    def plot_event_rate_BPASS(self):
+    def plot_event_rate_BPASS(self, pickle_results=False):
         """Generates and plots the event rate distribution for this universe.
 
         Computes the event rate distribution for this universe. Assumes
@@ -317,9 +319,15 @@ class Universe:
         if self.__z != None:
             plt.suptitle(rf"$Z={_format_z(self.__z)}, n={self.populace.size()}$, BPASS binning, today: {int(events.getBinContent(0))}")
 
+        if pickle_results:
+            filename_syntax = f"output/pickles/BPASS_{self.__z}_"
+            pickle.dump(dtd_hist, open(filename_syntax + "dtd.pickle", 'wb'))
+            pickle.dump(SFRD_hist, open(filename_syntax + "sfh.pickle", 'wb'))
+            pickle.dump(events, open(filename_syntax + "evs.pickle", 'wb'))
+
         return events
 
-    def plot_event_rate(self):
+    def plot_event_rate(self, pickle_results=False):
         """Generates and plots the event rate distribution for this universe.
 
         Computes the event rate distribution for this universe. Assumes
@@ -391,6 +399,12 @@ class Universe:
 
         if self.__z != None:
             plt.suptitle(rf"$Z={_format_z(self.__z)}, n={self.populace.size()}$, NBins={self.__resolution}, today: {int(events.getBinContent(0))}")
+
+        if pickle_results:
+            filename_syntax = f"output/pickles/linear_{self.__z}_"
+            pickle.dump(dtd_hist, open(filename_syntax + "dtd.pickle", 'wb'))
+            pickle.dump(SFRD_hist, open(filename_syntax + "sfh.pickle", 'wb'))
+            pickle.dump(events, open(filename_syntax + "evs.pickle", 'wb'))
 
         return events
 
@@ -528,6 +542,12 @@ class Universe:
         """
         Populates the Universe with stars.
 
+        This function attempts to infer the columns based on the filename.
+        If the dataset is using the StandardJJ prescription, then the
+        header is assumed to be the 7 StandardJJ columns (overridable),
+        and if the file has _ct appended, it assumes the final column
+        is the coalescence time of this system.
+
         Arguments:
             loader {str} -- a path to the file to load
 
@@ -540,8 +560,8 @@ class Universe:
         """
 
         if name_hints == None and "StandardJJ" in loader:
-            name_hints = ['m1', 'm2', 'a0', 'e0',
-                          'weight', 'evolution_age', 'rejuvenation_age']
+            name_hints = ['m1','m2','a0','e0']
+            name_hints.extend(['weight','evolution_age','rejuvenation_age'])
 
         if "_ct" in loader:
             name_hints.append("coalescence_time")

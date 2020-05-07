@@ -1,3 +1,4 @@
+import multiprocessing as mp
 from os import listdir
 from os.path import isfile, join
 
@@ -6,6 +7,7 @@ import matplotlib.pyplot as plt
 import takahe
 
 n_stars = 100
+plt.rcParams['figure.figsize'] = (40, 40)
 
 plt.style.use('krytic')
 
@@ -13,7 +15,7 @@ data_dir = 'data/newdata'
 
 files = [f for f in listdir(data_dir) if isfile(join(data_dir, f))]
 
-for file in files:
+def execute(file):
     universe = takahe.universe.create('real')
 
     universe.populate(f"{data_dir}/{file}", n_stars=n_stars)
@@ -21,10 +23,21 @@ for file in files:
     z = universe.get_metallicity()
 
     universe.set_nbins(51)
-    universe.plot_event_rate()
-    plt.tight_layout()
-    plt.savefig(f"output/{z}.png")
 
-    universe.plot_event_rate_BPASS()
-    plt.tight_layout()
+    universe.plot_event_rate(pickle_results=True)
+    plt.savefig(f"output/{z}.png")
+    plt.close()
+
+    universe.plot_event_rate_BPASS(pickle_results=True)
     plt.savefig(f"output/{z}_BPASS.png")
+    plt.close()
+
+    return 1
+
+pool = mp.Pool(min(mp.cpu_count(), len(files)))
+
+results = [pool.apply_async(execute, args=(file,)) for file in files]
+
+results = [r.get() for r in results]
+
+pool.close()
