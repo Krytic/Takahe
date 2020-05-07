@@ -98,7 +98,7 @@ def from_file(fname, name_hints=[], n_stars=100, mass=1e6):
     df = pd.read_csv(fname,
                      names=name_hints,
                      nrows=n_stars,
-                     sep="   ",
+                     sep=r"\s+",
                      engine='python')
 
     ensemble = takahe.ensemble.create()

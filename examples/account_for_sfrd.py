@@ -25,11 +25,11 @@ def execute(file):
     universe.set_nbins(51)
 
     universe.plot_event_rate(pickle_results=True)
-    plt.savefig(f"output/{z}.png")
+    plt.savefig(f"output/figures/{z}.png")
     plt.close()
 
     universe.plot_event_rate_BPASS(pickle_results=True)
-    plt.savefig(f"output/{z}_BPASS.png")
+    plt.savefig(f"output/figures/{z}_BPASS.png")
     plt.close()
 
     return 1
