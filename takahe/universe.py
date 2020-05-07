@@ -585,4 +585,6 @@ class Universe:
         for part in parts:
             if part[0] == "z":
                 # metallicity term in fname
+                if "_" in part:
+                    part = part.split("_")[0]
                 self.__z = part[1:]
