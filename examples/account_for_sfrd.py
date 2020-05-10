@@ -24,17 +24,16 @@ def execute(file):
 
     universe.set_nbins(51)
 
-    universe.plot_event_rate(pickle_results=True)
-    plt.savefig(f"output/figures/{z}.png")
-    plt.close()
-
-    universe.plot_event_rate_BPASS(pickle_results=True)
-    plt.savefig(f"output/figures/{z}_BPASS.png")
-    plt.close()
+    universe.event_rate(pickle_results=True)
+    universe.event_rate_BPASS(pickle_results=True)
 
     return 1
 
-pool = mp.Pool(min(mp.cpu_count(), len(files)))
+cpus_to_use = min(mp.cpu_count(), len(files))
+
+print(f"Running on {cpus_to_use} CPUs")
+
+pool = mp.Pool(cpus_to_use)
 
 results = [pool.apply_async(execute, args=(file,)) for file in files]
 

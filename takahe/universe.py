@@ -183,16 +183,16 @@ class Universe:
         else:
             raise TypeError("The supplied resolution is not an int!")
 
-    def events_today(self):
-        events = self.plot_event_rate()
+    def events_at(self, tL):
+        events = self.event_rate()
 
-        i = events.getBin(0)
+        i = events.getBin(tL)
         return events.getBinContent(i)
 
-    def events_today_BPASS(self):
-        events = self.plot_event_rate_BPASS()
+    def events_at_BPASS(self, tL):
+        events = self.event_rate_BPASS()
 
-        i = events.getBin(0)
+        i = events.getBin(tL)
         return events.getBinContent(i)
 
     def compute_delay_time_distribution(self, *argv, **kwargs):
@@ -235,16 +235,12 @@ class Universe:
         bin_widths = [hist.getBinWidth(i) for i in range(0, self.__resolution)]
         hist = hist / 1e6 / bin_widths
 
-        hist.plot(*argv, **kwargs)
-        plt.yscale('log')
-        plt.xlabel("age / Gyr")
-
         return hist
 
     def get_metallicity(self):
         return self.__z
 
-    def plot_event_rate_BPASS(self, pickle_results=False):
+    def event_rate_BPASS(self, pickle_results=False):
         """Generates and plots the event rate distribution for this universe.
 
         Computes the event rate distribution for this universe. Assumes
@@ -259,26 +255,12 @@ class Universe:
             {kea.hist.histogram} -- the generated histogram.
         """
 
-        fig, axes = plt.subplots(3,1, sharex=True)
-        dtd_ax = axes[0]
-        ev_ax = axes[1]
-        sfh_ax = axes[2]
-
-        plt.setp(axes, xlim=(-1, self.tH+1))
-
-        plt.sca(dtd_ax)
-        dtd_hist = self.populace.legacy_compute_delay_time_distribution(color='blue', space='lin')
-        plt.ylabel(r'DTD [events / $M_\odot$ / Gyr]')
-
+        dtd_hist = self.populace.legacy_compute_delay_time_distribution()
         NBins = dtd_hist.getNBins()
-
         edges = dtd_hist.getBinEdges()
 
         events = BPASS_hist()
         ev_edges = events.getLinEdges()
-
-        SFRD_hist = BPASS_hist()
-        SFRD_edges = SFRD_hist.getLinEdges()
 
         for i in range(1, NBins+1):
             t1 = ev_edges[i-1]
@@ -291,8 +273,6 @@ class Universe:
 
             SFRD /= (1e-3)**3
 
-            SFRD_hist.Fill(SFRD_edges[i-1], w=self.stellar_formation_rate(self.__lookback_to_redshift(SFRD_hist.getBinCenter(i-1))), ty='lin')
-
             for j in range(i):
                 t1_prime = t2 - ev_edges[j]
                 t2_prime = t2 - ev_edges[j+1]
@@ -302,32 +282,13 @@ class Universe:
         bins = np.array([events.getBinWidth(i)*1e9 for i in range(0, NBins)])
         events /= bins # Normalise to years
 
-        plt.sca(ev_ax)
-        events.plotLin(color='red')
-        plt.ylabel(r"Events [# / yr / Gpc$^3$]")
-        plt.yscale('log')
-        plt.xlabel("Lookback Time / Gyr")
-
-        plt.sca(sfh_ax)
-        SFRD_hist.plotLin(color='green')
-        plt.ylabel(r"SFH [$M_\odot$ / Gpc^3]")
-        plt.yscale('log')
-        plt.xlabel("Lookback Time / Gyr")
-
-        plt.subplots_adjust(hspace=0.5)
-
-        if self.__z != None:
-            plt.suptitle(rf"$Z={_format_z(self.__z)}, n={self.populace.size()}$, BPASS binning, today: {int(events.getBinContent(0))}")
-
-        if pickle_results:
-            filename_syntax = f"output/pickles/BPASS_{self.__z}_"
-            pickle.dump(dtd_hist, open(filename_syntax + "dtd.pickle", 'wb'))
-            pickle.dump(SFRD_hist, open(filename_syntax + "sfh.pickle", 'wb'))
-            pickle.dump(events, open(filename_syntax + "evs.pickle", 'wb'))
+        filename_syntax = f"output/pickles/BPASS_{self.__z}_"
+        pickle.dump(dtd_hist, open(filename_syntax + "dtd.pickle", 'wb'))
+        pickle.dump(events, open(filename_syntax + "evs.pickle", 'wb'))
 
         return events
 
-    def plot_event_rate(self, pickle_results=False):
+    def event_rate(self, pickle_results=False):
         """Generates and plots the event rate distribution for this universe.
 
         Computes the event rate distribution for this universe. Assumes
@@ -342,24 +303,12 @@ class Universe:
             {kea.hist.histogram} -- the generated histogram.
         """
 
-        fig, axes = plt.subplots(3,1, sharex=True)
-        dtd_ax = axes[0]
-        ev_ax = axes[1]
-        sfh_ax = axes[2]
-
-        plt.setp(axes, xlim=(-1, self.tH+1))
-
-        plt.sca(dtd_ax)
         dtd_hist = self.compute_delay_time_distribution(color='blue')
-        plt.ylabel(r'DTD [events / $M_\odot$ / Gyr]')
-
         edges = dtd_hist.getBinEdges()
 
         events = histogram(0, self.tH, self.__resolution)
         ev_edges = events.getBinEdges()
-
-        SFRD_hist = histogram(0, self.tH, self.__resolution)
-        SFRD_edges = SFRD_hist.getBinEdges()
+        bins = np.array([])
 
         for i in range(1, self.__resolution+1):
             t1 = ev_edges[i-1]
@@ -372,39 +321,19 @@ class Universe:
 
             SFRD /= (1e-3)**3
 
-            SFRD_hist.Fill(SFRD_edges[i-1], w=self.stellar_formation_rate(self.__lookback_to_redshift(SFRD_hist.getBinCenter(i-1))))
-
             for j in range(i):
                 t1_prime = t2 - ev_edges[j]
                 t2_prime = t2 - ev_edges[j+1]
                 events_in_bin = dtd_hist.integral(t2_prime, t1_prime) * 1e9
                 events.Fill(ev_edges[j], events_in_bin*SFRD)
 
-        bins = np.array([events.getBinWidth(i)*1e9 for i in range(0, self.__resolution)])
+            bins = np.append(bins, events.getBinWidth(i-1)*1e9)
+
         events /= bins # Normalise to years
 
-        plt.sca(ev_ax)
-        events.plot(color='red')
-        plt.ylabel(r"Events [# / yr / Gpc$^3$]")
-        plt.yscale('log')
-        plt.xlabel("Lookback Time / Gyr")
-
-        plt.sca(sfh_ax)
-        SFRD_hist.plot(color='green')
-        plt.ylabel(r"SFH [$M_\odot$ / Gpc^3]")
-        plt.yscale('log')
-        plt.xlabel("Lookback Time / Gyr")
-
-        plt.subplots_adjust(hspace=0.5)
-
-        if self.__z != None:
-            plt.suptitle(rf"$Z={_format_z(self.__z)}, n={self.populace.size()}$, NBins={self.__resolution}, today: {int(events.getBinContent(0))}")
-
-        if pickle_results:
-            filename_syntax = f"output/pickles/linear_{self.__z}_"
-            pickle.dump(dtd_hist, open(filename_syntax + "dtd.pickle", 'wb'))
-            pickle.dump(SFRD_hist, open(filename_syntax + "sfh.pickle", 'wb'))
-            pickle.dump(events, open(filename_syntax + "evs.pickle", 'wb'))
+        filename_syntax = f"output/pickles/linear_{self.__z}_"
+        pickle.dump(dtd_hist, open(filename_syntax + "dtd.pickle", 'wb'))
+        pickle.dump(events, open(filename_syntax + "evs.pickle", 'wb'))
 
         return events
 
