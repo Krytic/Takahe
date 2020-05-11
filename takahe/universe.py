@@ -222,6 +222,7 @@ class Universe:
         hist = histogram(0, self.tH, self.__resolution)
         culmulative_merge_rate = 0
         edges = hist.getBinEdges()
+        bin_widths = np.array([])
 
         NBins = self.__resolution
 
@@ -230,9 +231,9 @@ class Universe:
             merge_rate_in_bin = merge_rate_up_to_bin - culmulative_merge_rate
             hist.Fill(edges[i], w=merge_rate_in_bin)
             culmulative_merge_rate += merge_rate_in_bin
+            bin_widths = np.append(bin_widths, hist.getBinWidth(i))
 
         # Normalisation
-        bin_widths = [hist.getBinWidth(i) for i in range(0, self.__resolution)]
         hist = hist / 1e6 / bin_widths
 
         return hist
@@ -261,6 +262,7 @@ class Universe:
 
         events = BPASS_hist()
         ev_edges = events.getLinEdges()
+        bins = np.array([])
 
         for i in range(1, NBins+1):
             t1 = ev_edges[i-1]
@@ -279,7 +281,8 @@ class Universe:
                 events_in_bin = dtd_hist.integral(t2_prime, t1_prime)
                 events.Fill(ev_edges[j], events_in_bin*SFRD, ty='lin')
 
-        bins = np.array([events.getBinWidth(i)*1e9 for i in range(0, NBins)])
+            bins = np.append(bins, events.getBinWidth(i-1)*1e9)
+
         events /= bins # Normalise to years
 
         filename_syntax = f"output/pickles/BPASS_{self.__z}_"
@@ -303,14 +306,27 @@ class Universe:
             {kea.hist.histogram} -- the generated histogram.
         """
 
-        dtd_hist = self.compute_delay_time_distribution(color='blue')
+        dtd_hist = histogram(0, self.tH, self.__resolution)
         edges = dtd_hist.getBinEdges()
 
         events = histogram(0, self.tH, self.__resolution)
         ev_edges = events.getBinEdges()
         bins = np.array([])
 
+        culmulative_merge_rate = 0
+        dtd_bin_widths = np.array([])
+
+        NBins = self.__resolution
+
         for i in range(1, self.__resolution+1):
+            merge_rate_up_to_bin = self.populace.merge_rate(edges[i], return_as='abs')
+            width = dtd_hist.getBinWidth(i-1)
+            merge_rate_in_bin = merge_rate_up_to_bin - culmulative_merge_rate
+            normalised_mr = merge_rate_in_bin / 1e6 / width
+
+            dtd_hist.Fill(edges[i-1], w=normalised_mr)
+            culmulative_merge_rate += merge_rate_in_bin
+
             t1 = ev_edges[i-1]
             t2 = ev_edges[i]
 

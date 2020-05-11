@@ -269,28 +269,16 @@ class BinaryStarSystemEnsemble:
         hist = BPASS_hist()
         old_mr = 0
         edges = hist.getLinEdges()
+        bin_widths = np.array([])
 
-        for bin in range(0, hist.getNBins()-1):
-            mr = self.merge_rate(edges[bin+1], return_as='abs')
+        for bin in range(0, hist.getNBins()):
+            mr = self.merge_rate(edges[bin], return_as='abs')
             this_mr = mr - old_mr
             hist.Fill(edges[bin], this_mr, ty="lin")
             old_mr += this_mr
+            bin_widths = np.append(bin_widths, hist.getBinWidth(bin))
 
-        bin_widths = [hist.getBinWidth(i) for i in range(0,hist.getNBins())]
         hist = hist / 1e6 / bin_widths
-
-        if 'space' in kwargs.keys():
-            plotting_method = kwargs['space']
-            del kwargs['space']
-        else:
-            plotting_method = 'log'
-
-        if plotting_method == 'lin':
-            hist.plotLin(*argv, **kwargs)
-        else:
-            hist.plotLog(*argv, **kwargs)
-
-        plt.yscale('log')
 
         return hist
 

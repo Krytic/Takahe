@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+import takahe.helpers
 from takahe.constants import *
 from mpl_toolkits.mplot3d import Axes3D
 
@@ -54,8 +55,8 @@ class BinaryStarSystem:
         # Unit conversion into quasi-SI units.
         self.m1 = primary_mass * Solar_Mass # Units: kg
         self.m2 = secondary_mass * Solar_Mass # Units: kg
-        self.a0 = np.float128(a0 * Solar_Radii * 1000) # Units: km
-        self.e0 = np.float128(e0) # Units: dimensionless
+        self.a0 = np.float64(a0 * Solar_Radii * 1000) # Units: km
+        self.e0 = np.float64(e0) # Units: dimensionless
 
         extra_keys = ['weight', 'evolution_age',
                       'rejuvenation_age', 'coalescence_time']
@@ -66,23 +67,20 @@ class BinaryStarSystem:
         self.extra_terms = {k: v for k, v in extra_terms.items()
                                  if k in extra_keys}
 
+        self.beta = (64/5) * (G**3*self.m1*self.m2*(self.m1+self.m2)) / (c**5)
+
         # If weight, evolution_age or rejuvenation)age are missing,
         # assign them default values. weight is 1 by default, others
         # are zero.
         for key in extra_keys:
             if key not in self.extra_terms.keys():
-                self.extra_terms[key] = 0 if key != 'weight' else 1
-
-        self.dadt_terms = None
-        self.dedt_terms = None
-
-        self.beta = (64/5) * (G**3*self.m1*self.m2*(self.m1+self.m2)) / (c**5)
+                if key == 'weight':
+                    self.extra_terms[key] = 1
+                elif key == "coalescence_time":
+                    self.extra_terms[key] = self.coalescence_time()
+                else:
+                    self.extra_terms[key] = 0
         # units: km^4 s^-1
-
-        if 'coalescence_time' in self.extra_terms.keys():
-            coalescence_time = self.extra_terms['coalescence_time']
-        else:
-            coalescence_time = self.coalescence_time()
 
         self.__parameter_array = {
             'beta': self.beta,
@@ -93,7 +91,7 @@ class BinaryStarSystem:
             'weight': self.extra_terms['weight'],
             'evolution_age': self.extra_terms['evolution_age'],
             'rejuvenation_age': self.extra_terms['rejuvenation_age'],
-            'coalescence_time': coalescence_time
+            'coalescence_time': self.extra_terms['coalescence_time']
         }
 
     def track_evolution(self, ax=None):
@@ -196,37 +194,6 @@ class BinaryStarSystem:
 
         return (circ * (1-self.e0**2)**(7/2) / divisor) / 31557600000000000
 
-    def specify_additional_term(self, da_or_de, func):
-        """Adds additional terms to the RHS of the ODE governing evolution.
-
-        Assumes that the signature of callable is callable(t, a, e).
-
-        Arguments:
-            da_or_de {string} -- Whether to modify da/dt or de/dt.
-            func {function} -- A callable object to use to modify the ODE.
-
-        Raises:
-            ValueError -- If da_or_de is not 'da' or 'de'.
-            TypeError -- if func is not a callable object.
-
-        Returns:
-            self -- an instance of itself, such that one may use
-                    star.specify_addition_term().evolve_until() if
-                    desired.
-        """
-        if da_or_de not in ['da', 'de']:
-            raise ValueError("da_or_de must be either 'da' or 'de'!")
-
-        if not callable(func):
-            raise TypeError("func is not callable!")
-
-        if da_or_de == 'da':
-            self.dadt_terms = func
-        else:
-            self.dedt_terms = func
-
-        return self
-
     def circularises(self, thresholds=(0.0, 2*Solar_Radii)):
         """Determines if the orbit in question circularises or not.
 
@@ -285,133 +252,15 @@ class BinaryStarSystem:
                      solar radii) and eccentricity arrays.
         """
 
-        def dadt(t, a, e):
-            """
-            Auxiliary function to compute Equation 3.
+        t0 = np.float64(t_span[0])
+        t1 = np.float64(t_span[1])
 
-            Params:
-                t [ndarray] A vector of times.
-                e [float] The current eccentricity
-                a [float] The current semimajor axis
+        evolve_over = np.linspace(t0, t1, 10000)
 
-            Output:
-                The quantity da/dt - how the semimajor axis is changing
-                                     with time.
-            """
-
-            initial_term = (-self.beta / (a**3 * (1-e**2)**(7/2)))
-
-            da = initial_term * (1 + 73/24 * e**2 + 37 / 96 * e ** 4)
-            # Units: km/s
-
-            if self.dadt_terms != None:
-                da += self.dadt_terms(t, a, e)
-
-            return da
-
-        # Equation (4) from ibid
-        def dedt(t, a, e):
-            """
-            Auxiliary function to compute Equation 4.
-
-            Params:
-                t [ndarray] A vector of times.
-                e [float] The current eccentricity
-                a [float] The current semimajor axis
-
-            Output:
-                The quantity de/dt - how the eccentricity is changing
-                                     with time.
-            """
-
-            initial_term = (-19/12 * self.beta / (a**4*(1-e**2)**(5/2)))
-
-            de = initial_term * (e + 121/304 * e ** 3) # Units: s^-1
-
-            if self.dedt_terms != None:
-                de += self.dedt_terms(t, a, e)
-
-            return de
-
-        def coupled_eqs(t, params):
-            """
-            Primary workhorse function. Computes the vector
-            [da/dt, de/dt] for use in our integrator.
-
-            Params:
-                t [ndarray] A vector of times
-                params [list] A list or 2-tuple of arguments. Must take
-                              the form [a, e]
-
-            Output:
-                A list containing da/dt and de/dt
-            """
-
-            return np.array([dadt(t, *params), dedt(t, *params)])
-
-        def integrate(t_eval):
-            """
-            Auxilary function which uses an RKF45 integrator to
-                integrate the system of ODEs
-
-            Arguments:
-                t_eval {ndarray} -- An array of timesteps to compute
-                                    the integrals over
-
-            Returns:
-                evolve_over {ndarray} -- An array representing the time
-                                         integrated over (in gigayears)
-                a_arr {ndarray} -- An array representing the SMA of the
-                                   binary orbit (in solar radii)
-                e_arr {ndarray} -- An array representing the
-                                   eccentricity of the binary orbit
-            """
-            h = t_eval[1] - t_eval[0]
-            a, e = self.a0, self.e0
-
-            a_arr = []
-            e_arr = []
-
-            # Implement the RKF45 algorithm.
-            yk = np.array([a, e])
-
-            for t in t_eval:
-                k1 = h * coupled_eqs(t, yk)
-                k2 = h * coupled_eqs(t + 1/4 * h, yk + 1/4 * k1)
-
-                k3 = h * coupled_eqs(t + 3/8 * h, yk + 3/32 * k1 \
-                                                     + 9/32 * k2)
-
-                k4 = h * coupled_eqs(t+12/13 * h, yk + 1932/2197 * k1 \
-                                                     - 7200/2197 * k2 \
-                                                     + 7293/2197 * k3)
-
-                k5 = h * coupled_eqs(t + h, yk + 439/216 * k1 \
-                                               - 8*k2 \
-                                               + 3680/513 * k3
-                                               - 845/4104*k4)
-
-                k6 = h * coupled_eqs(t + 1/2 * h, yk - 8/27*k1 \
-                                                     + 2*k2 \
-                                                     - 3544/2565*k3 \
-                                                     + 1859/4104 * k4 \
-                                                     - 11/40 * k5)
-
-                if e >= 1 or a <= 0:
-                    # runaway integration, we should kill it
-                    t_eval = (t_eval[0], t_eval[-1], len(e_arr))
-                    break
-
-                a_arr.append(yk[0])
-                e_arr.append(yk[1])
-
-                yk = yk + 25/216 * k1 + 1408/2565*k3 + 2197/4101 * k4 - 1/5 * k5
-
-            return np.array(a_arr), np.array(e_arr)
-
-        evolve_over = np.linspace(t_span[0], t_span[1], 10000)
-
-        a, e = integrate(evolve_over)
+        a, e = takahe.helpers.integrate(evolve_over,
+                                        self.a0,
+                                        self.e0,
+                                        self.beta)
 
         # Convert quantities back into Solar Units
         evolve_over /= 31557600000000000
