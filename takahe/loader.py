@@ -30,16 +30,22 @@ def from_data(data):
         KeyError -- if data is not well-formed.
     """
 
+    # force column names to lowercase so we can compare them
     keys = [k.lower() for k in data.keys()]
 
+    # minimum keys required
     base_array = ['m1', 'm2', 'e0', 'a0']
 
+    # we *need* m1 m2 and e0, we can infer a0 from kepler's 3rd law
+    # if we know T
     if 'm1' in keys and 'm2' in keys and 'e0' in keys:
         if 'T' in keys:
+            # Kepler's 3rd law
             first_term = (G * (data['m1'] + data['m2']))/(4*np.pi**2)
             data['a0'] = (first_term * data['t'] ** 2) ** (1/3)
 
         if 'a0' in keys:
+            # Extra terms is a dict of data that isn't in {m1, m2, e0, a0}
             extra_terms = {k:v for k,v in data.items() if k not in base_array}
             return takahe.BSS.create(data['m1'],
                              data['m2'],
@@ -92,28 +98,32 @@ def from_file(fname, name_hints=[], n_stars=100, mass=1e6):
                          a given stellar configuration (default: {1e6})
     """
 
+    # If we request all stars, set n_stars to None
+    # pandas interprets this as "load entire file"
     if n_stars == 'all':
         n_stars = None
 
+    # Read the file into a dataframe
+    # Sample file format is:
+    # m1   m2   a0    e0    weight   evolution_age   rejuvenation_age   coalescence_time
+    # Note that the number of spaces can vary
     df = pd.read_csv(fname,
                      names=name_hints,
                      nrows=n_stars,
                      sep=r"\s+",
                      engine='python')
 
+    # initialize an ensemble (glorified list)
     ensemble = takahe.ensemble.create()
 
     for row in df.iterrows():
+        # weight represents the number of stars of this kind per 10^6 solar masses.
         number_of_stars_of_type = int(np.ceil(row[1]['weight'] * mass))
 
+        # generate this many stars
         for n in range(number_of_stars_of_type):
-            extra_terms = {k:v for k,v in row[1].items()
-                               if k not in ['m1', 'm2', 'a0', 'e0', 'T']
-                          }
-
-            star = from_data(dict(row[1]))
-
-            ensemble.add(star)
+            star = from_data(dict(row[1])) # create the BSS object
+            ensemble.add(star) # add to ensemble -- O(1) operation
 
     return ensemble
 

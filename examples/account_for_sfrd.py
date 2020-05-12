@@ -6,10 +6,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import takahe
 
-n_stars = 100
-plt.rcParams['figure.figsize'] = (40, 40)
+n_stars = 1000
+#plt.rcParams['figure.figsize'] = (40, 40)
 
-plt.style.use('krytic')
+#plt.style.use('krytic')
 
 data_dir = 'data/newdata'
 
@@ -22,14 +22,12 @@ def execute(file):
 
     z = universe.get_metallicity()
 
-    universe.set_nbins(51)
-
-    universe.event_rate(pickle_results=True)
-    universe.event_rate_BPASS(pickle_results=True)
+#    universe.set_nbins(51)
+#    universe.event_rate(pickle_results=True)
 
     return 1
 
-cpus_to_use = min(mp.cpu_count(), len(files))
+cpus_to_use = min(3*mp.cpu_count(), len(files))
 
 print(f"Running on {cpus_to_use} CPUs")
 

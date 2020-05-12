@@ -505,12 +505,17 @@ class Universe:
         """
 
         if name_hints == None and "StandardJJ" in loader:
+            # Provide column names for the StandardJJ prescription
             name_hints = ['m1','m2','a0','e0']
             name_hints.extend(['weight','evolution_age','rejuvenation_age'])
 
         if "_ct" in loader:
+            # If the filename containts _ct, then we have a file
+            # for which the coalescence times have already been computed
             name_hints.append("coalescence_time")
 
+        # Do we load the first n_stars lines, or a random sample of
+        # n_stars lines?
         if load_type == 'linear':
             self.populace = takahe.load.from_file(loader,
                                                   name_hints=name_hints,
@@ -523,6 +528,7 @@ class Universe:
                                                          mass=mass,
                                                          n_stars=n_stars)
 
+        # Extract the metallicity from the filename
         fname = loader.split("/")[-1].split(".")[0].rsplit("_", 1)[0]
         parts = fname.split("-")
         self.__z = None
