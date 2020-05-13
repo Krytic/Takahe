@@ -83,7 +83,7 @@ def from_file(fname, name_hints=[], n_stars=100, mass=1e6):
     Loads the first n_stars in a given file into a pandas dataframe.
 
     General utility loader for most cases. Can be replaced with a more
-    flexible one, such as from_bpass().
+    flexible one, such as random_from_file().
 
     Arguments:
         fname {string} -- the path to the file we wish to open.
@@ -126,6 +126,62 @@ def from_file(fname, name_hints=[], n_stars=100, mass=1e6):
             ensemble.add(star) # add to ensemble -- O(1) operation
 
     return ensemble
+
+def from_file_efficient(fname, name_hints=[], n_stars=100, mass=1e6):
+    """Load an ensemble from a file. Does so more efficiently than
+    from_file.
+
+    This method will soon replace from_file (when it is proved correct).
+    Generally performs 95-97% faster than from_file.
+
+    Arguments:
+        fname {string} -- the path to the file we wish to open.
+
+    Keyword Arguments:
+        name_hints {list} -- A list of column names for pandas.
+                             (default: {[]})
+        n_stars {number} -- The number of stars (rows in file) to load
+                            (default: {100})
+        mass {number} -- The total mass of the ensemble. This is used to
+                         populate the ensemble with weight*mass stars of
+                         a given stellar configuration (default: {1e6})
+
+    Returns:
+        [type] -- [description]
+    """
+    if n_stars == "all":
+        n_stars = None
+
+    current_mass = 0
+
+    ensemble = takahe.ensemble.create()
+
+    df = pd.read_csv(fname,
+                     names=name_hints,
+                     nrows=n_stars,
+                     sep=r"\s+",
+                     engine='python')
+
+    i = 0
+
+    while current_mass < mass:
+        if i >= n_stars:
+            break
+
+        row = df.iloc[i].to_dict()
+        number_of_stars_of_type = int(np.ceil(row['weight'] * mass))
+
+        star = from_data(row)
+
+        for j in range(number_of_stars_of_type):
+            ensemble.add(star)
+
+        current_mass += (star.get_mass() * number_of_stars_of_type)
+
+        i += 1
+
+    return ensemble
+
 
 def random_from_file(fname, draw_from, name_hints=[], n_stars=100, mass=1e6):
     """

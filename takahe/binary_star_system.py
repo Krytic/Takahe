@@ -159,6 +159,9 @@ class BinaryStarSystem:
 
         return self.__parameter_array[parameter]
 
+    def get_mass(self):
+        return (self.get('m1') + self.get('m2')) / Solar_Mass
+
     def lifetime(self):
         """Computes the total lifetime of a binary star system.
 

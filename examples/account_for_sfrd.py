@@ -1,3 +1,4 @@
+import time
 import multiprocessing as mp
 from os import listdir
 from os.path import isfile, join
@@ -16,14 +17,20 @@ data_dir = 'data/newdata'
 files = [f for f in listdir(data_dir) if isfile(join(data_dir, f))]
 
 def execute(file):
+    start = time.time()
     universe = takahe.universe.create('real')
 
     universe.populate(f"{data_dir}/{file}", n_stars=n_stars)
 
     z = universe.get_metallicity()
 
+    size = universe.populace.size()
+
 #    universe.set_nbins(51)
 #    universe.event_rate(pickle_results=True)
+
+    end = time.time()
+    print(f"Completed z={z} in {end-start} seconds. {n_stars} requested, {size} generated.")
 
     return 1
 

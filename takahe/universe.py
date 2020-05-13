@@ -517,10 +517,12 @@ class Universe:
         # Do we load the first n_stars lines, or a random sample of
         # n_stars lines?
         if load_type == 'linear':
-            self.populace = takahe.load.from_file(loader,
+            pop = takahe.load.from_file_efficient(loader,
                                                   name_hints=name_hints,
                                                   mass=mass,
                                                   n_stars=n_stars)
+
+            self.populace = pop
         elif load_type == 'random':
             self.populace = takahe.load.random_from_file(loader,
                                                          10 * n_stars,
