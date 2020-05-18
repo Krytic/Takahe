@@ -34,7 +34,7 @@ def execute(file):
 
     return 1
 
-cpus_to_use = min(3*mp.cpu_count(), len(files))
+cpus_to_use = min(mp.cpu_count(), len(files))
 
 print(f"Running on {cpus_to_use} CPUs")
 

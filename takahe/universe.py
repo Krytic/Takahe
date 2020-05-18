@@ -241,7 +241,7 @@ class Universe:
     def get_metallicity(self):
         return self.__z
 
-    def event_rate_BPASS(self, pickle_results=False):
+    def event_rate_BPASS(self):
         """Generates and plots the event rate distribution for this universe.
 
         Computes the event rate distribution for this universe. Assumes
@@ -285,13 +285,9 @@ class Universe:
 
         events /= bins # Normalise to years
 
-        filename_syntax = f"output/pickles/BPASS_{self.__z}_"
-        pickle.dump(dtd_hist, open(filename_syntax + "dtd.pickle", 'wb'))
-        pickle.dump(events, open(filename_syntax + "evs.pickle", 'wb'))
-
         return events
 
-    def event_rate(self, pickle_results=False):
+    def event_rate(self):
         """Generates and plots the event rate distribution for this universe.
 
         Computes the event rate distribution for this universe. Assumes
@@ -346,10 +342,6 @@ class Universe:
             bins = np.append(bins, events.getBinWidth(i-1)*1e9)
 
         events /= bins # Normalise to years
-
-        filename_syntax = f"output/pickles/linear_{self.__z}_"
-        pickle.dump(dtd_hist, open(filename_syntax + "dtd.pickle", 'wb'))
-        pickle.dump(events, open(filename_syntax + "evs.pickle", 'wb'))
 
         return events
 
