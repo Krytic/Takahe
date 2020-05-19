@@ -96,58 +96,10 @@ def from_file(fname, name_hints=[], n_stars=100, mass=1e6):
         mass {number} -- The total mass of the ensemble. This is used to
                          populate the ensemble with weight*mass stars of
                          a given stellar configuration (default: {1e6})
-    """
-
-    # If we request all stars, set n_stars to None
-    # pandas interprets this as "load entire file"
-    if n_stars == 'all':
-        n_stars = None
-
-    # Read the file into a dataframe
-    # Sample file format is:
-    # m1   m2   a0    e0    weight   evolution_age   rejuvenation_age   coalescence_time
-    # Note that the number of spaces can vary
-    df = pd.read_csv(fname,
-                     names=name_hints,
-                     nrows=n_stars,
-                     sep=r"\s+",
-                     engine='python')
-
-    # initialize an ensemble (glorified list)
-    ensemble = takahe.ensemble.create()
-
-    for row in df.iterrows():
-        # weight represents the number of stars of this kind per 10^6 solar masses.
-        number_of_stars_of_type = int(np.ceil(row[1]['weight'] * mass))
-
-        # generate this many stars
-        for n in range(number_of_stars_of_type):
-            star = from_data(dict(row[1])) # create the BSS object
-            ensemble.add(star) # add to ensemble -- O(1) operation
-
-    return ensemble
-
-def from_file_efficient(fname, name_hints=[], n_stars=100, mass=1e6):
-    """Load an ensemble from a file. Does so more efficiently than
-    from_file.
-
-    This method will soon replace from_file (when it is proved correct).
-    Generally performs 95-97% faster than from_file.
-
-    Arguments:
-        fname {string} -- the path to the file we wish to open.
-
-    Keyword Arguments:
-        name_hints {list} -- A list of column names for pandas.
-                             (default: {[]})
-        n_stars {number} -- The number of stars (rows in file) to load
-                            (default: {100})
-        mass {number} -- The total mass of the ensemble. This is used to
-                         populate the ensemble with weight*mass stars of
-                         a given stellar configuration (default: {1e6})
 
     Returns:
-        [type] -- [description]
+        ensemble {takahe.ensemble} -- an ensemble of all of the stars
+                                      generated.
     """
     if n_stars == "all":
         n_stars = None
