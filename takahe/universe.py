@@ -5,8 +5,11 @@ import matplotlib.pyplot as plt
 import takahe
 from kea.hist import histogram, BPASS_hist
 from takahe.constants import *
+
 from scipy.optimize import root_scalar, fminbound
 from scipy.integrate import quad
+from scipy.special import gammaincc
+
 from numba import njit
 
 def create(model, hubble_parameter=70):
@@ -28,42 +31,15 @@ These functions are defined here such that we can numba-fy them to make
 them computationally faster.
 """
 
-def _format_z(z):
+def _format_z(z, return_string=True):
     if z[:2] == "em":
         div = 1*10**(-int(z[-1]))
     else:
         div = float("0." + z)
     res = div / 0.020
-    return rf"{res}Z_\odot"
-
-@njit
-def _comoving_vol(DH, omega_k, DC):
-    if omega_k > 0:
-        OK = np.sqrt(omega_k)
-        DM = DH / OK * np.sinh(OK * DC / DH)
-    elif omega_k == 0:
-        DM = DC
-    elif omega_k < 0:
-        OK = np.sqrt(np.abs(omega_k))
-        DM = DH / OK * np.sin(OK * DC / DH)
-
-    if omega_k == 0:
-        VC = 4*np.pi/3 * DM**3
-    else:
-        DH = DH
-        OK = np.sqrt(np.abs(omega_k))
-
-        coeff = 4*np.pi * DH**3 / (2*omega_k)
-        term1 = DM / DH * np.sqrt(1+omega_k*(DM/DH))**2
-
-        if omega_k > 0:
-            term2 = 1/OK * np.arcsinh(OK * DM / DH)
-        else:
-            term2 = 1/OK * np.arcsin(OK * DM / DH)
-
-        VC = coeff * (term1 - term2)
-
-    return VC
+    if return_string:
+        return rf"{res}Z_\odot"
+    return res
 
 """
 Begin definition of Universe class.
@@ -111,6 +87,10 @@ class Universe:
         elif model.lower() == 'highlambda':
             Omega_M = 0.2
             Omega_Lambda = 0.8
+        elif model.lower() == "lcdm":
+            Omega_M = 0.3
+            Omega_Lambda = 0.7
+            hubble_parameter = 70
         elif model.lower() == 'real':
             Omega_M = 0.286
             Omega_Lambda = 0.714
@@ -132,6 +112,8 @@ class Universe:
 
         self.__count = 0
         self.__z = None
+
+        self.SFR = self.stellar_formation_rate
 
     def comoving_volume(self, z=None, d=None):
         """Computes the comoving volume, all-sky, out to redshift z.
@@ -175,13 +157,16 @@ class Universe:
         else:
             DC = self.compute_comoving_distance(z)
 
-        return _comoving_vol(self.DH, self.omega_k, DC)
+        return takahe.helpers.comoving_vol(self.DH, self.omega_k, DC)
 
     def set_nbins(self, resolution):
         if isinstance(resolution, int):
             self.__resolution = resolution
         else:
             raise TypeError("The supplied resolution is not an int!")
+
+    def get_nbins(self):
+        return self.__resolution
 
     def events_at(self, tL):
         events = self.event_rate()
@@ -240,6 +225,21 @@ class Universe:
 
     def get_metallicity(self):
         return self.__z
+
+    def generate_redshift_array(self):
+        """Generates an array of redshifts for this universe.
+
+        Generates an array of data (n=n_bins) representing the redshift values
+        in this universe. Redshifts will correspond to the interval in
+        time space of (0, tH).
+
+        Returns:
+            {np.linspace} -- The redshift array
+        """
+        z_low = self.__lookback_to_redshift(0)
+        z_high = 6
+
+        return np.linspace(z_low, z_high, self.__resolution)
 
     def event_rate_BPASS(self):
         """Generates and plots the event rate distribution for this universe.
@@ -329,7 +329,12 @@ class Universe:
             z_low = self.__lookback_to_redshift(t1)
             z_high = self.__lookback_to_redshift(t2)
 
-            SFRD, _ = quad(self.stellar_formation_rate, z_low, z_high)
+            Z_frac = _format_z(self.__z, return_string=False)
+
+            adv = lambda z: gammaincc(0.84, Z_frac**2*10**(0.3*z))
+            integral = lambda z: self.SFR(z) * adv(z)
+
+            SFRD, _ = quad(integral, z_low, z_high)
 
             SFRD /= (1e-3)**3
 
@@ -337,7 +342,7 @@ class Universe:
                 t1_prime = t2 - ev_edges[j]
                 t2_prime = t2 - ev_edges[j+1]
                 events_in_bin = dtd_hist.integral(t2_prime, t1_prime) * 1e9
-                events.Fill(ev_edges[j], events_in_bin*SFRD)
+                events.Fill(ev_edges[j], events_in_bin * SFRD)
 
             bins = np.append(bins, events.getBinWidth(i-1)*1e9)
 
@@ -509,10 +514,10 @@ class Universe:
         # Do we load the first n_stars lines, or a random sample of
         # n_stars lines?
         if load_type == 'linear':
-            pop = takahe.load.from_file_efficient(loader,
-                                                  name_hints=name_hints,
-                                                  mass=mass,
-                                                  n_stars=n_stars)
+            pop = takahe.load.from_file(loader,
+                                        name_hints=name_hints,
+                                        mass=mass,
+                                        n_stars=n_stars)
 
             self.populace = pop
         elif load_type == 'random':

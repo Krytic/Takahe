@@ -17,7 +17,7 @@ data_dir = 'data/newdata'
 files = [f for f in listdir(data_dir) if isfile(join(data_dir, f))]
 
 def execute(file):
-    start = time.time()
+
     universe = takahe.universe.create('real')
 
     universe.populate(f"{data_dir}/{file}", n_stars=n_stars)
@@ -27,21 +27,23 @@ def execute(file):
     size = universe.populace.size()
 
 #    universe.set_nbins(51)
-#    universe.event_rate(pickle_results=True)
+    universe.event_rate()
 
     end = time.time()
     print(f"Completed z={z} in {end-start} seconds. {n_stars} requested, {size} generated.")
 
     return 1
 
-cpus_to_use = min(mp.cpu_count(), len(files))
+# cpus_to_use = min(mp.cpu_count(), len(files))
 
-print(f"Running on {cpus_to_use} CPUs")
+# print(f"Running on {cpus_to_use} CPUs")
 
-pool = mp.Pool(cpus_to_use)
+# pool = mp.Pool(cpus_to_use)
 
-results = [pool.apply_async(execute, args=(file,)) for file in files]
+# results = [pool.apply_async(execute, args=(file,)) for file in files]
 
-results = [r.get() for r in results]
+# results = [r.get() for r in results]
 
-pool.close()
+# pool.close()
+
+execute(files[0])

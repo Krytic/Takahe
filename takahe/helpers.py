@@ -2,6 +2,35 @@ import numpy as np
 from numba import njit
 
 @njit
+def comoving_vol(DH, omega_k, DC):
+    if omega_k > 0:
+        OK = np.sqrt(omega_k)
+        DM = DH / OK * np.sinh(OK * DC / DH)
+    elif omega_k == 0:
+        DM = DC
+    elif omega_k < 0:
+        OK = np.sqrt(np.abs(omega_k))
+        DM = DH / OK * np.sin(OK * DC / DH)
+
+    if omega_k == 0:
+        VC = 4*np.pi/3 * DM**3
+    else:
+        DH = DH
+        OK = np.sqrt(np.abs(omega_k))
+
+        coeff = 4*np.pi * DH**3 / (2*omega_k)
+        term1 = DM / DH * np.sqrt(1+omega_k*(DM/DH))**2
+
+        if omega_k > 0:
+            term2 = 1/OK * np.arcsinh(OK * DM / DH)
+        else:
+            term2 = 1/OK * np.arcsin(OK * DM / DH)
+
+        VC = coeff * (term1 - term2)
+
+    return VC
+
+@njit
 def _dadt(t, a, e, beta):
     """
     Auxiliary function to compute Equation 3.
