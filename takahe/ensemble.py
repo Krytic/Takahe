@@ -26,6 +26,7 @@ class BinaryStarSystemEnsemble:
 
     def __init__(self):
         self.__ensemble = []
+        self.__lt_ens = []
         self.__count = 0
         self.__pointer = 0
         self.__min_lifetime = np.infty
@@ -148,6 +149,7 @@ class BinaryStarSystemEnsemble:
             self.__min_lifetime = lifetime
 
         self.__ensemble.append(binary_star)
+        self.__lt_ens.append(binary_star.lifetime())
         self.__count += 1
         self.__total_mass += binary_star.get('m1') + binary_star.get('m2')
 
@@ -174,7 +176,7 @@ class BinaryStarSystemEnsemble:
 
         return cts
 
-    def merge_rate(self, t_merge, return_as="rel"):
+    def merge_rate(self, t_merge):
         """Computes the merge rate for this ensemble.
 
         Computes the merge rate for this system in a given timespan.
@@ -203,21 +205,8 @@ class BinaryStarSystemEnsemble:
             ValueError -- if return_as is anything other than "abs" or
                           "rel".
         """
-        count = 0
 
-        if return_as.lower() not in ['abs', 'rel']:
-            raise ValueError("return_as must be either abs or rel")
-
-        for i in range(self.__count):
-            binary_star = self.__ensemble[i]
-            valid = (binary_star.lifetime() <= t_merge)
-            if valid:
-                count += 1
-
-        if return_as == 'abs':
-            return count
-        elif return_as == 'rel':
-            return count / self.__count
+        return takahe.helpers.merge_rate(t_merge, np.array(self.__lt_ens), self.__count)
 
     def compute_existence_time_distribution(self, *argv, **kwargs):
         hist = BPASS_hist()
@@ -225,7 +214,7 @@ class BinaryStarSystemEnsemble:
 
         old_mr = 0
         for bin in range(0, hist.getNBins()-1):
-            mr = self.merge_rate(edges[bin+1], return_as='abs')
+            mr = self.merge_rate(edges[bin+1])
             this_mr = (mr - old_mr)
             plt_mr = self.size() - this_mr
             hist.Fill(edges[bin], plt_mr, ty="lin")
@@ -272,7 +261,7 @@ class BinaryStarSystemEnsemble:
         bin_widths = np.array([])
 
         for bin in range(0, hist.getNBins()):
-            mr = self.merge_rate(edges[bin], return_as='abs')
+            mr = self.merge_rate(edges[bin])
             this_mr = mr - old_mr
             hist.Fill(edges[bin], this_mr, ty="lin")
             old_mr += this_mr

@@ -212,7 +212,7 @@ class Universe:
         NBins = self.__resolution
 
         for i in range(0, NBins-1):
-            merge_rate_up_to_bin = self.populace.merge_rate(edges[i+1], return_as='abs')
+            merge_rate_up_to_bin = self.populace.merge_rate(edges[i+1])
             merge_rate_in_bin = merge_rate_up_to_bin - culmulative_merge_rate
             hist.Fill(edges[i], w=merge_rate_in_bin)
             culmulative_merge_rate += merge_rate_in_bin
@@ -315,7 +315,7 @@ class Universe:
         NBins = self.__resolution
 
         for i in range(1, self.__resolution+1):
-            merge_rate_up_to_bin = self.populace.merge_rate(edges[i], return_as='abs')
+            merge_rate_up_to_bin = self.populace.merge_rate(edges[i])
             width = dtd_hist.getBinWidth(i-1)
             merge_rate_in_bin = merge_rate_up_to_bin - culmulative_merge_rate
             normalised_mr = merge_rate_in_bin / 1e6 / width

@@ -18,6 +18,8 @@ files = [f for f in listdir(data_dir) if isfile(join(data_dir, f))]
 
 def execute(file):
 
+    start = time.time()
+
     universe = takahe.universe.create('real')
 
     universe.populate(f"{data_dir}/{file}", n_stars=n_stars)
