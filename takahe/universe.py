@@ -331,8 +331,7 @@ class Universe:
 
             Z_frac = _format_z(self.__z, return_string=False)
 
-            adv = lambda z: gammaincc(0.84, Z_frac**2*10**(0.3*z))
-            integral = lambda z: self.SFR(z) * adv(z)
+            integral = lambda z: self.SFR(z)
 
             SFRD, _ = quad(integral, z_low, z_high)
 
