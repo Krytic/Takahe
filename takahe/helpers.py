@@ -1,6 +1,7 @@
 import numpy as np
 from numba import njit
 
+@njit
 def merge_rate(t_merge, ensemble, count):
     count = 0
 
