@@ -2,10 +2,10 @@ import numpy as np
 from numba import njit
 
 @njit
-def merge_rate(t_merge, ensemble, count):
+def merge_rate(t_merge, ensemble, size):
     count = 0
 
-    for i in range(count):
+    for i in range(size):
         binary_star = ensemble[i]
         valid = (binary_star <= t_merge)
         if valid:

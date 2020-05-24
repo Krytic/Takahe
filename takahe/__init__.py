@@ -12,3 +12,6 @@ import takahe.binary_star_system as BSS
 import takahe.ensemble
 import takahe.loader as load
 import takahe.universe
+import takahe.helpers
+
+from _metadata import *

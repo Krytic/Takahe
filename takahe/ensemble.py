@@ -149,7 +149,7 @@ class BinaryStarSystemEnsemble:
             self.__min_lifetime = lifetime
 
         self.__ensemble.append(binary_star)
-        self.__lt_ens.append(binary_star.lifetime())
+        self.__lt_ens.append(lifetime)
         self.__count += 1
         self.__total_mass += binary_star.get('m1') + binary_star.get('m2')
 
@@ -170,9 +170,18 @@ class BinaryStarSystemEnsemble:
         return running_sum / self.size()
 
     def get_cts(self):
-        cts = []
+        """Computes the coalescence time distribution of the ensemble.
+
+        Reasonably naive function which just returns an array of
+        coalescene times of the ensemble.
+
+        Returns:
+            {np.ndarray} -- The coalescence times of the systems.
+        """
+        cts = np.array()
+
         for star in self:
-            cts.append(star.get('coalescence_time'))
+            cts = np.append(cts, star.get('coalescence_time'))
 
         return cts
 
@@ -181,32 +190,21 @@ class BinaryStarSystemEnsemble:
 
         Computes the merge rate for this system in a given timespan.
         Merge rate is defined as the number of systems that merge in
-        some timespan t_merge (optionally relative to the number of
-        systems in the ensemble).
+        some timespan t_merge.
 
         Arguments:
             t_merge {float} -- The timespan under consideration. Must be
                                in gigayears; no conversion is
                                performed before comparison.
 
-        Keyword Arguments:
-            return_as {str} -- "abs" or "rel" depending on whether the
-                               merge rate should be returned as an
-                               absolute count or relative count
-                               (to the number of BSS in the ensemble).
-                               If defined as relative, then the merge
-                               rate is constrained to be in the interval
-                               [0, 1]. (default: {"rel"})
-
         Returns:
-            float -- The merge rate of the ensemble.
-
-        Raises:
-            ValueError -- if return_as is anything other than "abs" or
-                          "rel".
+            float -- The number of systems in the ensemble that merge
+                     within t_merge.
         """
 
-        return takahe.helpers.merge_rate(t_merge, np.array(self.__lt_ens), self.__count)
+        merge_rate = takahe.helpers.merge_rate(t_merge, np.array(self.__lt_ens), self.__count)
+
+        return merge_rate
 
     def compute_existence_time_distribution(self, *argv, **kwargs):
         hist = BPASS_hist()
@@ -224,50 +222,6 @@ class BinaryStarSystemEnsemble:
         hist = hist / 1e6 / bin_widths
 
         hist.plotLog(*argv, **kwargs)
-
-        return hist
-
-    def legacy_compute_delay_time_distribution(self, *argv, **kwargs):
-        """Generates the event rate plot for this ensemble.
-
-        LEGACY FUNCTION, this is here as it is of potential use for
-        those using the BPASS time bins, however it's unlikely to be
-        developed further, and may be removed in a future release.
-
-        Computes the instantaneous delay-time distribution for this
-        ensemble. Returns the histogram generated, however the histogram
-        is saved internally in Kea as a matplotlib plot.
-
-        Thus, given an ensemble called ens, one may use
-
-        >>> ens.compute_delay_time_distribution()
-        >>> plt.show()
-
-        to render it.
-
-        Note that the binning is logarithmic so bin size does vary
-        across the plot.
-
-        Thanks to Max Briel (https://github.com/maxbriel/) for his
-        assistance in writing this function.
-
-        Returns:
-            hist -- the (kea-generated) histogram object.
-        """
-
-        hist = BPASS_hist()
-        old_mr = 0
-        edges = hist.getLinEdges()
-        bin_widths = np.array([])
-
-        for bin in range(0, hist.getNBins()):
-            mr = self.merge_rate(edges[bin])
-            this_mr = mr - old_mr
-            hist.Fill(edges[bin], this_mr, ty="lin")
-            old_mr += this_mr
-            bin_widths = np.append(bin_widths, hist.getBinWidth(bin))
-
-        hist = hist / 1e6 / bin_widths
 
         return hist
 

@@ -1,4 +1,5 @@
 from setuptools import setup
+import re
 
 description = 'A python library to evolve binary star systems in time.'
 
@@ -8,16 +9,23 @@ try:
 except FileNotFoundError:
 	long_description = description
 
-try:
-	with open('takahe/__version__.py', 'r') as f:
-		version = f.read()
+metadata = {"version": "", "author": "", "email": ""}
+metadata_file = open("takahe/_metadata.py", "rt").read()
+
+for item in metadata.keys():
+	version_regex = rf"^__{item}__ = ['\"]([^'\"]*)['\"]"
+
+	match = re.search(version_regex, metadata_file, re.M)
+
+	if match:
+	    metadata[item] = match.group(1)
 
 setup(name='takahe',
-	  version=version,
+	  version=metadata['version'],
 	  description=description,
 	  long_description=long_description,
-	  author='Sean Richards',
-	  author_email='sric560@aucklanduni.ac.nz',
+	  author=metadata['author'],
+	  author_email=metadata['email'],
 	  packages=['takahe'],
 	  zip_safe=False,
 	  install_requires=[
