@@ -7,6 +7,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import takahe
 
+import faulthandler
+faulthandler.enable()
+
 n_stars = 1000
 #plt.rcParams['figure.figsize'] = (40, 40)
 
@@ -30,68 +33,78 @@ data_dir = 'data/newdata'
 files = [f for f in listdir(data_dir) if isfile(join(data_dir, f))]
 
 def execute(file):
-
     start = time.time()
 
     universe = takahe.universe.create('real')
 
     universe.populate(f"{data_dir}/{file}", n_stars=n_stars)
+    print(f"{file}: populated")
 
     z = universe.get_metallicity()
 
     size = universe.populace.size()
 
 #    universe.set_nbins(51)
+    print(f"z={z}: events")
     events = universe.event_rate()
+    print(f"z={z}: events done")
+
+    today = int(np.nan_to_num(events.getBinContent(0), posinf=0))
+    print(f"z={z}: {today} today computed")
+
+    today = np.log10(today) if today > 0 else 0
+    print(f"z={z}: plotting")
 
     events.plot()
     plt.xlabel("Lookback Time [Gyr]")
     plt.ylabel(r"Events [# / yr / Gpc$^3$]")
-    plt.title(rf"Z=${_format_z(z)}$")
-    plt.yscale("log")
+    plt.title(rf"Z=${_format_z(z)}$ log(R(z=0))=${today:.2f}$")
+    # plt.yscale("log")
     plt.savefig(f"output/figures/linear_{z}.png")
 
     end = time.time()
     print(f"Completed z={z} in {end-start} seconds. {n_stars} requested, {size} generated.")
 
-    # plt.show()
+    plt.show()
 
-    return _express_z(z), int(events.getBinContent(0))
+    return _express_z(z), today
 
-cpus_to_use = min(mp.cpu_count(), len(files))
+execute(files[0])
 
-print(f"Running on {cpus_to_use} CPUs")
+# cpus_to_use = min(mp.cpu_count(), len(files))
 
-pool = mp.Pool(cpus_to_use)
+# print(f"Running on {cpus_to_use} CPUs")
 
-results = [pool.apply_async(execute, args=(file,)) for file in files]
+# pool = mp.Pool(cpus_to_use)
 
-results = [r.get() for r in results]
+# results = [pool.apply_async(execute, args=(file,)) for file in files]
 
-pool.close()
+# results = [r.get() for r in results]
 
-print("Table of results")
+# pool.close()
 
-results.sort(key=lambda tup: tup[0])
+# print("Table of results")
 
-output = r"""
-\begin{table}[h]
-    \centering
-    \begin{tabular}{@{}ll@{}}
-        \toprule
-        $Z$ & $R(z=0)$ \\
-        \midrule
-"""
+# results.sort(key=lambda tup: tup[0])
 
-for result in results:
-    output += fr"        ${result[0]}Z_\odot$ & {np.log10(result[1]):.2f} \\"
-    output += "\n"
+# output = r"""
+# \begin{table}[h]
+#     \centering
+#     \begin{tabular}{@{}ll@{}}
+#         \toprule
+#         $Z$ & $R(z=0)$ \\
+#         \midrule
+# """
 
-output.rstrip("\n")
-output += r"""
-        \bottomrule
-    \end{tabular}
-\end{table}
-"""
+# for result in results:
+#     output += fr"        ${result[0]}Z_\odot$ & {result[1]:.2f} \\"
+#     output += "\n"
 
-print(output)
+# output.rstrip("\n")
+# output += r"""
+#         \bottomrule
+#     \end{tabular}
+# \end{table}
+# """
+
+# print(output)

@@ -1,17 +1,8 @@
+import pathlib
+import ctypes
+
 import numpy as np
 from numba import njit
-
-@njit
-def merge_rate(t_merge, ensemble, size):
-    count = 0
-
-    for i in range(size):
-        binary_star = ensemble[i]
-        valid = (binary_star <= t_merge)
-        if valid:
-            count += 1
-
-    return count
 
 @njit
 def comoving_vol(DH, omega_k, DC):

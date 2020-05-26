@@ -6,6 +6,8 @@ import takahe
 from kea.hist import histogram, BPASS_hist
 from takahe.constants import *
 
+import merge_rate
+
 from scipy.optimize import root_scalar, fminbound
 from scipy.integrate import quad
 from scipy.special import gammaincc
@@ -313,6 +315,18 @@ class Universe:
         dtd_bin_widths = np.array([])
 
         NBins = self.__resolution
+
+        print(f"z={self.__z}: calling fortran")
+
+        er = merge_rate.event_rates.event_rate_f95(edges,
+                                                   ev_edges,
+                                                   self.populace.lifetimes(),
+                                                   self.populace.size(),
+                                                   NBins)
+        print(f"z={self.__z}: filling")
+        events.Fill([i for i in range(NBins+1)], w=er)
+
+        return events
 
         for i in range(1, self.__resolution+1):
             merge_rate_up_to_bin = self.populace.merge_rate(edges[i])

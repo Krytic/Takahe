@@ -5,6 +5,8 @@ import takahe
 from takahe.constants import *
 from kea.hist import BPASS_hist, histogram
 
+from merge_rate import event_rates
+
 def create():
     """Creates a BinaryStarSystemEnsemble object (i.e., a collection of
     binary star systems).
@@ -185,6 +187,9 @@ class BinaryStarSystemEnsemble:
 
         return cts
 
+    def lifetimes(self):
+        return self.__lt_ens
+
     def merge_rate(self, t_merge):
         """Computes the merge rate for this ensemble.
 
@@ -202,9 +207,7 @@ class BinaryStarSystemEnsemble:
                      within t_merge.
         """
 
-        merge_rate = takahe.helpers.merge_rate(t_merge, np.array(self.__lt_ens), self.__count)
-
-        return merge_rate
+        return event_rates.merge_rate_f95(t_merge, np.array(self.__lt_ens), self.__count)
 
     def compute_existence_time_distribution(self, *argv, **kwargs):
         hist = BPASS_hist()

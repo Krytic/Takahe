@@ -1,4 +1,5 @@
 from setuptools import setup
+from Cython.Build import cythonize
 import re
 
 description = 'A python library to evolve binary star systems in time.'
@@ -33,5 +34,6 @@ setup(name='takahe',
 	  	'numpy',
 	  	'matplotlib',
 	  	'numba'
-	  ]
+	  ],
+	  ext_modules = cythonize("src/merge_rate.pyx")
 	)

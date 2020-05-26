@@ -217,7 +217,7 @@ class BinaryStarSystem:
         """
         t, a, e = self.evolve_until_merger()
 
-        if np.isclose(e[-1], 0.0) and a[-1] > 2*Solar_Radii:
+        if np.isclose(e[-1], thresholds[0]) and a[-1] > thresholds[1]:
             return True
 
         return False
