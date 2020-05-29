@@ -12,3 +12,4 @@ Welcome to Takahe's documentation!
 
    usage/installation
    usage/quickstart
+   usage/loading
