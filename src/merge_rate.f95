@@ -1,10 +1,10 @@
 module event_rates
       contains
 
-      function delay_time_distribution(ensemble, edges, NBins) result(dtd)
+      function delay_time_distribution(ensemble, edges, NBins)
             implicit none
             integer  :: NBins 
-            real     :: dtd(0:NBins)
+            real     :: delay_time_distribution(0:NBins)
             real     :: ensemble(0:)
             real     :: edges(0:NBins)
 
@@ -29,20 +29,20 @@ module event_rates
                   culmulative_merge_rate = culmulative_merge_rate + mergers_in_bin
 
                   ! normalisation
-                  dtd(i) = mergers_in_bin / 1E6 / bin_width
+                  delay_time_distribution(i) = mergers_in_bin / 1E6 / bin_width
             enddo
 
             return
       end function
 
-      function estimate_lookback(z) result(t)
+      function estimate_lookback(z)
             implicit none
             real    :: z, zi
             integer :: i
-            real    :: t
             real    :: integrand(0:ceiling(z/0.05))
             real    :: om, ok, ol, tH
             real    :: integral
+            real    :: estimate_lookback
 
             om = 0.3
             ol = 0.7
@@ -56,35 +56,38 @@ module event_rates
             enddo
 
             integral = integrate(integrand, 0e0, z)
-            t = tH * integral
+            estimate_lookback = tH * integral
 
             return
       end function
 
-      function estimate_redshift(t) result(z)
+      function estimate_redshift(t)
             implicit none
             real    :: t
-            real    :: z, zest
+            real    :: zest
             integer :: zi
+            real    :: estimate_redshift
             
-            z = 100
+            estimate_redshift = 100
             do zi = 0, 1000
                   zest = abs(estimate_lookback(float(zi) / 10) - t)
-                  if(zest.le.z) then
-                        z = zest
+                  if(zest.le.estimate_redshift) then
+                        estimate_redshift = zest
                   endif
             enddo
+
+
             return
       end function
 
-      function compute_SFR(z1, z2) result(SFR)
+      function compute_SFR(z1, z2)
             implicit none
             real       :: z1
             real       :: z2
             integer    :: z
             real       :: SFRD(0:ceiling(z2/0.01 - z1))
             real       :: zit
-            real       :: SFR
+            real       :: compute_SFR
             integer    :: i
 
             i = 0
@@ -95,18 +98,18 @@ module event_rates
                   i = i + 1
             enddo
 
-            SFR = integrate(SFRD, z1, z2)
+            compute_SFR = integrate(SFRD, z1, z2)
 
             return
       end function
 
-      function integrate(f, x1, x2) result(integral)
+      function integrate(f, x1, x2)
             implicit none
             real    :: f(0:)
             real    :: x1
             real    :: x2
             integer :: i
-            real    :: integral
+            real    :: integrate
             integer :: NBins
             integer :: bin_low, bin_up
             real    :: lower_bin_area, upper_bin_area
@@ -120,7 +123,7 @@ module event_rates
             bin_up = floor(NBins * (x2 - NBins) / (NBins))
 
             if (bin_low == bin_up) then
-                  integral = (x2 - x1) * f(bin_low)
+                  integrate = (x2 - x1) * f(bin_low)
                   return
             endif
 
@@ -128,31 +131,31 @@ module event_rates
             lower_bin_area = f(bin_low) * width
             upper_bin_area = f(bin_up) * width
 
-            integral = lower_bin_area + upper_bin_area
+            integrate = lower_bin_area + upper_bin_area
 
             if(bin_low + 1 /= bin_up) then
                   do i = bin_low+1, bin_up
-                        integral = integral + f(i) * width
+                        integrate = integrate + f(i) * width
                   enddo
             endif
 
             return
       end function
 
-      function merge_rate_f95(t_merge, ensemble) result(mergers)
+      function merge_rate_f95(t_merge, ensemble)
             implicit none
             real     :: t_merge
             real     :: ensemble(0:)
-            integer  :: mergers
+            integer  :: merge_rate_f95
             integer  :: i, n
 
             n = size(ensemble)
 
             i = 0
-            mergers = 0
+            merge_rate_f95 = 0
             do while(i.le.n)
                   if(ensemble(i).ge.t_merge) then
-                        mergers = mergers + 1
+                        merge_rate_f95 = merge_rate_f95 + 1
                   endif
                   i = i + 1
             enddo

@@ -270,3 +270,13 @@ class BinaryStarSystem:
         a /= (Solar_Radii * 1000)
 
         return evolve_over, a, e
+
+    def __str__(self):
+        return f"""
+Binary Star System Parameters:
+    - M1: {self.get('m1')} kg
+    - M2: {self.get('m2')} kg
+    - a0: {self.get('a0')} km
+    - e0: {self.get('e0')}
+    - Coalescence Time: {self.get('coalescence_time')} Gyr
+        """
