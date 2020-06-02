@@ -17,6 +17,8 @@ To create any of the three classes, just call :code:`.create()` on the relevant 
 
 Each class represents a different level of abstraction for the system. Most simulations will start by creating a Universe, and propagating individual BSS objects in the ensemble through time.
 
+This quick start guide will guide you through the most common use cases for each class. It is not extensive, you are referred to the more advanced docs for more guidance.
+
 Simulating the Universe
 -----------------------
 
@@ -89,5 +91,78 @@ The full code of this example is below:
 Simulating an Ensemble
 ----------------------
 
+The next level is an ensemble. A universe can be thought of as an ensemble of stars endowed with some physical constants. If you don't care about those constants, you can work with the ensemble itself, exposed via the :code:`populace` attribute::
+
+  ensemble = my_universe.populace
+
+or you can create an empty ensemble yourself to populate later::
+
+  ensemble = takahe.ensemble.create()
+
+or you can directly load a file into an ensemble::
+
+  ensemble = takahe.load.from_file('data/mydatafile.dat')
+
+Whichever way you choose to do it, the resultant object is an instance of `takahe.ensemble.Ensemble` and can be manipulated reasonably easily. Say you want to loop through an ensemble and print out the details of a system that has a primary mass above :math:`1M_\odot`. That can be done like:
+
+.. code-block:: python
+  :linenos:
+
+  ensemble = takahe.load.from_file('data/mydatafile.dat')
+  
+  for star in ensemble:
+  	if star.get('m1') > 1:
+  	  print(star)
+  	  break
+
+That will print something like::
+
+  Binary Star System Parameters:
+    - M1: 5.967e+30 kg
+    - M2: 1.989e+30 kg
+    - a0: 34775000000.0 km
+    - e0: 0.7
+    - Coalescence Time: 7215.963430365828 Gyr
+
+Alternatively, you can trace your ensemble through phase space (a/e-space), with
+
+.. code-block:: python
+  :linenos:
+
+  ensemble = takahe.load.from_file('data/mydatafile.dat')
+  
+  ensemble.track_through_phase_space()
+  plt.show()
+
+(a subset can be specified by passing the a 2-tuple named :code:`in_range` to the method)
+
+This will give you a graph similar to this:
+
+.. image:: ../images/phase_space_plot.png
+   :width: 600
+
 Simulating a single system
 --------------------------
+
+You can create a single binary star system and follow its evolution like so:
+
+.. code-block:: python
+  :linenos:
+
+  # Units: Solar Units
+  m1 = 2
+  m2 = 1
+  a0 = 70
+  e0 = 0.7
+
+  extra_terms = dict(
+  	'weight': 1e-5,
+  	'evolution_age': 1e7,
+  	'rejuvenation_age': 1e6
+  )
+
+  star = takahe.BSS.create(m1, m2, a0, e0, extra_terms) 
+
+  t, a, e = star.evolve_until_merger()
+
+This returns three arrays: a time array (from 0 until coalescence), a semimajor axis array, and an eccentricity array.
