@@ -1,14 +1,35 @@
 module event_rates
       contains
 
-      function delay_time_distribution(ensemble, edges, NBins)
+      function compute_merge_rate(t_merge, ensemble, n)
+            implicit none
+            real     :: t_merge
+            real     :: ensemble(0:n)
+            integer  :: compute_merge_rate
+            integer  :: i, n
+
+            i = 0
+            compute_merge_rate = 0
+
+            do while(i.le.n)
+                  if(ensemble(i).le.t_merge) then
+                        compute_merge_rate = compute_merge_rate + 1
+                  endif
+                  i = i + 1
+            enddo
+
+            return
+      end function
+
+      function delay_time_distribution(ensemble, edges, NBins, lt_size)
             implicit none
             integer  :: NBins 
             real     :: delay_time_distribution(0:NBins)
-            real     :: ensemble(0:)
+            real     :: ensemble(0:NBins)
             real     :: edges(0:NBins)
+            integer  :: lt_size
 
-            integer  :: i
+            integer  :: i, j
             real     :: merge_time
             integer  :: mergers_upto
             integer  :: culmulative_merge_rate
@@ -17,23 +38,23 @@ module event_rates
 
             culmulative_merge_rate = 0
 
+            bin_width = edges(1) - edges(0)
+
             ! Iterate over the bins
-            do i = 0, size(ensemble)-1
+            do i = 0, NBins-1
                   ! Get the number of mergers up to the current bin
-                  merge_time = edges(i)
-                  bin_width = edges(i+1) - edges(i)
+                  merge_time = edges(i+1)
+                  
+                  mergers_upto = compute_merge_rate(merge_time, ensemble, lt_size)
 
-                  mergers_upto = merge_rate_f95(merge_time, ensemble)
                   mergers_in_bin = mergers_upto - culmulative_merge_rate
-
-                  culmulative_merge_rate = culmulative_merge_rate + mergers_in_bin
 
                   ! normalisation
                   delay_time_distribution(i) = mergers_in_bin / 1E6 / bin_width
-            enddo
 
-            return
-      end function
+                  culmulative_merge_rate = culmulative_merge_rate + mergers_in_bin
+            enddo
+     end function
 
       function estimate_lookback(z)
             implicit none
@@ -50,12 +71,14 @@ module event_rates
             tH = 1 / (70 / 3.086E19 * 315576E11)
 
             zi = 0
-            do i=0, ceiling(z/0.5)
-                  integrand(i) = 1e0 / ((1e0 + zi) * sqrt(om * (1e0+zi)**3) + ok * (1e0+zi)**2 + ol)
+
+            do i = 0, ceiling(z/0.5)
+                  integrand(i) = 1e0 / ((1e0 + zi) * sqrt(om * (1e0+zi)**3 + ok * (1e0+zi)**2 + ol))
                   zi = zi + 0.5
             enddo
-
+            
             integral = integrate(integrand, 0e0, z)
+
             estimate_lookback = tH * integral
 
             return
@@ -69,6 +92,7 @@ module event_rates
             real    :: estimate_redshift
             
             estimate_redshift = 100
+
             do zi = 0, 1000
                   zest = abs(estimate_lookback(float(zi) / 10) - t)
                   if(zest.le.estimate_redshift) then
@@ -93,6 +117,9 @@ module event_rates
             i = 0
 
             do z = 100*floor(z1), 100*ceiling(z2)
+                  if(z.eq.size(SFRD)) then
+                        exit
+                  endif
                   zit = float(z) / 100
                   SFRD(i) = 0.015 * (1e0+zit)**2.7 / (1e0+((1e0+zit)/2.9)**5.6)
                   i = i + 1
@@ -105,7 +132,7 @@ module event_rates
 
       function integrate(f, x1, x2)
             implicit none
-            real    :: f(0:)
+            real    :: f(0:10000)
             real    :: x1
             real    :: x2
             integer :: i
@@ -119,8 +146,8 @@ module event_rates
 
             width = (maxval(f) - minval(f) / NBins)
 
-            bin_low = floor(NBins * (x1 - NBins) / (NBins))
-            bin_up = floor(NBins * (x2 - NBins) / (NBins))
+            bin_low = floor(x1 / width)
+            bin_up = floor(x2 / width)
 
             if (bin_low == bin_up) then
                   integrate = (x2 - x1) * f(bin_low)
@@ -142,36 +169,16 @@ module event_rates
             return
       end function
 
-      function merge_rate_f95(t_merge, ensemble)
-            implicit none
-            real     :: t_merge
-            real     :: ensemble(0:)
-            integer  :: merge_rate_f95
-            integer  :: i, n
-
-            n = size(ensemble)
-
-            i = 0
-            merge_rate_f95 = 0
-            do while(i.le.n)
-                  if(ensemble(i).ge.t_merge) then
-                        merge_rate_f95 = merge_rate_f95 + 1
-                  endif
-                  i = i + 1
-            enddo
-
-            return
-      end function
-
-      subroutine event_rate_f95(events, edges, events_edges, lifetimes, lt_size, NBins)
+      subroutine event_rate_f95(events, edges, events_edges, SFH, lifetimes, lt_size, NBins)
             implicit none
             ! input parameters
-            real, intent(out)   :: events(0:NBins) ! event rate distribution
-            integer, intent(in) :: NBins ! number of bins
-            real, intent(in)    :: events_edges(0:NBins) ! Event histogram edges
-            real, intent(in)    :: edges(0:NBins) ! DTD edges
-            real, intent(in)    :: lifetimes(0:lt_size-1)
+            real, intent(out)   :: events(0: NBins) ! event rate distribution
+            real, intent(in)    :: edges(0: NBins) ! DTD edges
+            real, intent(in)    :: events_edges(0: NBins) ! Event histogram edges
+            real, intent(in)    :: SFH(0: NBins) ! Stellar Formation Rate
+            real, intent(in)    :: lifetimes(0: lt_size)
             integer, intent(in) :: lt_size
+            integer, intent(in) :: NBins ! number of bins
 
             ! Custom parameters
             real                :: dtd(0:NBins)
@@ -185,40 +192,36 @@ module event_rates
             integer             :: bin
 
             ! functions
-            dtd = delay_time_distribution(lifetimes, edges, NBins)
-            print *, "DTD generated"
-            do i = 1, NBins+1
+            dtd = delay_time_distribution(lifetimes, edges, NBins, lt_size)
+
+            do i = 1, NBins
                   t1 = events_edges(i-1)
                   t2 = events_edges(i)
-
-                  print *, "Ts done"
 
                   z1 = estimate_redshift(t1)
                   z2 = estimate_redshift(t2)
 
-                  print *, 'computing sfr'
+                  SFR = integrate(SFH, z1, z2)
 
-                  SFR = compute_SFR(z1, z2) / (1E-3) ** 3
+                  SFR = SFR / (1E-3) ** 3
 
-                  print *, "about to enter inner loop"
+                  bin_widths(i-1) = (edges(i) - edges(i-1))
+
                   do j = 0, i-1
                         t1_p = t2 - events_edges(j)
                         t2_p = t2 - events_edges(j+1)
 
                         integral = integrate(dtd, t2_p, t1_p)
-                        events_in_bin = floor(integral * 1E9)
-                        bin = floor(NBins * (events_edges(j) - NBins) / (NBins))
-                        events(bin) = events(bin) + events_in_bin + SFR
+                        events_in_bin = integral * 1E9
+
+                        ! select the right bin to insert into
+                        bin = floor((events_edges(j) / bin_widths(i-1)))
+                        events(bin) = events(bin) + events_in_bin * SFR
                   enddo
-
-                  print *, "exited inner loop"
-                  print *, i
-
-                  bin_widths(i-1) = (edges(i) - edges(i-1)) * 1E9
             enddo
 
             do i = 0, NBins
-                  events(i) = events(i) / bin_widths(i)
+                  events(i) = events(i) / (bin_widths(i) * 1E9)
             enddo
 
       end subroutine
