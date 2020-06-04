@@ -117,7 +117,7 @@ def from_file(fname, name_hints=[], n_stars=100, mass=1e6):
     i = 0
 
     while current_mass < mass:
-        if i >= n_stars:
+        if n_stars != None and i >= n_stars:
             break
 
         row = df.iloc[i].to_dict()
@@ -165,6 +165,9 @@ def random_from_file(fname, draw_from, name_hints=[], n_stars=100, mass=1e6):
                                       the ensemble of objects,
     """
 
+    if n_stars == 'all':
+        return from_file(fname, name_hints=name_hints, n_stars=n_stars, mass=mass)
+
     ensemble = takahe.ensemble.create()
 
     df = pd.read_csv(fname,
@@ -175,10 +178,24 @@ def random_from_file(fname, draw_from, name_hints=[], n_stars=100, mass=1e6):
 
     sample = df.sample(n_stars)
 
-    for star_line in sample.iterrows():
-        star_line = star_line[1] # pandas returns a tuple from iterrows()
-        for n in range(int(np.ceil(star_line['weight'] * mass))):
-            binary_star = from_data(star_line)
-            ensemble.add(binary_star)
+    i = 0
+
+    current_mass = 0
+
+    while current_mass < mass:
+        if n_stars != None and i >= n_stars:
+            break
+
+        row = sample.iloc[i].to_dict()
+        number_of_stars_of_type = int(np.ceil(row['weight'] * mass))
+
+        star = from_data(row)
+
+        for j in range(number_of_stars_of_type):
+            ensemble.add(star)
+
+        current_mass += (star.get_mass() * number_of_stars_of_type)
+
+        i += 1
 
     return ensemble
