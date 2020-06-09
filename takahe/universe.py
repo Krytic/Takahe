@@ -289,79 +289,116 @@ class Universe:
 
         return events
 
-    def event_rate(self):
+    def event_rate(self, SFRD_so_far=None, Z_compute=None):
         """Generates and plots the event rate distribution for this universe.
 
         Computes the event rate distribution for this universe. Assumes
-        SFRD as given by eqn(15) in Madau & Dickinson 2014 [1], with
-        u = 5.6 (see self.stellar_formation_rate for details).
+        SFRD as given by eqn(5) in Langer & Norman 2006 [1], with
+        u = 5.6 (see self.stellar_formation_rate for details). In the case
+        of single metallicity evolution, this reduces to the formula given
+        by eqn(15) in Madau & Dickinson 2014 [2].
 
         Returns the given histogram for further manipulation, if required.
 
-        [1] https://www.annualreviews.org?cid=75#/doi/pdf/10.1146/annurev-astro-081811-125615
+        [1] https://arxiv.org/pdf/astro-ph/0512271.pdf
+
+        [2] https://www.annualreviews.org?cid=75#/doi/pdf/10.1146/annurev-astro-081811-125615
+
+        Keyword Arguments:
+            SFRD_so_far {kea.hist.histogram} -- A histogram of the
+                                                SFRD computed at other
+                                                metallicities. Leave as
+                                                None if you are only
+                                                considering a single-
+                                                metallicity universe.
+                                                (default: {None})
 
         Returns:
-            {kea.hist.histogram} -- the generated histogram.
+            dtd_hist {kea.hist.histogram}  -- The DTD of this universe
+            SFRD_hist {kea.hist.histogram} -- The (metallicity-dependent)
+                                              SFRD of this universe
+            events {kea.hist.histogram}    -- The event_rate histogram of
+                                              this universe.
         """
 
+        # First, set up some of the histograms we'll be returning
         dtd_hist = histogram(0, self.tH, self.__resolution)
         edges = dtd_hist.getBinEdges()
 
         events = histogram(0, self.tH, self.__resolution)
         ev_edges = events.getBinEdges()
+
+        # This holds the width of each bin, for normalisation reasons later.
         bins = np.array([])
 
-        culmulative_merge_rate = 0
-        dtd_bin_widths = np.array([])
+        old_mr = 0
 
         NBins = self.__resolution
 
-        print(f"z={self.__z}: calling fortran")
+        SFRD_hist = histogram(0, self.tH, self.__resolution)
 
-        er = merge_rate.event_rates.event_rate_f95(edges,
-                                                   ev_edges,
-                                                   self.populace.lifetimes(),
-                                                   self.populace.size(),
-                                                   NBins)
-        print(f"z={self.__z}: filling")
-        events.Fill([i for i in range(NBins+1)], w=er)
+        # These two lambdas define the SFRD equation given by eqn(5) of
+        # Langer & Norman: https://arxiv.org/pdf/astro-ph/0512271.pdf
+        fSFRD = lambda z: self.stellar_formation_rate(z=z)
+        fGamma = lambda z, Z: gammainc(0.84, Z**2 * 10**(0.3*z))
 
-        return events
+        if Z_compute is None:
+            Z = takahe.helpers.format_metallicity(self.get_metallicity())
+        else:
+            Z = takahe.helpers.format_metallicity(Z_compute)
 
+        # Generate a histogram of SFRD at *this* metallicity.
+        # This histogram is what is returned by the function.
+        for edge in SFRD_hist.getBinEdges():
+            z = self.lookback_to_redshift(edge)
+            SFRD_at_z = fSFRD(z) * fGamma(z, Z)
+            SFRD_hist.Fill(edge, w=SFRD_at_z)
+
+        # Generate a manipulatable histogram.
+        SFRD = SFRD_hist.copy()
+
+        # Langer & Norman's formula is *culmulative* in metallicity.
+        # So we need to subtract the contributions from metallicities we
+        # have already considered.
+        if np.any(SFRD_so_far.getValues()) or SFRD_so_far is not None:
+            # if we reach here, then this is NOT the first metallicity we've
+            # computed this for, so we need to remove metallicities
+            for bin in SFRD.getBinEdges():
+                SFRD.Fill(bin, -SFRD_so_far.getBinContent(SFRD_so_far.getBin(bin)))
+
+        # Iterate over the bins in the histogram.
         for i in range(1, self.__resolution+1):
-            merge_rate_up_to_bin = self.populace.merge_rate(edges[i])
+            # Compute the merge rate of this bin: For use in the DTD
+            mr = self.populace.merge_rate(edges[i])
             width = dtd_hist.getBinWidth(i-1)
-            merge_rate_in_bin = merge_rate_up_to_bin - culmulative_merge_rate
-            normalised_mr = merge_rate_in_bin / 1e6 / width
+            this_mr = mr - old_mr
+            normalised_mr = this_mr / 1e6 / width
 
             dtd_hist.Fill(edges[i-1], w=normalised_mr)
-            culmulative_merge_rate += merge_rate_in_bin
+            old_mr += this_mr
 
             t1 = ev_edges[i-1]
             t2 = ev_edges[i]
 
-            z_low = self.__lookback_to_redshift(t1)
-            z_high = self.__lookback_to_redshift(t2)
+            # Compute the mass formed in this time bin
+            this_SFRD = SFRD.integral(t1, t2)
 
-            Z_frac = _format_z(self.__z, return_string=False)
+            this_SFRD *= (1e3)**3
 
-            integral = lambda z: self.SFR(z)
-
-            SFRD, _ = quad(integral, z_low, z_high)
-
-            SFRD /= (1e-3)**3
-
+            # Convolve the SFH with the DTD to get the event rates
             for j in range(i):
                 t1_prime = t2 - ev_edges[j]
                 t2_prime = t2 - ev_edges[j+1]
                 events_in_bin = dtd_hist.integral(t2_prime, t1_prime) * 1e9
-                events.Fill(ev_edges[j], events_in_bin * SFRD)
+                events.Fill(ev_edges[j], events_in_bin*this_SFRD)
 
-            bins = np.append(bins, events.getBinWidth(i-1)*1e9)
+            width = events.getBinWidth(i-1)*1e9
+            bins = np.append(bins, width)
 
-        events /= bins # Normalise to years
+        # Normalise to years
+        events /= bins
 
-        return events
+        return dtd_hist, SFRD_hist, events
 
     def __lookback_to_redshift(self, tL):
         """Internal function to convert a lookback time into a redshift.
