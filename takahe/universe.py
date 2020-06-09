@@ -6,8 +6,6 @@ import takahe
 from kea.hist import histogram, BPASS_hist
 from takahe.constants import *
 
-import merge_rate
-
 from scipy.optimize import root_scalar, fminbound
 from scipy.integrate import quad
 from scipy.special import gammaincc
@@ -26,22 +24,6 @@ def create(model, hubble_parameter=70):
     """
     return Universe(model, hubble_parameter)
 
-"""
-Internal functions.
-
-These functions are defined here such that we can numba-fy them to make
-them computationally faster.
-"""
-
-def _format_z(z, return_string=True):
-    if z[:2] == "em":
-        div = 1*10**(-int(z[-1]))
-    else:
-        div = float("0." + z)
-    res = div / 0.020
-    if return_string:
-        return rf"{res}Z_\odot"
-    return res
 
 """
 Begin definition of Universe class.
@@ -72,7 +54,9 @@ class Universe:
 
         Keyword Arguments:
             hubble_parameter {float} -- the current value of H0.
-                                        units are km/s/Mpc.
+                                        units are km/s/Mpc. You must
+                                        specify this if you are not using
+                                        the lcdm model.
                                         (default: 70)
 
         Raises:
@@ -93,10 +77,6 @@ class Universe:
             Omega_M = 0.3
             Omega_Lambda = 0.7
             hubble_parameter = 70
-        elif model.lower() == 'real':
-            Omega_M = 0.286
-            Omega_Lambda = 0.714
-            hubble_parameter = 69.6
         else:
             raise ValueError("Incorrect model type!")
 
