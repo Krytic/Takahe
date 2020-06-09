@@ -14,7 +14,7 @@ import matplotlib.gridspec as gridspec
 
 from scipy.special import gammaincc
 
-n_stars = 'all'
+n_stars = 2000
 #plt.rcParams['figure.figsize'] = (40, 40)
 data_dir = 'data/newdata'
 files = [f for f in listdir(data_dir) if isfile(join(data_dir, f))]
@@ -58,9 +58,9 @@ for i in range(n):
 
     Z_frac = all_metallicities[i]
     Z_frac_prev = all_metallicities[i-1] if i > 0 else 0
-    Z_frac_next = all_metallicities[i+1] if i < n else all_metallicities[i]+0.010
+    # Z_frac_next = all_metallicities[i+1] if i < n else all_metallicities[i]+0.010
 
-    Z_compute = [Z_frac_prev, Z_frac, Z_frac_next]#np.mean([Z_frac_prev, Z_frac])# if i < n else 1-np.sum(all_metallicities[:-1])
+    Z_compute = np.mean([Z_frac_prev, Z_frac])# if i < n else 1-np.sum(all_metallicities[:-1])
 
     file = file_array[Z_frac]
 
@@ -153,3 +153,4 @@ plt.yscale('log')
 
 event_rate_histogram.plot()
 plt.show()
+

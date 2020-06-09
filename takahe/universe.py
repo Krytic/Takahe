@@ -8,9 +8,7 @@ from takahe.constants import *
 
 from scipy.optimize import root_scalar, fminbound
 from scipy.integrate import quad
-from scipy.special import gammaincc
-
-from numba import njit
+from scipy.special import gammainc
 
 def create(model, hubble_parameter=70):
     """
@@ -218,7 +216,7 @@ class Universe:
         Returns:
             {np.linspace} -- The redshift array
         """
-        z_low = self.__lookback_to_redshift(0)
+        z_low = self.lookback_to_redshift(0)
         z_high = 6
 
         return np.linspace(z_low, z_high, self.__resolution)
@@ -250,8 +248,8 @@ class Universe:
             t1 = ev_edges[i-1]
             t2 = ev_edges[i]
 
-            z_low = self.__lookback_to_redshift(t1)
-            z_high = self.__lookback_to_redshift(t2)
+            z_low = self.lookback_to_redshift(t1)
+            z_high = self.lookback_to_redshift(t2)
 
             SFRD, _ = quad(self.stellar_formation_rate, z_low, z_high)
 
@@ -380,7 +378,7 @@ class Universe:
 
         return dtd_hist, SFRD_hist, events
 
-    def __lookback_to_redshift(self, tL):
+    def lookback_to_redshift(self, tL):
         """Internal function to convert a lookback time into a redshift.
 
         Used by plot_merge_rate in furtherance of computing the SFRD.
@@ -393,13 +391,13 @@ class Universe:
                        tL
         """
 
-        f = lambda z: np.abs(self.__redshift_to_lookback(z) - tL)
+        f = lambda z: np.abs(self.redshift_to_lookback(z) - tL)
 
         zbest, _, _, _ = fminbound(f, 1e-8, 1000, maxfun=500, full_output=1, xtol=1e-8)
 
         return zbest
 
-    def __redshift_to_lookback(self, z):
+    def redshift_to_lookback(self, z):
         """Internal function to convert a redshift into a lookback time.
 
         Used by plot_merge_rate in furtherance of computing the SFRD.

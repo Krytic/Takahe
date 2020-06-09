@@ -182,6 +182,7 @@ def random_from_file(fname, draw_from, name_hints=[], n_stars=100, mass=1e6):
     sample = df.sample(n_stars)
 
     i = 0
+    current_mass = 0
 
     while current_mass < mass:
         if n_stars != None and i >= n_stars:
