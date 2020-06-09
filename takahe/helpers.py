@@ -4,6 +4,50 @@ import ctypes
 import numpy as np
 from numba import njit
 
+def format_metallicity(z, as_string=False):
+    z = str(z)
+    if z == "0":
+        div = 0
+    elif "." in z:
+        div = float(z)
+    elif z[:2] == "em":
+        div = 1*10**(-int(z[-1]))
+    else:
+        div = float("0." + z)
+    res = div / 0.020
+
+    if as_string:
+        return rf"${res}Z_\odot$"
+    else:
+        return res
+
+def extract_metallicity(filename):
+    fname = filename.split("/")[-1].split(".")[0].rsplit("_", 1)[0]
+    parts = fname.split("-")
+    Z = None
+
+    for part in parts:
+        if part[0] == "z":
+            # metallicity term in fname
+            if "_" in part:
+                part = part.split("_")[0]
+            Z = part[1:]
+
+    return format_metallicity(Z)
+
+def infer_names(file):
+    if "StandardJJ" in file:
+        # Provide column names for the StandardJJ prescription
+        name_hints = ['m1','m2','a0','e0']
+        name_hints.extend(['weight','evolution_age','rejuvenation_age'])
+
+    if "_ct" in file:
+        # If the filename containts _ct, then we have a file
+        # for which the coalescence times have already been computed
+        name_hints.append("coalescence_time")
+
+    return name_hints
+
 @njit
 def comoving_vol(DH, omega_k, DC):
     if omega_k > 0:
