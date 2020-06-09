@@ -117,7 +117,7 @@ def from_file(fname, name_hints=[], n_stars=100, mass=1e6):
     i = 0
 
     while current_mass < mass:
-        if i >= n_stars and n_stars != None:
+        if n_stars != None and i >= n_stars:
             break
 
         row = df.iloc[i].to_dict()
@@ -184,7 +184,7 @@ def random_from_file(fname, draw_from, name_hints=[], n_stars=100, mass=1e6):
     i = 0
 
     while current_mass < mass:
-        if i >= n_stars and n_stars != None:
+        if n_stars != None and i >= n_stars:
             break
 
         row = sample.iloc[i].to_dict()
