@@ -14,7 +14,7 @@ import matplotlib.gridspec as gridspec
 
 from scipy.special import gammaincc
 
-n_stars = 2000
+n_stars = 20000
 #plt.rcParams['figure.figsize'] = (40, 40)
 data_dir = 'data/newdata'
 files = [f for f in listdir(data_dir) if isfile(join(data_dir, f))]
@@ -58,15 +58,25 @@ for i in range(n):
 
     Z_frac = all_metallicities[i]
     Z_frac_prev = all_metallicities[i-1] if i > 0 else 0
-    # Z_frac_next = all_metallicities[i+1] if i < n else all_metallicities[i]+0.010
 
-    Z_compute = np.mean([Z_frac_prev, Z_frac])# if i < n else 1-np.sum(all_metallicities[:-1])
+    avg = np.mean([Z_frac, Z_frac_prev])
+
+    if i < n-1:
+        Z_frac_next = all_metallicities[i+1]
+    else:
+        # take the upper bound to be as far away from Z_frac as Z_frac_prev
+        # is
+        Z_frac_next = all_metallicities[i] + Z_frac - avg
+
+    Z_compute = avg#[Z_frac_prev, Z_frac_next] # if i < n else 1-np.sum(all_metallicities[:-1])
 
     file = file_array[Z_frac]
 
     universe.populate(f"{data_dir}/{file}", n_stars=n_stars, load_type='random')
 
-    dtd, sfrd, events = universe.event_rate(SFRD_so_far=SFRD_so_far, Z_compute=Z_compute)
+    # universe.set_nbins(100)
+
+    dtd, sfrd, events, sfh = universe.event_rate(Z_compute, SFRD_so_far=SFRD_so_far)
 
     z = universe.get_metallicity()
 
@@ -115,7 +125,7 @@ for i in range(n):
     plt.savefig(f'output/figures/linear_{z}.png', dpi=150, bbox_inches='tight')
     plt.close()
 
-    SFRD_so_far = sfrd
+    SFRD_so_far._values += sfrd._values
 
     rows_for_results.append({'mfrac': takahe.helpers.format_metallicity(z), 'R': this_today, 'n': universe.populace.size()})
 
@@ -124,7 +134,7 @@ for i in range(n):
 
 plt.xlabel("Lookback Time [Gyr]")
 plt.ylabel(r"Stellar Formation Rate [$M_\odot$ / yr / Mpc$^3$]")
-plt.yscale("log")
+# plt.yscale("log")
 plt.title("Metallicity-Dependent SFRD")
 ax = plt.gca()
 box = ax.get_position()

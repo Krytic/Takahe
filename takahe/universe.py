@@ -8,7 +8,7 @@ from takahe.constants import *
 
 from scipy.optimize import root_scalar, fminbound
 from scipy.integrate import quad
-from scipy.special import gammainc
+from scipy.special import gammainc, gamma
 
 def create(model, hubble_parameter=70):
     """
@@ -140,28 +140,14 @@ class Universe:
         return takahe.helpers.comoving_vol(self.DH, self.omega_k, DC)
 
     def set_nbins(self, resolution):
-        if isinstance(resolution, int):
-            self.__resolution = resolution
-        else:
-            raise TypeError("The supplied resolution is not an int!")
+        assert isinstance(resolution, int), "Resolution must be an integer"
+        self.__resolution = resolution
 
     def get_nbins(self):
         return self.__resolution
 
-    def events_at(self, tL):
-        events = self.event_rate()
-
-        i = events.getBin(tL)
-        return events.getBinContent(i)
-
-    def events_at_BPASS(self, tL):
-        events = self.event_rate_BPASS()
-
-        i = events.getBin(tL)
-        return events.getBinContent(i)
-
     def compute_delay_time_distribution(self, *argv, **kwargs):
-        """Generates the event rate plot for this ensemble.
+        """Generates the DTD plot for this ensemble.
 
         Computes the instantaneous delay-time distribution for this
         ensemble. Returns the histogram generated, however the histogram
@@ -267,7 +253,7 @@ class Universe:
 
         return events
 
-    def event_rate(self, SFRD_so_far=None, Z_compute=None):
+    def event_rate(self, Z_compute, SFRD_so_far):
         """Generates and plots the event rate distribution for this universe.
 
         Computes the event rate distribution for this universe. Assumes
@@ -300,10 +286,10 @@ class Universe:
         """
 
         # First, set up some of the histograms we'll be returning
-        dtd_hist = histogram(0, self.tH, self.__resolution)
+        dtd_hist = histogram(0, self.tH, self.get_nbins())
         edges = dtd_hist.getBinEdges()
 
-        events = histogram(0, self.tH, self.__resolution)
+        events = histogram(0, self.tH, self.get_nbins())
         ev_edges = events.getBinEdges()
 
         # This holds the width of each bin, for normalisation reasons later.
@@ -318,31 +304,26 @@ class Universe:
         # These two lambdas define the SFRD equation given by eqn(5) of
         # Langer & Norman: https://arxiv.org/pdf/astro-ph/0512271.pdf
         fSFRD = lambda z: self.stellar_formation_rate(z=z)
-        fGamma = lambda z, Z: gammainc(0.84, Z**2 * 10**(0.3*z))
+        fGamma = lambda z, Z: gammainc(0.84, Z**2 * 10**(0.3*z)) / gamma(0.84)
 
-        if Z_compute is None:
-            Z = takahe.helpers.format_metallicity(self.get_metallicity())
-        else:
-            Z = takahe.helpers.format_metallicity(Z_compute)
+        # print(f"{self.get_metallicity()} corresponds to {Z}")
 
         # Generate a histogram of SFRD at *this* metallicity.
         # This histogram is what is returned by the function.
         for edge in SFRD_hist.getBinEdges():
             z = self.lookback_to_redshift(edge)
-            SFRD_at_z = fSFRD(z) * fGamma(z, Z)
+
+            SFRD_at_z = fSFRD(z) * fGamma(z, Z_compute)
             SFRD_hist.Fill(edge, w=SFRD_at_z)
 
-        # Generate a manipulatable histogram.
+        # Generate a manipulatable histogram. SFRD_hist is the *culmulative*
+        # SFRD as given by Langer & Norman, and we will return *that* later.
         SFRD = SFRD_hist.copy()
 
-        # Langer & Norman's formula is *culmulative* in metallicity.
-        # So we need to subtract the contributions from metallicities we
-        # have already considered.
-        if np.any(SFRD_so_far.getValues()) or SFRD_so_far is not None:
-            # if we reach here, then this is NOT the first metallicity we've
-            # computed this for, so we need to remove metallicities
-            for bin in SFRD.getBinEdges():
-                SFRD.Fill(bin, -SFRD_so_far.getBinContent(SFRD_so_far.getBin(bin)))
+        # # Langer & Norman's formula is *culmulative* in metallicity.
+        # # So we need to subtract the contributions from metallicities we
+        # # have already considered.
+        SFRD._values = SFRD._values - SFRD_so_far._values
 
         # Iterate over the bins in the histogram.
         for i in range(1, self.__resolution+1):
@@ -368,7 +349,7 @@ class Universe:
                 t1_prime = t2 - ev_edges[j]
                 t2_prime = t2 - ev_edges[j+1]
                 events_in_bin = dtd_hist.integral(t2_prime, t1_prime) * 1e9
-                events.Fill(ev_edges[j], events_in_bin*this_SFRD)
+                events.Fill(ev_edges[j], events_in_bin * this_SFRD)
 
             width = events.getBinWidth(i-1)*1e9
             bins = np.append(bins, width)
@@ -376,7 +357,7 @@ class Universe:
         # Normalise to years
         events /= bins
 
-        return dtd_hist, SFRD_hist, events
+        return dtd_hist, SFRD, events, SFRD_hist
 
     def lookback_to_redshift(self, tL):
         """Internal function to convert a lookback time into a redshift.
