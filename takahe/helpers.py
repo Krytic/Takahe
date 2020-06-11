@@ -1,7 +1,5 @@
-import pathlib
-import ctypes
-
 import numpy as np
+
 from numba import njit
 
 def format_metallicity(z, as_string=False):
@@ -36,9 +34,10 @@ def extract_metallicity(filename):
     return format_metallicity(Z)
 
 def infer_names(file):
+    name_hints = []
     if "StandardJJ" in file:
         # Provide column names for the StandardJJ prescription
-        name_hints = ['m1','m2','a0','e0']
+        name_hints.extend(['m1','m2','a0','e0'])
         name_hints.extend(['weight','evolution_age','rejuvenation_age'])
 
     if "_ct" in file:

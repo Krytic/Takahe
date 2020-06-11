@@ -1,9 +1,9 @@
 import linecache
 
 import numpy as np
-from hoki import load
 import pandas as pd
 import takahe
+
 from takahe.constants import *
 
 def from_data(data):

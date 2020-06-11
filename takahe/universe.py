@@ -1,14 +1,14 @@
 import pickle
 
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 import takahe
-from kea.hist import histogram, BPASS_hist
-from takahe.constants import *
 
+from kea.hist import histogram
 from scipy.optimize import root_scalar, fminbound
 from scipy.integrate import quad
 from scipy.special import gammainc, gamma
+from takahe.constants import *
 
 def create(model, hubble_parameter=70):
     """
@@ -207,52 +207,6 @@ class Universe:
 
         return np.linspace(z_low, z_high, self.__resolution)
 
-    def event_rate_BPASS(self):
-        """Generates and plots the event rate distribution for this universe.
-
-        Computes the event rate distribution for this universe. Assumes
-        SFRD as given by eqn(15) in Madau & Dickinson 2014 [1], with
-        u = 5.6 (see self.stellar_formation_rate for details).
-
-        Returns the given histogram for further manipulation, if required.
-
-        [1] https://www.annualreviews.org?cid=75#/doi/pdf/10.1146/annurev-astro-081811-125615
-
-        Returns:
-            {kea.hist.histogram} -- the generated histogram.
-        """
-
-        dtd_hist = self.populace.legacy_compute_delay_time_distribution()
-        NBins = dtd_hist.getNBins()
-        edges = dtd_hist.getBinEdges()
-
-        events = BPASS_hist()
-        ev_edges = events.getLinEdges()
-        bins = np.array([])
-
-        for i in range(1, NBins+1):
-            t1 = ev_edges[i-1]
-            t2 = ev_edges[i]
-
-            z_low = self.lookback_to_redshift(t1)
-            z_high = self.lookback_to_redshift(t2)
-
-            SFRD, _ = quad(self.stellar_formation_rate, z_low, z_high)
-
-            SFRD /= (1e-3)**3
-
-            for j in range(i):
-                t1_prime = t2 - ev_edges[j]
-                t2_prime = t2 - ev_edges[j+1]
-                events_in_bin = dtd_hist.integral(t2_prime, t1_prime)
-                events.Fill(ev_edges[j], events_in_bin*SFRD, ty='lin')
-
-            bins = np.append(bins, events.getBinWidth(i-1)*1e9)
-
-        events /= bins # Normalise to years
-
-        return events
-
     def event_rate(self, Z_compute, SFRD_so_far):
         """Generates and plots the event rate distribution for this universe.
 
@@ -320,9 +274,9 @@ class Universe:
         # SFRD as given by Langer & Norman, and we will return *that* later.
         SFRD = SFRD_hist.copy()
 
-        # # Langer & Norman's formula is *culmulative* in metallicity.
-        # # So we need to subtract the contributions from metallicities we
-        # # have already considered.
+        # Langer & Norman's formula is *culmulative* in metallicity.
+        # So we need to subtract the contributions from individual
+        # metallicities we have already considered.
         SFRD._values = SFRD._values - SFRD_so_far._values
 
         # Iterate over the bins in the histogram.
@@ -342,7 +296,7 @@ class Universe:
             # Compute the mass formed in this time bin
             this_SFRD = SFRD.integral(t1, t2)
 
-            this_SFRD *= (1e3)**3
+            this_SFRD /= (1e-3)**3
 
             # Convolve the SFH with the DTD to get the event rates
             for j in range(i):

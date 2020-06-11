@@ -1,7 +1,7 @@
-import numpy as np
 import matplotlib.pyplot as plt
-
+import numpy as np
 import takahe.helpers
+
 from takahe.constants import *
 from mpl_toolkits.mplot3d import Axes3D
 
@@ -160,6 +160,11 @@ class BinaryStarSystem:
         return self.__parameter_array[parameter]
 
     def get_mass(self):
+        """Returns the total mass of the system in solar masses.
+
+        Returns:
+            {float} -- the total mass of the binary system (units: M_sun)
+        """
         return (self.get('m1') + self.get('m2')) / Solar_Mass
 
     def lifetime(self):

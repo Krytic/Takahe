@@ -1,7 +1,7 @@
-import numpy as np
 import matplotlib.pyplot as plt
-
+import numpy as np
 import takahe
+
 from takahe.constants import *
 from kea.hist import BPASS_hist, histogram
 

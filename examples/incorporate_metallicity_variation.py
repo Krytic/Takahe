@@ -14,7 +14,7 @@ import matplotlib.gridspec as gridspec
 
 from scipy.special import gammaincc
 
-n_stars = 20000
+n_stars = 2000
 #plt.rcParams['figure.figsize'] = (40, 40)
 data_dir = 'data/newdata'
 files = [f for f in listdir(data_dir) if isfile(join(data_dir, f))]
@@ -49,8 +49,6 @@ SFRD_so_far = histogram(edges=x)
 
 rows_for_results = []
 
-fig69 = plt.figure(69)
-
 n = len(all_metallicities)
 
 for i in range(n):
@@ -76,7 +74,7 @@ for i in range(n):
 
     # universe.set_nbins(100)
 
-    dtd, sfrd, events, sfh = universe.event_rate(Z_compute, SFRD_so_far=SFRD_so_far)
+    dtd, sfrd, events, sfh = universe.event_rate(Z_compute, SFRD_so_far)
 
     z = universe.get_metallicity()
 
@@ -85,9 +83,6 @@ for i in range(n):
     event_rates = event_rates + events_list
 
     this_today = np.round(np.log10(events_list[0]), 2)
-
-    plt.figure(69)
-    sfrd.plot(label=z)
 
     fig = plt.figure()
     gs = gridspec.GridSpec(2, 2)
@@ -132,21 +127,20 @@ for i in range(n):
     this_end = time.time()
     print(f"Completed z={z} in {this_end-this_start} seconds")
 
-plt.xlabel("Lookback Time [Gyr]")
-plt.ylabel(r"Stellar Formation Rate [$M_\odot$ / yr / Mpc$^3$]")
-# plt.yscale("log")
-plt.title("Metallicity-Dependent SFRD")
-ax = plt.gca()
-box = ax.get_position()
-ax.set_position([box.x0, box.y0, box.width * 0.9, box.height])
-ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-plt.show()
+# plt.xlabel("Lookback Time [Gyr]")
+# plt.ylabel(r"Stellar Formation Rate [$M_\odot$ / yr / Mpc$^3$]")
+# # plt.yscale("log")
+# plt.ylim(0, 0.04)
+# plt.title("Metallicity-Dependent SFRD")
+# ax = plt.gca()
+# box = ax.get_position()
+# ax.set_position([box.x0, box.y0, box.width * 0.9, box.height])
+# ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+# plt.show()
 
 result_table = pd.DataFrame(rows_for_results, columns=rows_for_results[0].keys())
 
 result_table.to_latex(index=False, buf="output/Merger_Result_Table_MMS.tex")
-
-plt.figure()
 
 event_rate_histogram = histogram(edges=x)
 
