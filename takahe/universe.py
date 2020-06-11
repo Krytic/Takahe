@@ -283,32 +283,36 @@ class Universe:
         for i in range(1, self.__resolution+1):
             # Compute the merge rate of this bin: For use in the DTD
             mr = self.populace.merge_rate(edges[i])
-            width = dtd_hist.getBinWidth(i-1)
+            dtd_bin_width = dtd_hist.getBinWidth(i-1)*1e9
             this_mr = mr - old_mr
-            normalised_mr = this_mr / 1e6 / width
+            normalised_mr = (this_mr / 1e6) / dtd_bin_width
 
             dtd_hist.Fill(edges[i-1], w=normalised_mr)
-            old_mr += this_mr
+            # Units: # / Msun / yr
+            old_mr = mr
 
             t1 = ev_edges[i-1]
             t2 = ev_edges[i]
 
             # Compute the mass formed in this time bin
-            this_SFRD = SFRD.integral(t1, t2)
+            this_SFR = SFRD.integral(t1, t2) * 1e9 # Units: Msun / Mpc^3
 
-            this_SFRD /= (1e-3)**3
+            this_SFR /= (1e-3)**3 # Units: Msun / Gpc^3
 
             # Convolve the SFH with the DTD to get the event rates
             for j in range(i):
                 t1_prime = t2 - ev_edges[j]
                 t2_prime = t2 - ev_edges[j+1]
+
                 events_in_bin = dtd_hist.integral(t2_prime, t1_prime) * 1e9
-                events.Fill(ev_edges[j], events_in_bin * this_SFRD)
+                # Units: # / Msun
+                events.Fill(ev_edges[j], events_in_bin * this_SFR)
 
             width = events.getBinWidth(i-1)*1e9
             bins = np.append(bins, width)
 
-        # Normalise to years
+        # events has units: # / Gpc^3
+        # Normalise to years:
         events /= bins
 
         return dtd_hist, SFRD, events, SFRD_hist

@@ -3,6 +3,7 @@ import numpy as np
 import takahe
 
 from takahe.constants import *
+from takahe.exceptions import *
 from kea.hist import BPASS_hist, histogram
 
 def create():
@@ -138,8 +139,8 @@ class BinaryStarSystemEnsemble:
                          BinaryStarSystem.
         """
         if not isinstance(binary_star, takahe.BSS.BinaryStarSystem):
-            raise TypeError("binary_star must be an instance \
-                             of BinaryStarSystem!")
+            raise TakaheTypeError(("binary_star must be an instance "
+                                   "of BinaryStarSystem!"))
 
         lifetime = binary_star.lifetime()
 
