@@ -6,6 +6,7 @@ import takahe
 
 from takahe.constants import *
 
+@np.vectorize
 def from_data(data):
     """
     Loads a binary star system from a dictionary of data.
@@ -116,21 +117,22 @@ def from_file(fname, name_hints=[], n_stars=100, mass=1e6):
 
     i = 0
 
-    while current_mass < mass:
-        if n_stars != None and i >= n_stars:
-            break
+    mass = 1e6
 
-        row = df.iloc[i].to_dict()
-        number_of_stars_of_type = int(np.ceil(row['weight'] * mass))
+    # don't constrain by mass
+    df['num_of_type'] = df['weight'] * 1e6
 
-        star = from_data(row)
+    if float(row.m1) > 2.5 or float(row.m2) > 2.5:
+        return # lolwat
 
-        for j in range(number_of_stars_of_type):
-            ensemble.add(star)
-
-        current_mass += (star.get_mass() * number_of_stars_of_type)
-
-        i += 1
+    star = from_data({
+        "m1": row.m1,
+        "m2": row.m2,
+        "a0": row.a0,
+        "e0": row.e0,
+        "evolution_age": row.evolution_age,
+        "rejuvenation_age": row.rejuvenation_age,
+        "weight": row.weight})
 
     return ensemble
 
@@ -165,11 +167,7 @@ def random_from_file(fname, draw_from, name_hints=[], n_stars=100, mass=1e6):
                                       the ensemble of objects,
     """
 
-    if n_stars == 'all':
-        return from_file(fname,
-                         name_hints=name_hints,
-                         n_stars=n_stars,
-                         mass=mass)
+
 
     ensemble = takahe.ensemble.create()
 

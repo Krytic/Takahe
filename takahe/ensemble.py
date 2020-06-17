@@ -33,6 +33,7 @@ class BinaryStarSystemEnsemble:
         self.__min_lifetime = np.infty
         self.__max_lifetime = 0
         self.__total_mass = 0
+        self.add = np.vectorize(self.slowly_add)
 
     def track_through_phase_space(self, in_range=(0, 0)):
         """Tracks an entire ensemble as each star evolves through phase
@@ -128,7 +129,7 @@ class BinaryStarSystemEnsemble:
 
         raise LookupError("A suitable star system was not found!")
 
-    def add(self, binary_star):
+    def slowly_add(self, binary_star):
         """Add a BSS to the current ensemble.
 
         Arguments:
@@ -138,9 +139,6 @@ class BinaryStarSystemEnsemble:
             TypeError -- If the Binary Star System is not an instance of
                          BinaryStarSystem.
         """
-        if not isinstance(binary_star, takahe.BSS.BinaryStarSystem):
-            raise TakaheTypeError(("binary_star must be an instance "
-                                   "of BinaryStarSystem!"))
 
         lifetime = binary_star.lifetime()
 

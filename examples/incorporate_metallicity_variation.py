@@ -1,20 +1,21 @@
+import cycler
 import time
 import multiprocessing as mp
+
 from os import listdir
 from os.path import isfile, join
-import cycler
 
 import numpy as np
+import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
 import takahe
-from kea.hist import histogram
 import pandas as pd
 
-import matplotlib.gridspec as gridspec
 
+from kea.hist import histogram
 from scipy.special import gammaincc
 
-n_stars = 2000
+n_stars = 'all'
 #plt.rcParams['figure.figsize'] = (40, 40)
 data_dir = 'data/newdata'
 files = [f for f in listdir(data_dir) if isfile(join(data_dir, f))]

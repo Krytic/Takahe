@@ -258,7 +258,7 @@ class Universe:
         # These two lambdas define the SFRD equation given by eqn(5) of
         # Langer & Norman: https://arxiv.org/pdf/astro-ph/0512271.pdf
         fSFRD = lambda z: self.stellar_formation_rate(z=z)
-        fGamma = lambda z, Z: gammainc(0.84, Z**2 * 10**(0.3*z)) / gamma(0.84)
+        fGamma = lambda z, Z: gammainc(0.84, Z**2 * 10**(0.3*z))
 
         # print(f"{self.get_metallicity()} corresponds to {Z}")
 
@@ -283,7 +283,7 @@ class Universe:
         for i in range(1, self.__resolution+1):
             # Compute the merge rate of this bin: For use in the DTD
             mr = self.populace.merge_rate(edges[i])
-            dtd_bin_width = dtd_hist.getBinWidth(i-1)*1e9
+            dtd_bin_width = dtd_hist.getBinWidth(i-1) * 1e9
             this_mr = mr - old_mr
             normalised_mr = (this_mr / 1e6) / dtd_bin_width
 
@@ -308,7 +308,7 @@ class Universe:
                 # Units: # / Msun
                 events.Fill(ev_edges[j], events_in_bin * this_SFR)
 
-            width = events.getBinWidth(i-1)*1e9
+            width = events.getBinWidth(i-1) * 1e9
             bins = np.append(bins, width)
 
         # events has units: # / Gpc^3
