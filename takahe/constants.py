@@ -1,7 +1,12 @@
-"""
-Some simple constant definitions to enable better structure of code.
-"""
-from scipy.constants import c, G
+BPASS_METALLICITIES = ['em5', 'em4', '001', '002', '003',
+                       '004', '006', '008', '010', '014',
+                       '020', '030', '040']
 
-Solar_Mass = 1.989e30 # Kilograms
-Solar_Radii = 695500 # Kilometers
+MASS_CUTOFF = 2.5 # TODO: relocate somewhere else
+
+OMEGA_M = 0.3
+OMEGA_K = 0
+OMEGA_L = 0.7
+HUBBLE_PARAMETER = 70
+
+HUBBLE_TIME = 1 / (HUBBLE_PARAMETER / 3.086e+19 * 1e9 * 60 * 60 * 24 * 365.25) # \simeq 14, in Gyr

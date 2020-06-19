@@ -1,6 +1,8 @@
-import numpy as np
-
 from numba import njit
+import numpy as np
+from scipy.optimize import fminbound
+from scipy.integrate import quad
+import takahe
 
 def format_metallicity(z, as_string=False):
     z = str(z)
@@ -33,19 +35,50 @@ def extract_metallicity(filename):
 
     return format_metallicity(Z)
 
-def infer_names(file):
-    name_hints = []
-    if "StandardJJ" in file:
-        # Provide column names for the StandardJJ prescription
-        name_hints.extend(['m1','m2','a0','e0'])
-        name_hints.extend(['weight','evolution_age','rejuvenation_age'])
+@np.vectorize
+def lookback_to_redshift(tL):
+    """Internal function to convert a lookback time into a redshift.
 
-    if "_ct" in file:
-        # If the filename containts _ct, then we have a file
-        # for which the coalescence times have already been computed
-        name_hints.append("coalescence_time")
+    Used by plot_merge_rate in furtherance of computing the SFRD.
 
-    return name_hints
+    Arguments:
+        tL {float} -- A lookback time within the range (0, 14).
+
+    Returns:
+        {float} -- The redshift z, corresponding to the lookback time
+                   tL
+    """
+
+    f = lambda z: np.abs(redshift_to_lookback(z) - tL)
+
+    zbest, _, _, _ = fminbound(f, 1e-8, 1000, maxfun=500, full_output=1, xtol=1e-8)
+
+    return zbest
+
+@np.vectorize
+def redshift_to_lookback(z):
+    """Internal function to convert a redshift into a lookback time.
+
+    Used by plot_merge_rate in furtherance of computing the SFRD.
+
+    Arguments:
+        z {float} -- A redshift value in the range (0, 100).
+
+    Returns:
+        {float} -- The redshift z, corresponding to the lookback time
+                   tL
+    """
+
+    def integrand(z):
+        def E(z):
+            return np.sqrt(takahe.constants.OMEGA_M * (1+z)**3
+                         + takahe.constants.OMEGA_K * (1+z)**2
+                         + takahe.constants.OMEGA_L)
+        return 1 / ((1+z) * E(z))
+
+    rest, err = quad(integrand, 0, z)
+
+    return takahe.constants.HUBBLE_TIME * rest
 
 @njit
 def comoving_vol(DH, omega_k, DC):
