@@ -204,9 +204,16 @@ def composite_event_rates(dataframes, extra_lt=None):
                               rate for your ensemble.
     """
 
-    assert isinstance(df, pd.DataFrame), ("Expected df to be a pandas "
-                                          "DataFrame in call to "
-                                          "composite_event_rates.")
+    assert isinstance(dataframes, dict), ("Expected dataframes to be a dict "
+                                          "in call to composite_event_rates.")
+
+    key = list(dataframes.keys())[0]
+
+    assert isinstance(dataframes[key], pd.DataFrame), ("Expected dataframes "
+                                                       "to contain dataframes "
+                                                       " incall to "
+                                                       "composite_event_rates."
+                                                       )
 
     assert callable(extra_lt) or extra_lt is None, ("Expected extra_lt to be "
                                                     "callable or None in call "

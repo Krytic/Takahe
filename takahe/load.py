@@ -1,4 +1,5 @@
 import time
+from os.path import isfile
 
 import numpy as np
 import pandas as pd
@@ -27,6 +28,9 @@ def from_directory(path):
     for index in tqdm(range(n_files)):
         Zi = takahe.constants.BPASS_METALLICITIES[index]
         filepath = f"{path}/Remnant-Birth-bin-imf135_300-z{Zi}_StandardJJ.dat"
+
+        if not isfile(filepath):
+            filepath = filepath + ".gz"
 
         df = from_file(filepath)
         Z = takahe.helpers.format_metallicity(Zi)
