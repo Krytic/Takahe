@@ -51,6 +51,10 @@ def single_event_rate(df, Z, extra_lt=None):
     if extra_lt == None:
         extra_lt = lambda df: 0
 
+    # Numexpr causes our computations to break.
+    # This is a "feature" of numexpr as far as I can tell
+    pd.set_option('compute.use_numexpr', False)
+
     lin_edges = np.linspace(0, takahe.constants.HUBBLE_TIME, 51)
 
     total_event_rate = takahe.histogram.histogram(edges=lin_edges)
@@ -74,12 +78,24 @@ def single_event_rate(df, Z, extra_lt=None):
     df['m2'] *= 1.989e30 # Solar Mass -> Kilogram
 
     # Introduce some temporary terms, to make computation easier
-    temp_series = pd.to_numeric((64/5) * (G**3*df['m1']*df['m2']*(df['m1']+df['m2'])) / (c**5))
-    df['beta'] = temp_series
+    df['beta'] = ((64/5) * G**3 * df['m1'] * df['m2']
+                         * (df['m1'] + df['m2'])
+                         / (c**5))
+
     df['circ'] = df['a0']**4 / (4*df['beta'])
-    df['divisor'] = ((1-df['e0']**(7/4))**(1/5)*(1+121/304 * df['e0']**2))
-    df['coalescence_time'] = (df['circ'] * (1-df['e0']**2)**(7/2) / df['divisor']) / (1e9 * 60 * 60 * 24 * 365.25)
-    df['lifetime'] = (df['evolution_age'] + df['rejuvenation_age']) / 1e9 + df['coalescence_time'] + extra_lt(df)
+
+    df['divisor'] = ((1 - df['e0'] ** (7/4)) ** (1/5)
+                  *  (1+121/304 * df['e0'] ** 2))
+
+    df['coalescence_time'] = ((df['circ'] * (1-df['e0']**2)**(7/2)
+                           / df['divisor'])
+                           / (1e9 * 60 * 60 * 24 * 365.25))
+
+    df['lifetime'] = (df['evolution_age'] / 1e9
+                   +  df['rejuvenation_age'] / 1e9
+                   +  df['coalescence_time']
+                   +  extra_lt(df)
+                   )
 
 
 
