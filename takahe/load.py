@@ -16,7 +16,8 @@ def from_file(filepath):
                      names=name_hints,
                      sep=r'\s+',
                      engine='python',
-                     dtype=np.float64)
+                     dtype=np.float64,
+                     skiprows=lambda i: bool(i%10))
 
     return df
 

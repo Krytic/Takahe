@@ -2,7 +2,8 @@ BPASS_METALLICITIES = ['em5', 'em4', '001', '002', '003',
                        '004', '006', '008', '010', '014',
                        '020', '030', '040']
 
-MASS_CUTOFF = 2.5 # TODO: relocate somewhere else
+MASS_CUTOFF_NS = 2.5 # higher edge
+MASS_CUTOFF_BH = 5 # lower edge
 
 OMEGA_M = 0.3
 OMEGA_K = 0
