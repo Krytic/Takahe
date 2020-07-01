@@ -121,7 +121,7 @@ class histogram:
         out._values = self._values
         return out
 
-    def fill(self, x, w=1):
+    def fill(self, x, weight = 1):
         """ Fill the histogram with data.
 
 
@@ -132,7 +132,7 @@ class histogram:
         w : float/array
             The weight of the entry of *N* entries to be added to the histogram.
         """
-        def f(f, g):
+        def _insert(f, g):
             if f >= self._xup:
                  self._values[self._nr_bins-1] += g
             elif f <= self._xlow:
@@ -142,16 +142,16 @@ class histogram:
                 self._values[bin_nr] += g
 
         if not isinstance(x, type(0.0)):
-            if isinstance(w, type(0.0)):
+            if isinstance(weight, type(0.0)):
                 for i in range(0, len(x)):
-                    f(x[i], w)
-            elif len(x) != len(w):
-                raise Exception("Weights needs to be as long as x")
+                    _insert(x[i], weight)
+            elif len(x) != len(weight):
+                raise Exception(f"Weight needs to be as long as x. (x={len(x)}, weight={len(weight)})")
             else:
                 for i in range(0, len(x)):
-                    f(x[i], w[i])
+                    _insert(x[i], weight[i])
         else:
-            f(x, w)
+            _insert(x, weight)
         return None
 
     def plot(self, *argv, **kwargs):
@@ -356,8 +356,8 @@ class histogram:
             return total
 
 
-class BPASS_hist(histogram):
-    """ Container for the BPASS data to reside and make it possible to perform basic
+class histogram_BPASS(histogram):
+    """ Container for the BPASS data to reside aBPASS_nd make it possible to perform basic
     operations on the enclosed data.
 
     This class inherits all function of histogram, but overrides a few to allow
@@ -367,7 +367,7 @@ class BPASS_hist(histogram):
     logarithmic binning.
     """
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         super().__init__(edges=self.getLinEdges())
 
     def fill(self, x, w=1, ty=None):
@@ -386,7 +386,7 @@ class BPASS_hist(histogram):
         if (ty == "log") or (ty == None):
             x = 10**x /1e9
 
-        histogram.Fill(self, x, w)
+        histogram.fill(self, x, w)
 
     def integral(self, x1, x2):
         """ Returns the integral of the histogram between **x1** and **x2**.

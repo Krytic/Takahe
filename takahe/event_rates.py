@@ -8,20 +8,6 @@ def compute_dtd(in_df, extra_lt=None, transient_type='NSNS'):
     if extra_lt == None:
         extra_lt = lambda df: 0
 
-    Bin_Up = takahe.constants.HUBBLE_TIME
-    Bin_Low = 0
-    Bin_Width = 0.5
-
-    N_Bins = int((Bin_Up - Bin_Low) / Bin_Width)
-
-    lin_edges = np.linspace(Bin_Low, Bin_Up, N_Bins)
-
-    total_event_rate = takahe.histogram.histogram(edges=lin_edges)
-    total_SFRD = takahe.histogram.histogram(edges=lin_edges)
-    Z_prev = 0.0
-
-    events_histograms = dict()
-
     ## Python should have proper switch() statements.
     # We mask out the TODO FINISH
     if transient_type == 'NSNS':
@@ -52,8 +38,8 @@ def compute_dtd(in_df, extra_lt=None, transient_type='NSNS'):
         mask_m1 = (2.5 < in_df['m1']) & (in_df['m1'] < 5)
         mask_m2 = (2.5 < in_df['m2']) & (in_df['m2'] < 5)
 
-    df = in_df.drop(in_df[~mask_m1].index, inplace=False)
-    df.drop(df[~mask_m2].index, inplace=True)
+    df = in_df.loc[mask_m1].copy()
+    df = df.loc[mask_m2].copy()
 
     G = 6.67430e-11
     c = 299792458
@@ -110,28 +96,24 @@ def compute_dtd(in_df, extra_lt=None, transient_type='NSNS'):
                                     ],
                             inplace=False)
 
-    # population_at['bins'] = pd.cut(population_at.lifetime, np.append([0.0], 10**lin_edges / 1e9), right=False)
-    # That's a quick reminder to myself about BPASS binning potentially
+    histogram_edges = np.linspace(6.05, 11, 51)
 
-    # Perform the binning
-    # Thank you to Max Briel for the tip here
     population_at['bins'] = pd.cut(population_at.lifetime,
-                                   lin_edges,
+                                   np.append([0.0], 10**histogram_edges / 1e9),
                                    right=False)
 
-    bin_widths = lin_edges
-
     out_df = population_at[["bins", "weight"]].groupby("bins").sum()
+
+    # print(population_at['bins'].value_counts(sort=False))
+    print(population_at)
+
+    bin_widths = np.append([0.0], 10**histogram_edges / 1e9)
 
     out_df = out_df.values.ravel() / 1e6 / np.diff(bin_widths)
 
     out_df = np.append(out_df, out_df[-1])
-    print(population_at.shape)
-    DTD = takahe.histogram.histogram(edges=lin_edges)
 
-    DTD.fill(lin_edges, w=out_df)
-
-    return DTD
+    return out_df
 
 def single_event_rate(in_df, Z, extra_lt=None, transient_type='NSNS'):
     """Computes the event rate of a single metallicity.
@@ -190,13 +172,8 @@ def single_event_rate(in_df, Z, extra_lt=None, transient_type='NSNS'):
     # This is a "feature" of numexpr as far as I can tell
     pd.set_option('compute.use_numexpr', False)
 
-    Bin_Up = takahe.constants.HUBBLE_TIME
-    Bin_Low = 0
-    Bin_Width = 0.1
-
-    N_Bins = int((Bin_Up - Bin_Low) / Bin_Width)
-
-    lin_edges = np.linspace(Bin_Low, Bin_Up, N_Bins)
+    DTD = takahe.histogram.histogram_BPASS()
+    lin_edges = DTD.getLinEdges()
 
     total_event_rate = takahe.histogram.histogram(edges=lin_edges)
     total_SFRD = takahe.histogram.histogram(edges=lin_edges)
@@ -204,99 +181,7 @@ def single_event_rate(in_df, Z, extra_lt=None, transient_type='NSNS'):
 
     events_histograms = dict()
 
-    ## Python should have proper switch() statements.
-    # We mask out the TODO FINISH
-    if transient_type == 'NSNS':
-        cutoff_m1 = takahe.constants.MASS_CUTOFF_NS
-        cutoff_m2 = takahe.constants.MASS_CUTOFF_NS
-
-        mask_m1 = in_df['m1'] < cutoff_m1
-        mask_m2 = in_df['m2'] < cutoff_m2
-    elif transient_type == 'NSBH':
-        cutoff_m1 = takahe.constants.MASS_CUTOFF_NS
-        cutoff_m2 = takahe.constants.MASS_CUTOFF_BH
-
-        # 1.6 7.8
-        # maskm1 = not(1.6 < 2.5 or 1.6 > 5)
-        # maskm2 = not(7.8 < 2.5 or 7.8 > 5)
-
-        mask_m1 = (in_df['m1'] > cutoff_m2)
-        mask_m2 = (in_df['m2'] < cutoff_m1) # if m2 > BH then by defn m1 > BH
-                                            # so this is BHBH
-    elif transient_type == 'BHBH':
-        cutoff_m1 = takahe.constants.MASS_CUTOFF_BH
-        cutoff_m2 = takahe.constants.MASS_CUTOFF_BH
-
-        mask_m1 = in_df['m1'] > cutoff_m1
-        mask_m2 = in_df['m2'] > cutoff_m2
-
-    df = in_df.drop(in_df[~mask_m1].index, inplace=False)
-    df.drop(df[~mask_m2].index, inplace=True)
-
-    G = 6.67430e-11
-    c = 299792458
-
-    # Highly eccentric orbits lead to division by zero.
-    df.drop(df[df['e0'] == 1].index, inplace=True)
-
-    # Unit Conversions:
-    df['a0'] *= (69550 * 1000) # Solar Radius -> Metre
-    df['m1'] *= 1.989e30 # Solar Mass -> Kilogram
-    df['m2'] *= 1.989e30 # Solar Mass -> Kilogram
-
-    # Introduce some temporary terms, to make computation easier
-    df['beta'] = ((64/5) * G**3 * df['m1'] * df['m2']
-                         * (df['m1'] + df['m2'])
-                         / (c**5))
-
-    df['circ'] = df['a0']**4 / (4*df['beta'])
-
-    df['divisor'] = ((1 - df['e0'] ** (7/4)) ** (1/5)
-                  *  (1+121/304 * df['e0'] ** 2))
-
-    df['coalescence_time'] = ((df['circ'] * (1-df['e0']**2)**(7/2)
-                           / df['divisor'])
-                           / (1e9 * 60 * 60 * 24 * 365.25))
-
-    df['lifetime'] = (df['evolution_age'] / 1e9
-                   +  df['rejuvenation_age'] / 1e9
-                   +  df['coalescence_time']
-                   +  extra_lt(df)
-                   )
-
-    # Unit Conversions (back):
-    df['a0'] /= (69550 * 1000) # Metre -> Solar Radius
-    df['m1'] /= (1.989e30) # Kilogram -> Solar Mass
-    df['m2'] /= (1.989e30) # As above
-
-    # The minimum lifetime of a star is ~3 Myr, so introduce
-    # an artificial cutoff there.
-    df['lifetime'] = np.maximum(df.lifetime, 0.003)
-
-    # I don't think it's required but just in case
-    df.reset_index(drop=True, inplace=True)
-
-    # Remove temporary columns
-    population_at = df.drop(columns=['beta',
-                                     'evolution_age',
-                                     'rejuvenation_age',
-                                     'circ',
-                                     'divisor'
-                                    ],
-                            inplace=False)
-
-    # population_at['bins'] = pd.cut(population_at.lifetime, np.append([0.0], 10**lin_edges / 1e9), right=False)
-    # That's a quick reminder to myself about BPASS binning potentially
-
-    # Perform the binning
-    # Thank you to Max Briel for the tip here
-    population_at['bins'] = pd.cut(population_at.lifetime,
-                                   lin_edges,
-                                   right=False)
-
-    bin_widths = lin_edges
-
-    out_df = population_at[["bins", "weight"]].groupby("bins").sum()
+    out_df = compute_dtd(in_df, extra_lt, transient_type)
 
     z = takahe.helpers.lookback_to_redshift(bin_widths)
 
@@ -314,18 +199,13 @@ def single_event_rate(in_df, Z, extra_lt=None, transient_type='NSNS'):
         Z_prev = Zi
 
         SFRD = takahe.histogram.histogram(edges=z)
-        SFRD.fill(z, w=SFRDi)
+        SFRD.fill(SFRDi)
 
         SFRD = SFRD - total_SFRD # remove prior SFRD contributions
 
         total_SFRD += SFRD
 
-    DTDi = out_df.values.ravel() / 1e6 / np.diff(bin_widths)
-
-    DTDi = np.append(DTDi, 0) # Because DTDi isn't long enough?
-
-    DTD = takahe.histogram.histogram(edges=lin_edges)
-    DTD.fill(lin_edges, w=DTDi)
+    DTD.fill(lin_edges, out_df, 'lin')
 
     events = takahe.histogram.histogram(edges=lin_edges)
 
@@ -415,16 +295,8 @@ def composite_event_rates(dataframes, extra_lt=None, transient_type='NSNS'):
     if extra_lt == None:
         extra_lt = lambda df: 0
 
-    Bin_Up = takahe.constants.HUBBLE_TIME
-    Bin_Low = 0
-    Bin_Width = 0.1
-
-    N_Bins = int((Bin_Up - Bin_Low) / Bin_Width)
-
-    lin_edges = np.linspace(Bin_Low, Bin_Up, N_Bins)
-
-    total_event_rate = takahe.histogram.histogram(edges=lin_edges)
-    total_SFRD = takahe.histogram.histogram(edges=lin_edges)
+    total_event_rate = takahe.histogram.histogram_BPASS()
+    lin_edges = total_event_rate.getLinEdges()
 
     for index in range(len(takahe.constants.BPASS_METALLICITIES)):
         Zi = takahe.constants.BPASS_METALLICITIES[index]
