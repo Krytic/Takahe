@@ -4,7 +4,15 @@ from scipy.optimize import fminbound
 from scipy.integrate import quad
 import takahe
 
-def format_metallicity(Z, as_string=False):
+def memoize(f):
+    memo = {}
+    def helper(x):
+        if x not in memo:
+            memo[x] = f(x)
+        return memo[x]
+    return helper
+
+def format_metallicity(Z, as_string=False, rel=True):
     r"""Converts a BPASS-formatted metallicity into a "real valued" one.
 
     Interprets the BPASS-encoded metallicities as *fraction of solar
@@ -44,7 +52,11 @@ def format_metallicity(Z, as_string=False):
         div = 1*10**(-int(Z[-1]))
     else:
         div = float("0." + Z)
-    res = div / 0.020
+
+    if rel:
+        res = div / 0.020
+    else:
+        res = div
 
     if as_string:
         return rf"${res}Z_\odot$"
@@ -97,6 +109,7 @@ def extract_metallicity(filename):
     return format_metallicity(Z)
 
 @np.vectorize
+@memoize
 def lookback_to_redshift(tL):
     """Internal function to convert a lookback time into a redshift.
 
