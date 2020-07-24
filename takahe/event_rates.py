@@ -5,7 +5,64 @@ from scipy.special import gamma, gammainc
 import takahe
 from tqdm import tqdm
 
-def generate_sfrd(tL_edges, func=MadauDickinson):
+def chirp_mass_distribution(input_dataframes, transient_type='NSNS'):
+    # TODO: sketch out
+    log_mass_bins = np.linspace(0, 2, 21)
+    chirp_mass_bins = 10 ** log_mass_bins
+
+    CMD = takahe.histogram.histogram(edges=chirp_mass_bins)
+
+    edges = takahe.constants.LINEAR_BINS
+
+    dataframes = input_dataframes.copy()
+
+    primed_dfs = dict()
+
+    for Z, in_df in dataframes.items():
+        df = filter_transients(in_df, transient_type)
+        df['M_chirp'] = (df['m1']*df['m2'])**(3/5) / (df['m1']+df['m2'])**(1/5)
+        primed_dfs[Z] = df
+
+    for i in tqdm(range(1, CMD.getNBins())):
+        low = chirp_mass_bins[i-1]
+        high = chirp_mass_bins[i]
+
+        true_primed_dfs = dict()
+
+        for Z, df in primed_dfs.items():
+            df_prime = df[df['M_chirp'].between(low, high)]
+            true_primed_dfs[Z] = df_prime
+
+        events = composite_event_rates(true_primed_dfs, transient_type=None)
+
+        CMD.fill(chirp_mass_bins[i-1], events.getBinContent(0))
+
+    return CMD
+
+def filter_transients(in_df, transient_type):
+    MASS_NS = takahe.constants.MASS_CUTOFF_NS
+    MASS_BH = takahe.constants.MASS_CUTOFF_BH
+
+    if transient_type == 'NSNS':
+        # Both M1 and M2 are NS
+        df = in_df[(in_df['m1'] < MASS_NS) & (in_df['m2'] < MASS_NS)].copy()
+    elif transient_type == 'BHBH':
+        # M1 and M2 are both BHs
+        df = in_df[(in_df['m1'] > MASS_BH) & (in_df['m2'] > MASS_BH)].copy()
+    elif transient_type == 'NSBH':
+        df = in_df[
+            ( # M1 is an NS, and M2 is a BH
+                (in_df['m1'] < MASS_NS) & (in_df['m2'] > MASS_BH)
+            )
+            | # Or
+            ( # M1 is a BH and M2 is an NS
+                (in_df['m1'] > MASS_BH) & (in_df['m2'] < MASS_NS)
+            )
+        ].copy()
+
+    return df
+
+def generate_sfrd(tL_edges, func=None):
     """Generates the SFRD at every BPASS metallicity.
 
     Generates the SFRD for a given lookback time/s at every BPASS
@@ -34,12 +91,16 @@ def generate_sfrd(tL_edges, func=MadauDickinson):
                 >>> SFRD[2.0] = np.array(...)
     """
 
-    assert isinstance(edges, np.ndarray), ("Expected tL_edges to be an"
-                                           " ndarray in call to"
-                                           " generate_sfrd()")
+    assert isinstance(tL_edges, np.ndarray), ("Expected tL_edges to be an"
+                                              " ndarray in call to"
+                                              " generate_sfrd()")
 
-    assert callable(func), ("Expected func to be a callable type in call"
-                            " to generate_sfrd()")
+    assert callable(func) or func == None, ("Expected func to be a"
+                                            " callable type in call to"
+                                            " generate_sfrd()")
+
+    if func == None:
+        func = MadauDickinson
 
     total_SFRD = np.zeros(len(tL_edges))
 
@@ -63,7 +124,7 @@ def generate_sfrd(tL_edges, func=MadauDickinson):
         Z = takahe.helpers.format_metallicity(Z)
 
         # Compute the *culmulative* metallicity up to this metallicity
-        SFRD_here = MadauDickinson(means[i], z)
+        SFRD_here = func(means[i], z)
 
         # and remove all prior contributions
         SFRD_here = SFRD_here - total_SFRD
@@ -133,9 +194,6 @@ def compute_dtd(in_df, extra_lt=None, transient_type='NSNS'):
 
     # First we set up some basic variables.
 
-    if extra_lt == None:
-        extra_lt = lambda lt, df: lt
-
     histogram_edges = np.linspace(6.05, 11.05, 51)
 
     bins = [0.0]
@@ -143,25 +201,10 @@ def compute_dtd(in_df, extra_lt=None, transient_type='NSNS'):
 
     # Now we mask out what we're not interested in.
 
-    MASS_NS = takahe.constants.MASS_CUTOFF_NS
-    MASS_BH = takahe.constants.MASS_CUTOFF_BH
-
-    if transient_type == 'NSNS':
-        # Both M1 and M2 are NS
-        df = in_df[(in_df['m1'] < MASS_NS) & (in_df['m2'] < MASS_NS)].copy()
-    elif transient_type == 'BHBH':
-        # M1 and M2 are both BHs
-        df = in_df[(in_df['m1'] > MASS_BH) & (in_df['m2'] > MASS_BH)].copy()
-    elif transient_type == 'NSBH':
-        df = in_df[
-            ( # M1 is an NS, and M2 is a BH
-                (in_df['m1'] < MASS_NS) & (in_df['m2'] > MASS_BH)
-            )
-            | # Or
-            ( # M1 is a BH and M2 is an NS
-                (in_df['m1'] > MASS_BH) & (in_df['m2'] < MASS_NS)
-            )
-        ].copy()
+    if transient_type != None:
+        df = filter_transients(in_df, transient_type)
+    else:
+        df = in_df.copy()
 
     # This is just shorthand
     G = takahe.constants.G
@@ -196,7 +239,8 @@ def compute_dtd(in_df, extra_lt=None, transient_type='NSNS'):
                    +  df['coalescence_time']
                      )
 
-    df['lifetime'] = df['lifetime'].apply(extra_lt, args=(df,))
+    if extra_lt != None:
+        df['lifetime'] = df['lifetime'].apply(extra_lt, args=(df,))
 
     # Unit Conversions (back):
     df['a0'] /= (69550 * 1000) # Metre -> Solar Radius
@@ -235,7 +279,8 @@ def single_event_rate(in_df,
                       SFRDi,
                       lin_edges,
                       extra_lt=None,
-                      transient_type='NSNS'
+                      transient_type='NSNS',
+                      as_hist=False
                      ):
     """Computes the event rate of a single metallicity.
 
@@ -318,8 +363,10 @@ def single_event_rate(in_df,
 
     events._values = np.append(events._values, events._values[-1])
 
-
-    return events._values
+    if as_hist:
+        return events
+    else:
+        return events._values
 
 def composite_event_rates(dataframes, extra_lt=None, transient_type='NSNS'):
     """Computes the event rate for a variety of stars at different
@@ -370,7 +417,7 @@ def composite_event_rates(dataframes, extra_lt=None, transient_type='NSNS'):
                                                     "callable or None in call "
                                                     "to composite_event_rates")
 
-    types = ['NSNS', 'NSBH', 'BHBH']
+    types = ['NSNS', 'NSBH', 'BHBH', None]
 
     assert transient_type in types, ("Expected transient_type to be "
                                      + (" or ".join(types))

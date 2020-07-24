@@ -5,6 +5,23 @@ from scipy.integrate import quad
 import takahe
 
 def memoize(f):
+    """Memoizes a function.
+
+    Allows any function to "remember" prior calls. Example:
+
+    >>> @memoize
+    >>> def fib(n):
+    >>>     return 1 if n <= 1
+    >>>     return fib(n-1) + fib(n-2)
+    >>> fib(5) # O(2^n) because basic recursive function
+    >>> fib(4) # O(1) because it was called during execution of fib(5).
+
+    Arguments:
+        f {callable} -- The function you wish to memoize
+
+    Returns:
+        {callable} -- The memoized function.
+    """
     memo = {}
     def helper(x):
         if x not in memo:
@@ -107,6 +124,25 @@ def extract_metallicity(filename):
             Z = part[1:]
 
     return format_metallicity(Z)
+
+@np.vectorize
+def compute_period(a, M, m):
+    """Computes the period of a BSS
+
+    Uses Kepler's third law to compute the period, in days.
+
+    Decorators:
+        np.vectorize
+
+    Arguments:
+        a {float} -- The SMA of the BSS
+        M {float} -- The mass of the primary star
+        m {float} -- The mass of the secondary star
+
+    Returns:
+        {number} -- The period in days
+    """
+    return np.sqrt(4 * np.pi **2 / (takahe.constants.G * (M+m) * 1.989e30) * (a * 696340000)**3) / (60 * 60 * 24)
 
 @np.vectorize
 @memoize
@@ -242,23 +278,63 @@ def _coupled_eqs(t, p, beta):
 
 @njit
 def integrate(t_eval, a0, e0, beta):
-    """Auxilary function which uses an RKF45 integrator to integrate the
-    system of ODEs.
+    """Integrates the System of ODEs that govern binary star evolution
+    in period-eccentricity space.
+
+    Uses an RKF45 integrator to integrate the equations of motion given
+    by [1]. Kills the integrator if:
+    - there is a sharp change in da/dt (i.e., da/dt < 0 at step i, and
+      da/dt > 0 at step i+1),
+    - the eccentricity becomes >= 1
+    - the semimajor axis becomes <= 1
+
+    [1] Nyadzani, L. & Razzaque, S. (2019), An Analytical Solution to the Coalescence Time of Compact BinarySystems, Technical report, University of Johannesburg, Johannesburg.
+
+    [2] 64/5 * G**3 * m1 * m2 * (m1 + m2) / c**5
+
+    Decorators:
+        njit
+
+    Raises:
+        AssertionError            -- If any parameter is not of an
+                                     acceptable type or value.
 
     Arguments:
-        t_eval {ndarray} -- An array of timesteps to compute
-                            the integrals over
+        t_eval {list, np.ndarray} -- A list of timepoints to perform the
+                                     integration at. Used to compute the
+                                     step size for the integrator.
+        a0 {float}                -- The initial value for the SMA in
+                                     solar radii
+        e0 {float}                -- The initial value for the
+                                     eccentricity
+        beta {float}              -- The value beta, defined by [2] above
 
     Returns:
-        evolve_over {ndarray} -- An array representing the time
-                                 integrated over (in gigayears)
-        a_arr {ndarray}       -- An array representing the SMA of the
-                                 binary orbit (in solar radii)
-        e_arr {ndarray}       -- An array representing the
-                                 eccentricity of the binary orbit
+        {tuple}                   -- A 2-tuple containing the semimajor
+                                     axis array and eccentricity array.
     """
 
+    # assert isinstance(t_eval, (np.ndarray, list)), ("Expected t_eval to"
+    #                                                 " be a list-type in"
+    #                                                 " call to integrate()")
+
+    # assert len(t_eval >= 2), ("Expected t_eval to be longer than length 2"
+    #                           " in call to integrate()")
+
+    # assert isinstance(a0, float), ("Expected a0 to be a float in call to"
+    #                                " integrate()")
+
+    # assert isinstance(e0, float), ("Expected e0 to be a float in call to"
+    #                                " integrate()")
+
+    # assert 0 <= e0 <= 1, ("Expected e0 to be between 0 and 1 in call to"
+    #                       " integrate()")
+
+    # assert isinstance(beta, float), ("Expected beta to be a float in call to"
+    #                                " integrate()")
+
     h = t_eval[1] - t_eval[0]
+
     a, e = a0, e0
 
     a_arr = []
@@ -267,8 +343,23 @@ def integrate(t_eval, a0, e0, beta):
     # Implement the RKF45 algorithm.
     yk = np.array([a, e])
 
+    da_last = -np.infty
+
     for t in t_eval:
         c1 = _coupled_eqs(t, yk, beta)
+
+        # sometimes it "kicks up" again - period goes to 0, then suddenly
+        # trns around. This is unphysical and thus we kill it if there's
+        # a rapid change in da/dt's sign
+        da = c1[0]
+
+        if da > 0 and da_last < 0:
+            break
+
+        da_last = da
+
+        # RKF45 integrator
+
         k1 = h * c1
         k2 = h * _coupled_eqs(t + 1/4 * h, yk + 1/4 * k1, beta)
 
@@ -290,7 +381,7 @@ def integrate(t_eval, a0, e0, beta):
                                              + 1859/4104 * k4 \
                                              - 11/40 * k5, beta)
 
-        if e >= 1 or a <= 0:
+        if yk[1] >= 1 or yk[0] <= 1:
             # runaway integration, we should kill it
             # t_eval = (t_eval[0], t_eval[-1], len(e_arr))
             break

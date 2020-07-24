@@ -65,6 +65,7 @@ class histogram:
             raise Exception("Not given the correct input")
 
         self._values = np.zeros(self._nr_bins)
+        self._hits = np.zeros(self._nr_bins)
         self.lower_edges = self._bin_edges[:-1]
         self.upper_edges = self._bin_edges[1:]
 
@@ -135,11 +136,14 @@ class histogram:
         def _insert(f, g):
             if f >= self._xup:
                  self._values[self._nr_bins-1] += g
+                 self._hits[self._nr_bins-1] += 1
             elif f <= self._xlow:
                 self._values[0] += g
+                self._hits[0] += 1
             else:
                 bin_nr = np.where(self.lower_edges <= f)[0][-1]
                 self._values[bin_nr] += g
+                self._hits[bin_nr] += 1
 
         if not isinstance(x, type(0.0)):
             if isinstance(weight, type(0)):
@@ -154,11 +158,32 @@ class histogram:
             _insert(x, weight)
         return None
 
-    def plot(self, *argv, **kwargs):
+    def plot(self, with_errors=False, *argv, **kwargs):
         """Plot the histogram. matplotlib.pyplot arguments can be passed on too
         """
-        _ = plt.hist(self._bin_edges[:-1], self._bin_edges, weights=self._values,histtype=u'step', *argv, **kwargs)
+        entries, edges, _ = plt.hist(self._bin_edges[:-1], self._bin_edges, weights=self._values,histtype=u'step', *argv, **kwargs)
+
+        if with_errors:
+            plt.errorbar(self.getBinCenters(), self._values, yerr=1/np.sqrt(self._hits), fmt='r.')
+
         return None
+
+    def plotLog(self, with_errors=False, *argv, **kwargs):
+        """Plot the histogram. matplotlib.pyplot arguments can be passed on too
+        """
+        entries, edges, _ = plt.hist(np.log10(self._bin_edges[:-1]), np.log10(self._bin_edges), weights=self._values,histtype=u'step', *argv, **kwargs)
+
+        if with_errors:
+            plt.errorbar(self.getBinCenters(), self._values, yerr=1/np.sqrt(self._hits), fmt='r.')
+
+        return None
+
+    def getBinCenters(self):
+        return [self.getBinCenter(i) for i in range(self.getNBins())]
+
+    def reregister_hits(self, hits):
+        for i in range(len(self._hits)):
+            self._hits[i] = hits[i]
 
     def getBinContent(self, bin_nr):
         """Return the value of the given bin
