@@ -5,8 +5,32 @@ from scipy.special import gamma, gammainc
 import takahe
 from tqdm import tqdm
 
-def chirp_mass_distribution(input_dataframes, transient_type='NSNS'):
-    # TODO: sketch out
+def chirp_mass_distribution(input_dataframes,
+                            transient_type='NSNS',
+                            redshift=0):
+    """Computes the chirp mass distribution for an ensemble.
+
+    Computes the chirp mass distribution. Returns a histogram object which
+    contains the number of events in each bin per year per cubic Gpc.
+    The mass bins are selected to be from 10^0 - 10^2 in steps of 0.1 dex
+
+    Arguments:
+        input_dataframes {dict} -- A dictionary of dataframes, keyed by
+                                   metallicity (relative to Z_solar).
+
+    Keyword Arguments:
+        transient_type {str} -- The type of transient we wish to consider
+                                from NSNS, NSBH, BHBH. {default: NSNS}
+        redshift {float} -- The redshift we want to compute at. This is
+                            converted into a lookback time internally.
+                            {default: 0}
+
+    Returns:
+        {takahe.histogram} -- a histogram containing the chirp mass
+                              distribution.
+    """
+
+    tL = takahe.helpers.redshift_to_lookback(redshift)
     log_mass_bins = np.linspace(0, 2, 21)
     chirp_mass_bins = 10 ** log_mass_bins
 
@@ -35,11 +59,35 @@ def chirp_mass_distribution(input_dataframes, transient_type='NSNS'):
 
         events = composite_event_rates(true_primed_dfs, transient_type=None)
 
-        CMD.fill(chirp_mass_bins[i-1], events.getBinContent(0))
+        CMD.fill(chirp_mass_bins[i-1], events.getBinContent(events.getBin(tL)))
 
     return CMD
 
 def filter_transients(in_df, transient_type):
+    """Filters a dataset by transient type.
+
+    Filters a dataset by transient type (NSNS, NSBH, BHBH). Selects based
+    on customisable values.
+
+    Arguments:
+        in_df {pd.DataFrame} -- The input dataframe.
+        transient_type {str} -- The transient type (NSNS, NSBH, BHBH)
+
+    Returns:
+        {pd.DataFrame} -- The DataFrame containing the filtered data.
+
+    Raises:
+        AssertionError -- on malformed input.
+    """
+
+    assert isinstance(in_df, pd.DataFrame), ("Expected in_df to be a DataFrame"
+                                             " in call to filter_transients.")
+    assert transient_type in ['NSNS', 'NSBH', 'BHBH'], ("Expected"
+                                                        " transient_type to"
+                                                        " be NSNS, NSBH, or"
+                                                        " BHBH in call to"
+                                                        " filter_transients.")
+
     MASS_NS = takahe.constants.MASS_CUTOFF_NS
     MASS_BH = takahe.constants.MASS_CUTOFF_BH
 
