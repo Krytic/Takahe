@@ -18,6 +18,34 @@ def evolve_system(star, pbar):
     return star
 
 def period_eccentricity(in_df, transient_type="NSNS"):
+    """Computes the period-eccentricity distribution for an ensemble.
+
+    Evolves the ensemble from 0 to the Hubble time to see how systems
+    behave.
+
+    Strictly this is an SMA-eccentricity routine but the period is
+    computable from the SMA using Kepler's third law.
+
+    Adds FOUR new columns to the DataFrame:
+        - a (the array of SMAs for this star)
+        - e (the array of eccentricities for this star)
+        - af (the final SMA for this star)
+        - ef (the final eccentricity for this star)
+
+    # Todo: Correct implementation.
+    # Todo: Return a period array.
+
+    Arguments:
+        in_df {pd.DataFrame} -- The DataFrame representing your ensemble.
+
+    Keyword Arguments:
+        transient_type {str} -- The transient type (NSNS, NSBH, BHBH)
+                                under consideration. (default: {"NSNS"})
+
+    Returns:
+        {pd.DataFrame} -- The DataFrame with the a and e arrays added
+                          as new columns.
+    """
     histogram_edges = np.linspace(6.05, 11.05, 51)
 
     bins = [0.0]
@@ -25,25 +53,7 @@ def period_eccentricity(in_df, transient_type="NSNS"):
 
     # Now we mask out what we're not interested in.
 
-    MASS_NS = takahe.constants.MASS_CUTOFF_NS
-    MASS_BH = takahe.constants.MASS_CUTOFF_BH
-
-    if transient_type == 'NSNS':
-        # Both M1 and M2 are NS
-        df = in_df[(in_df['m1'] < MASS_NS) & (in_df['m2'] < MASS_NS)].copy()
-    elif transient_type == 'BHBH':
-        # M1 and M2 are both BHs
-        df = in_df[(in_df['m1'] > MASS_BH) & (in_df['m2'] > MASS_BH)].copy()
-    elif transient_type == 'NSBH':
-        df = in_df[
-            ( # M1 is an NS, and M2 is a BH
-                (in_df['m1'] < MASS_NS) & (in_df['m2'] > MASS_BH)
-            )
-            | # Or
-            ( # M1 is a BH and M2 is an NS
-                (in_df['m1'] > MASS_BH) & (in_df['m2'] < MASS_NS)
-            )
-        ].copy()
+    df = takahe.event_rates.filter_transients(in_df, transient_type)
 
     # This is just shorthand
     G = takahe.constants.G # m^3 / kg*s
