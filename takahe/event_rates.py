@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+from numba import njit
 import numpy as np
 import pandas as pd
 from scipy.special import gamma, gammainc
@@ -31,7 +32,7 @@ def chirp_mass_distribution(input_dataframes,
     """
 
     tL = takahe.helpers.redshift_to_lookback(redshift)
-    log_mass_bins = np.linspace(0, 2, 21)
+    log_mass_bins = np.linspace(0, 2, 41)
     chirp_mass_bins = 10 ** log_mass_bins
 
     CMD = takahe.histogram.histogram(edges=chirp_mass_bins)
@@ -44,6 +45,7 @@ def chirp_mass_distribution(input_dataframes,
 
     for Z, in_df in dataframes.items():
         df = filter_transients(in_df, transient_type)
+        constrain_masses(df, transient_type)
         df['M_chirp'] = (df['m1']*df['m2'])**(3/5) / (df['m1']+df['m2'])**(1/5)
         primed_dfs[Z] = df
 
@@ -109,6 +111,41 @@ def filter_transients(in_df, transient_type):
         ].copy()
 
     return df
+
+@njit
+def _mass_worker_nsns(m, M):
+    for i in range(len(m)):
+        mi = -1 + np.sqrt(1+4*0.084*m[i]) / (2*0.084)
+        Mi = -1 + np.sqrt(1+4*0.084*M[i]) / (2*0.084)
+
+        mi = min(0.9*m[i], mi)
+        Mi = min(0.9*M[i], Mi)
+
+        m[i] = mi
+        M[i] = Mi
+
+    return m, M
+
+@njit
+def _mass_worker_nsbh(m, M):
+    for i in range(len(m)):
+        if m[i] < M[i]:
+            m[i] = -1 + np.sqrt(1+4*0.084*m[i]) / (2*0.084)
+            M[i] = 0.9 * M[i]
+        else:
+            m[i] = 0.9 * m[i]
+            M[i] = -1 + np.sqrt(1+4*0.084*M[i]) / (2*0.084)
+
+    return m, M
+
+def constrain_masses(df, transient_type):
+    if transient_type == 'NSNS':
+        df['m1'], df['m2'] = _mass_worker_nsns(df['m1'].to_numpy(), df['m2'].to_numpy())
+    elif transient_type == 'NSBH':
+        df['m1'], df['m2'] = _mass_worker_nsbh(df['m1'].to_numpy(), df['m2'].to_numpy())
+    elif transient_type == 'BHBH':
+        df['m1'] = 0.9 * df['m1']
+        df['m2'] = 0.9 * df['m2']
 
 def generate_sfrd(tL_edges, func=None):
     """Generates the SFRD at every BPASS metallicity.
@@ -481,6 +518,8 @@ def composite_event_rates(dataframes, extra_lt=None, transient_type='NSNS'):
     total_event_rate = np.zeros(len(edges))
     SFRD = generate_sfrd(edges)
 
+    N_datapoints = np.zeros(len(edges)-1)
+
     for i in range(13):
         Z = takahe.constants.BPASS_METALLICITIES[i]
         Z = takahe.helpers.format_metallicity(Z)
@@ -493,11 +532,15 @@ def composite_event_rates(dataframes, extra_lt=None, transient_type='NSNS'):
                                        SFRD_here,
                                        edges,
                                        extra_lt,
-                                       transient_type
+                                       transient_type,
+                                       as_hist=True
                                       )
 
-        total_event_rate = total_event_rate + event_rate
+        total_event_rate = total_event_rate + event_rate._values
+
+        N_datapoints = N_datapoints + event_rate._hits
 
     TER = takahe.histogram.histogram(edges=edges)
     TER.fill(edges, total_event_rate)
+    TER.reregister_hits(N_datapoints)
     return TER

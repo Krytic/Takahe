@@ -10,6 +10,8 @@ Modified by: Sean Richards
 import numpy as np
 import matplotlib.pyplot as plt
 import warnings
+from uncertainties import ufloat
+from uncertainties.umath import log10 as ulog10
 
 class histogram:
     """A histogram which can contain data and can be manipulated.
@@ -102,11 +104,13 @@ class histogram:
     def __div__(self, other):
         out = self.copy()
         out._values = self._values / other
+        out._hits = self._hits
         return out
 
     def __truediv__(self, other):
         out = self.copy()
         out._values = self._values / other
+        out._hits = self._hits
         return out
 
     def copy(self):
@@ -156,6 +160,7 @@ class histogram:
                     _insert(x[i], weight[i])
         else:
             _insert(x, weight)
+
         return None
 
     def plot(self, with_errors=False, *argv, **kwargs):
@@ -164,7 +169,7 @@ class histogram:
         entries, edges, _ = plt.hist(self._bin_edges[:-1], self._bin_edges, weights=self._values,histtype=u'step', *argv, **kwargs)
 
         if with_errors:
-            plt.errorbar(self.getBinCenters(), self._values, yerr=1/np.sqrt(self._hits), fmt='r.')
+            plt.errorbar(self.getBinCenters(), self._values, yerr=np.sqrt(self._hits), fmt='r.')
 
         return None
 
@@ -174,7 +179,7 @@ class histogram:
         entries, edges, _ = plt.hist(np.log10(self._bin_edges[:-1]), np.log10(self._bin_edges), weights=self._values,histtype=u'step', *argv, **kwargs)
 
         if with_errors:
-            plt.errorbar(self.getBinCenters(), self._values, yerr=1/np.sqrt(self._hits), fmt='r.')
+            plt.errorbar(self.getBinCenters(), self._values, yerr=np.sqrt(self._hits), fmt='r.')
 
         return None
 
@@ -184,6 +189,33 @@ class histogram:
     def reregister_hits(self, hits):
         for i in range(len(self._hits)):
             self._hits[i] = hits[i]
+
+    def getUncertainty(self, bin):
+        return np.sqrt(self._hits[bin])
+
+    def get(self, bin):
+        return ufloat(self.getBinContent(bin), self.getUncertainty(bin))
+
+    def getLog(self, bin):
+        val = self.get(bin)
+        val = ulog10(val)
+        return val
+
+    def present_value(self, bin, log=False):
+        if log:
+            val = self.getLog(bin)
+        else:
+            val = self.get(bin)
+
+        err = val.s * val.n
+        nom = val.n
+
+        err_to_1_sf = f"{err:.1g}"
+        num_dp = len(str(err_to_1_sf).split('.')[1])
+
+        return_string = rf"${nom:.{num_dp}f} \pm {err_to_1_sf}"
+
+        return return_string
 
     def getBinContent(self, bin_nr):
         """Return the value of the given bin

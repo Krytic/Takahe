@@ -1,19 +1,39 @@
+import matplotlib.pyplot as plt
 import numpy as np
 from numba import njit
+import pandas as pd
 import takahe
 from tqdm import tqdm
 
-def evolve_system(star, pbar):
+def evolve_system(star, pbar, Pv, Ev):
     t_eval = np.linspace(0, takahe.constants.HUBBLE_TIME, 1000)
 
     a, e = takahe.helpers.integrate(t_eval, star.a0, star.e0, star.beta)
+    P = takahe.helpers.compute_period(a, star.m1, star.m2)
+
+    star['af'] = a[-1]
+    star['ef'] = e[-1]
+    star['Pf'] = takahe.helpers.compute_period(a[-1], star.m1, star.m2)
+
+    star['P0'] = takahe.helpers.compute_period(a[0],  star.m1, star.m2)
+
+    star['P'] = P
+    star['e'] = e
+
+    ecc_bin_switches = [np.argmin(np.abs(ed - Ev)) for ed in e]
+    per_bin_switches = [np.argmin(np.abs(Pd - Pv)) for Pd in P]
+
+    bin_switches = ecc_bin_switches or per_bin_switches
+
+    h = t_eval[1] - t_eval[0]
+
+    t = [h*bin_switches[i] - h*bin_switches[i-1] for i in range(0, len(bin_switches)-1, -1)]
+
+    print(t)
 
     pbar.update(1)
 
-    star['a'] = a
-    star['e'] = e
-    star['af'] = a[-1]
-    star['ef'] = e[-1]
+    raise StopIteration
 
     return star
 
@@ -47,6 +67,8 @@ def period_eccentricity(in_df, transient_type="NSNS"):
                           as new columns.
     """
     histogram_edges = np.linspace(6.05, 11.05, 51)
+    eccentricity_bins = np.linspace(0, 1, 1000)
+    period_bins = np.linspace(-6, 4, 1000)
 
     bins = [0.0]
     bins.extend(10**histogram_edges / 1e9)
@@ -117,6 +139,6 @@ def period_eccentricity(in_df, transient_type="NSNS"):
     df.drop(df[df['lifetime'] > takahe.constants.HUBBLE_TIME].index, inplace=True)
 
     with tqdm(total=len(df)) as pbar:
-        df = df.apply(evolve_system, axis=1, args=(pbar,))
+        df, bins = df.apply(evolve_system, axis=1, args=(pbar,period_bins,eccentricity_bins))
 
     return df
