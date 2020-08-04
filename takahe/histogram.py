@@ -7,8 +7,10 @@ Modified by: Sean Richards
 
 """
 
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
+import pickle
+
 import warnings
 from uncertainties import ufloat
 from uncertainties.umath import log10 as ulog10
@@ -217,6 +219,16 @@ class histogram:
 
         return return_string
 
+    def to_pickle(self, pickle_path):
+        contents = {
+            'edges': self._bin_edges,
+            'values': self._values,
+            'hits': self._hits
+        }
+
+        with open(pickle_path, 'wb') as f:
+            pickle.dump(contents, f)
+
     def getBinContent(self, bin_nr):
         """Return the value of the given bin
 
@@ -411,3 +423,13 @@ class histogram:
                     total += self._values[i] * self.getBinWidth(i)
 
             return total
+
+class pickledHistogram(histogram):
+    def __init__(self, pickle_path):
+        with open(pickle_path, 'rb') as f:
+            contents = pickle.load(f)
+
+            super().__init__(edges=contents['edges'])
+
+            self._values = contents['values']
+            self.reregister_hits(contents['hits'])
