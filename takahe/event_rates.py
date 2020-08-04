@@ -544,3 +544,25 @@ def composite_event_rates(dataframes, extra_lt=None, transient_type='NSNS'):
     TER.fill(edges, total_event_rate)
     TER.reregister_hits(N_datapoints)
     return TER
+
+def single_event_rate_save_result(datafile, transient_type):
+    kick = 'Bray' if 'Bray' in datafile else 'Hobbs'
+    edges = takahe.constants.LINEAR_BINS
+
+    SFRD = generate_sfrd(edges)
+
+    Z = takahe.helpers.extract_metallicity(datafile)
+    df = takahe.load.from_file(datafile)
+
+    SFRD_here = SFRD[Z]
+
+    event_rate = single_event_rate(df,
+                                   Z,
+                                   SFRD_here,
+                                   edges,
+                                   None,
+                                   transient_type,
+                                   as_hist=True
+                                  )
+
+    event_rate.to_pickle(f"{kick}-{transient_type}-{Z}.p")
