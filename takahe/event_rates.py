@@ -413,7 +413,7 @@ def single_event_rate(in_df,
     LOG_edges = [0.0]
     LOG_edges.extend(10**np.linspace(6.05, 11.05, 51)/1e9)
 
-    # print(LOG_edges)
+    # TODO: Change to integrating the EOMs
 
     DTD = takahe.histogram.histogram(edges=LOG_edges)
     SFRD = takahe.histogram.histogram(edges=lin_edges)

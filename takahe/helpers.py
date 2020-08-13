@@ -1,7 +1,12 @@
+import warnings
+
+import integrator
 from numba import njit
 import numpy as np
+from scipy import LowLevelCallable
 from scipy.optimize import fminbound
 from scipy.integrate import quad
+from scipy.integrate import RK45
 import takahe
 
 def memoize(f):
@@ -261,7 +266,7 @@ def _dedt(t, a, e, beta):
     return de
 
 @njit
-def _coupled_eqs(t, p, beta):
+def _coupled_eqs(t, p):
     """Primary workhorse function. Computes the vector [da/dt, de/dt]
     for use in our integrator.
 
@@ -274,10 +279,11 @@ def _coupled_eqs(t, p, beta):
         {list} -- A list containing da/dt and de/dt
     """
 
-    return np.array([_dadt(t, p[0], p[1], beta), _dedt(t, p[0], p[1], beta)])
+    return np.array([_dadt(t, p[0], p[1], p[2]),
+                     _dedt(t, p[0], p[1], p[2]),
+                     p[2]])
 
-@njit
-def integrate(t_eval, a0, e0, beta):
+def integrate(t_eval, a0, e0, beta, etol=1e-4):
     """Integrates the System of ODEs that govern binary star evolution
     in period-eccentricity space.
 
@@ -288,7 +294,7 @@ def integrate(t_eval, a0, e0, beta):
     - the eccentricity becomes >= 1
     - the semimajor axis becomes <= 1
 
-    [1] Nyadzani, L. & Razzaque, S. (2019), An Analytical Solution to the Coalescence Time of Compact BinarySystems, Technical report, University of Johannesburg, Johannesburg.
+    [1] Nyadzani, L. & Razzaque, S. (2019), An Analytical Solution to the Coalescence Time of Compact Binary Systems, Technical report, University of Johannesburg, Johannesburg.
 
     [2] 64/5 * G**3 * m1 * m2 * (m1 + m2) / c**5
 
@@ -309,10 +315,42 @@ def integrate(t_eval, a0, e0, beta):
                                      eccentricity
         beta {float}              -- The value beta, defined by [2] above
 
+    Keyword Arguments:
+        etol {float}              -- The acceptable tolerance in step
+                                     size h (Default: 1e-4)
+
     Returns:
         {tuple}                   -- A 2-tuple containing the semimajor
                                      axis array and eccentricity array.
     """
+
+    # Convert m^4 / s to Solar Radii^4 / Gyr
+    beta = beta / (6.957e+8)**4 * (1e9 * 60 * 60 * 24 * 365.25)
+
+    # Convert m to Solar Radii
+    a0 = a0 / 6.957e8
+
+    integrand = LowLevelCallable.from_cython(integrator, 'integrand')
+
+    res = RK45(_coupled_eqs, t_eval[0], [a0, e0, beta], t_eval[1])
+
+    a, e, beta = res.y
+
+    A = [a]
+    E = [e]
+
+    for i in range(10000):
+        msg = res.step()
+        if res.status == 'running':
+            A.append(res.y[0] * 6.957e8)
+            E.append(res.y[1])
+        elif res.status == 'finished':
+            break
+        elif res.status == 'failed':
+            print(msg)
+            break
+
+    return np.array(A), np.array(E)
 
     # assert isinstance(t_eval, (np.ndarray, list)), ("Expected t_eval to"
     #                                                 " be a list-type in"
@@ -333,62 +371,96 @@ def integrate(t_eval, a0, e0, beta):
     # assert isinstance(beta, float), ("Expected beta to be a float in call to"
     #                                " integrate()")
 
-    h = t_eval[1] - t_eval[0]
+    # h = t_eval[1] - t_eval[0]
 
-    a, e = a0, e0
+    # tolh = etol
 
-    a_arr = []
-    e_arr = []
+    # a, e = a0, e0
 
-    # Implement the RKF45 algorithm.
-    yk = np.array([a, e])
+    # a_arr = []
+    # e_arr = []
 
-    da_last = -np.infty
+    # # Implement the RKF45 algorithm.
+    # yk = np.array([a, e])
 
-    for t in t_eval:
-        c1 = _coupled_eqs(t, yk, beta)
+    # da_last = -np.infty
 
-        # sometimes it "kicks up" again - period goes to 0, then suddenly
-        # trns around. This is unphysical and thus we kill it if there's
-        # a rapid change in da/dt's sign
-        da = c1[0]
+    # n = 0
+    # t = 0
 
-        if da > 0 and da_last < 0:
-            break
+    # while t < t_eval[-1]:
+    #     c1 = _coupled_eqs(t, yk, beta)
 
-        da_last = da
+    #     # sometimes it "kicks up" again - period goes to 0, then suddenly
+    #     # trns around. This is unphysical and thus we kill it if there's
+    #     # a rapid change in da/dt's sign
+    #     da = c1[0]
 
-        # RKF45 integrator
+    #     if da > 0 and da_last < 0:
+    #         break
 
-        k1 = h * c1
-        k2 = h * _coupled_eqs(t + 1/4 * h, yk + 1/4 * k1, beta)
+    #     da_last = da
 
-        k3 = h * _coupled_eqs(t + 3/8 * h, yk + 3/32 * k1 \
-                                             + 9/32 * k2, beta)
+    #     # RKF45 integrator
 
-        k4 = h * _coupled_eqs(t+12/13 * h, yk + 1932/2197 * k1 \
-                                             - 7200/2197 * k2 \
-                                             + 7293/2197 * k3, beta)
+    #     k1 = h * c1
+    #     k2 = h * _coupled_eqs(t + 1/4 * h, yk + 1/4 * k1, beta)
 
-        k5 = h * _coupled_eqs(t + h, yk + 439/216 * k1 \
-                                       - 8*k2 \
-                                       + 3680/513 * k3
-                                       - 845/4104*k4, beta)
+    #     k3 = h * _coupled_eqs(t + 3/8 * h, yk + 3/32 * k1 \
+    #                                          + 9/32 * k2, beta)
 
-        k6 = h * _coupled_eqs(t + 1/2 * h, yk - 8/27*k1 \
-                                             + 2*k2 \
-                                             - 3544/2565*k3 \
-                                             + 1859/4104 * k4 \
-                                             - 11/40 * k5, beta)
+    #     k4 = h * _coupled_eqs(t+12/13 * h, yk + 1932/2197 * k1 \
+    #                                          - 7200/2197 * k2 \
+    #                                          + 7293/2197 * k3, beta)
 
-        if yk[1] >= 1 or yk[0] <= 1:
-            # runaway integration, we should kill it
-            # t_eval = (t_eval[0], t_eval[-1], len(e_arr))
-            break
+    #     k5 = h * _coupled_eqs(t + h, yk + 439/216 * k1 \
+    #                                    - 8*k2 \
+    #                                    + 3680/513 * k3
+    #                                    - 845/4104*k4, beta)
 
-        a_arr.append(yk[0])
-        e_arr.append(yk[1])
+    #     k6 = h * _coupled_eqs(t + 1/2 * h, yk - 8/27*k1 \
+    #                                          + 2*k2 \
+    #                                          - 3544/2565*k3 \
+    #                                          + 1859/4104 * k4 \
+    #                                          - 11/40 * k5, beta)
 
-        yk = yk + 25/216 * k1 + 1408/2565*k3 + 2197/4101 * k4 - 1/5 * k5
+    #     if yk[1] >= 1:# or yk[0] <= 1:
+    #         # runaway integration, we should kill it
+    #         # t_eval = (t_eval[0], t_eval[-1], len(e_arr))
+    #         break
 
-    return np.array(a_arr), np.array(e_arr)
+    #     if np.isnan(yk[1]) or np.isnan(yk[1]):
+    #         # runaway integration
+    #         break
+
+    #     a_arr.append(yk[0])
+    #     e_arr.append(yk[1])
+
+    #     ykplus1 = (yk + 25/216 * k1
+    #                   + 1408/2565 * k3
+    #                   + 2197/4101 * k4
+    #                   - 1/5 * k5)
+
+    #     zkplus1 = (yk + 16/135 * k1
+    #                   + 6656/12825*k3
+    #                   + 28561/56430 * k4
+    #                   - 9/50 *k5
+    #                   + 22/5 * k6)
+
+    #     s = (tolh / (2 * np.abs(zkplus1[0] - ykplus1[0]))) ** 0.25
+
+    #     h = s*h
+
+    #     yk = ykplus1
+
+    #     t = t_eval[0] + n * h
+    #     n += 1
+
+
+    # A, E = np.array(a_arr), np.array(e_arr)
+
+    # if len(A) == 0:
+    #     A = np.array([a0])
+    #     E = np.array([e0])
+
+    # return A, E

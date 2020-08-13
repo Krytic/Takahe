@@ -1,5 +1,7 @@
-from setuptools import setup
+from setuptools import setup, Extension
 import re
+
+USE_CYTHON = True
 
 description = 'A python library to evolve binary star systems in time.'
 
@@ -9,7 +11,11 @@ try:
 except FileNotFoundError:
 	long_description = description
 
-metadata = {"version": "", "author": "", "email": ""}
+metadata = {"version": "",
+			"author": "",
+			"email": ""
+		   }
+
 metadata_file = open("takahe/_metadata.py", "rt").read()
 
 for item in metadata.keys():
@@ -20,19 +26,22 @@ for item in metadata.keys():
 	if match:
 	    metadata[item] = match.group(1)
 
+ext = '.pyx' if USE_CYTHON else '.c'
+
+extensions = [Extension('integrator', ["src/integrator" + ext])]
+
+if USE_CYTHON:
+	from Cython.Build import cythonize
+	extensions = cythonize(extensions, annotate=True)
+
 setup(name='takahe',
-	  version=metadata['version'],
-	  description=description,
-	  long_description=long_description,
-	  author=metadata['author'],
-	  author_email=metadata['email'],
-	  packages=['takahe'],
-	  zip_safe=False,
-	  install_requires=[
-	  	'hoki',
-	  	'numpy',
-	  	'matplotlib',
-	  	'numba',
-	  	'pandas==1.0.1'
-	  ]
+	  version 			= metadata['version'],
+	  description 		= description,
+	  long_description	= long_description,
+	  author 			= metadata['author'],
+	  author_email		= metadata['email'],
+	  packages			= ['takahe'],
+	  zip_safe			= False,
+	  ext_modules		= extensions,
+	  install_requires	= ['numpy', 'matplotlib', 'numba', 'pandas==1.0.1']
 	)

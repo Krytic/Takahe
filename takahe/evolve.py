@@ -1,11 +1,24 @@
+import bisect
+
 import matplotlib.pyplot as plt
 import numpy as np
 from numba import njit
 import pandas as pd
+from scipy import stats
 import takahe
 from tqdm import tqdm
 
+def find_between(a, low, high):
+    i = bisect.bisect_left(a, low)
+    g = bisect.bisect_right(a, high)
+    if i != len(a) and g != len(a):
+        return a[i:g]
+    raise ValueError
+
 def evolve_system(star, pbar, Pv, Ev):
+    nbin_width = 1e-4 # Todo: customisable
+    mbin_width = 1e-4
+
     t_eval = np.linspace(0, takahe.constants.HUBBLE_TIME, 1000)
 
     a, e = takahe.helpers.integrate(t_eval, star.a0, star.e0, star.beta)
@@ -20,20 +33,41 @@ def evolve_system(star, pbar, Pv, Ev):
     star['P'] = P
     star['e'] = e
 
-    ecc_bin_switches = [np.argmin(np.abs(ed - Ev)) for ed in e]
-    per_bin_switches = [np.argmin(np.abs(Pd - Pv)) for Pd in P]
+    # ecc_bin_switches = [np.argmin(np.abs(ed - Ev)) for ed in e]
+    # per_bin_switches = [np.argmin(np.abs(Pd - Pv)) for Pd in P]
 
-    bin_switches = ecc_bin_switches or per_bin_switches
+    # bin_switches = ecc_bin_switches or per_bin_switches
 
-    h = t_eval[1] - t_eval[0]
+    # h = t_eval[1] - t_eval[0]
 
-    t = [h*bin_switches[i] - h*bin_switches[i-1] for i in range(0, len(bin_switches)-1, -1)]
+    # t = [h*bin_switches[i] - h*bin_switches[i-1] for i in range(0, len(bin_switches)-1, -1)]
 
-    print(t)
+    logP = np.log10(P)
+
+    nbins = int((max(e)-min(e)) // nbin_width)
+    mbins = int((max(logP)-min(logP)) // mbin_width)
+
+    binx = np.linspace(min(e), max(e), nbins)
+    biny = np.linspace(min(logP), max(logP), mbins)
+
+
+    # Todo: WTF why is this "empty"???
+    try:
+        ret = stats.binned_statistic_2d(e, logP, e, 'count', bins=[binx, biny])
+    except ValueError as ex:
+        raise ValueError(str(ex) + "\n\nFailed on e:\n" + str(list(e)) + "\nlogP:\n" + str(list(logP)))
+
+    bin_counts = ret.statistic
+
+    lt = star.lifetime
+
+    k_points = len(e)
+
+    time_per_point = lt / k_points
+
+    time_per_2d_bin = bin_counts * time_per_point
 
     pbar.update(1)
-
-    raise StopIteration
 
     return star
 
