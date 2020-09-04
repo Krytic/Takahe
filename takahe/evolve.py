@@ -15,61 +15,60 @@ def find_between(a, low, high):
         return a[i:g]
     raise ValueError
 
-def evolve_system(star, pbar, Pv, Ev):
-    nbin_width = 1e-4 # Todo: customisable
-    mbin_width = 1e-4
+@np.vectorize
+def evolve_system(a0, e0, m1, m2):
+    """Evolves a binary system until merger or the age of the Universe.
 
-    t_eval = np.linspace(0, takahe.constants.HUBBLE_TIME, 1000)
+    # TODO: [description]
 
-    a, e = takahe.helpers.integrate(t_eval, star.a0, star.e0, star.beta)
-    P = takahe.helpers.compute_period(a, star.m1, star.m2)
+    Decorators:
+        np.vectorize
 
-    star['af'] = a[-1]
-    star['ef'] = e[-1]
-    star['Pf'] = takahe.helpers.compute_period(a[-1], star.m1, star.m2)
+    Arguments:
+        a0 {float} -- The initial semimajor axis in Solar Radii
+        e0 {float} -- The initial eccentricity
+        m1 {float} -- The mass of the primary in Solar Masses
+        m2 {float} -- The mass of the secondary in Solar Masses
 
-    star['P0'] = takahe.helpers.compute_period(a[0],  star.m1, star.m2)
+    Returns:
+        {tuple} -- The initial and final parameters:
+                   - The initial eccentricity
+                   - The initial period (days)
+                   - The final eccentricity
+                   - The final period (days)
+                   - The number of samples
+    """
+    global pbar
 
-    star['P'] = P
-    star['e'] = e
+    params = [m1, m2]
 
-    # ecc_bin_switches = [np.argmin(np.abs(ed - Ev)) for ed in e]
-    # per_bin_switches = [np.argmin(np.abs(Pd - Pv)) for Pd in P]
+    a, e = takahe.helpers.integrate(a0, e0, params)
 
-    # bin_switches = ecc_bin_switches or per_bin_switches
+    af = a[-1]
 
-    # h = t_eval[1] - t_eval[0]
+    e0 = e0
+    ef = e[-1]
+    P = takahe.helpers.compute_period(a, m1, m2)
+    P0, Pf = P[0], P[-1]
 
-    # t = [h*bin_switches[i] - h*bin_switches[i-1] for i in range(0, len(bin_switches)-1, -1)]
+    nbin_width = 1e-2 # Todo: customisable
+    mbin_width = 1e-2
 
     logP = np.log10(P)
 
-    nbins = int((max(e)-min(e)) // nbin_width)
-    mbins = int((max(logP)-min(logP)) // mbin_width)
+    nbins = int(1 // nbin_width)
+    mbins = int(8 // mbin_width)
 
-    binx = np.linspace(min(e), max(e), nbins)
-    biny = np.linspace(min(logP), max(logP), mbins)
+    binx = np.linspace(-2, 6, nbins)
+    biny = np.linspace(0,  1, mbins)
 
-
-    # Todo: WTF why is this "empty"???
-    try:
-        ret = stats.binned_statistic_2d(e, logP, e, 'count', bins=[binx, biny])
-    except ValueError as ex:
-        raise ValueError(str(ex) + "\n\nFailed on e:\n" + str(list(e)) + "\nlogP:\n" + str(list(logP)))
+    ret = stats.binned_statistic_2d(logP, e, logP, 'count', bins=[binx, biny])
 
     bin_counts = ret.statistic
 
-    lt = star.lifetime
-
-    k_points = len(e)
-
-    time_per_point = lt / k_points
-
-    time_per_2d_bin = bin_counts * time_per_point
-
     pbar.update(1)
 
-    return star
+    return bin_counts
 
 def period_eccentricity(in_df, transient_type="NSNS"):
     """Computes the period-eccentricity distribution for an ensemble.
@@ -100,79 +99,70 @@ def period_eccentricity(in_df, transient_type="NSNS"):
         {pd.DataFrame} -- The DataFrame with the a and e arrays added
                           as new columns.
     """
-    histogram_edges = np.linspace(6.05, 11.05, 51)
-    eccentricity_bins = np.linspace(0, 1, 1000)
-    period_bins = np.linspace(-6, 4, 1000)
 
-    bins = [0.0]
-    bins.extend(10**histogram_edges / 1e9)
+    global pbar
+
+    # Don't know why we have to do this, computation breaks otherwise.
+    pd.set_option('compute.use_numexpr', False)
 
     # Now we mask out what we're not interested in.
-
     df = takahe.event_rates.filter_transients(in_df, transient_type)
-
-    # This is just shorthand
-    G = takahe.constants.G # m^3 / kg*s
-    c = takahe.constants.c # m /s
 
     # Highly eccentric orbits lead to division by zero.
     df.drop(df[df['e0'] == 1].index, inplace=True)
 
-    # Unit Conversions:
-    df['a0'] *= (69550 * 1000) # Solar Radius -> Metre
-    df['m1'] *= 1.989e30 # Solar Mass -> Kilogram
-    df['m2'] *= 1.989e30 # Solar Mass -> Kilogram
-
-    # Introduce some temporary terms, to make computation easier
-    df['beta'] = ((64/5) * G**3 * df['m1'] * df['m2']
-                         * (df['m1'] + df['m2'])
-                         / (c**5))
-
-    # m^4 / s
-
-    df.drop(df[df['beta'] == 0].index, inplace=True)
-
-    df['circ'] = df['a0']**4 / (4*df['beta'])
-
-    df['divisor'] = ((1 - df['e0'] ** (7/4)) ** (1/5)
-                  *  (1+121/304 * df['e0'] ** 2))
-
-    df['coalescence_time'] = ((df['circ'] * (1-df['e0']**2)**(7/2)
-                           / df['divisor'])
-                           / (1e9 * 60 * 60 * 24 * 365.25))
-
-    df['lifetime'] = (df['evolution_age'] / 1e9
-                   +  df['rejuvenation_age'] / 1e9
-                   +  df['coalescence_time']
-                     )
-
-    # Unit Conversions (back):
-    df['a0'] /= (69550 * 1000) # Metre -> Solar Radius
-    df['m1'] /= (1.989e30) # Kilogram -> Solar Mass
-    df['m2'] /= (1.989e30) # As above
-    df['beta'] /= ((69550 * 1000) ** 4 / (1e9 * 60 * 60 * 24 * 365.25))
-    # m^4 / s -> Solar Radius^4 / Gyr
-
-    # The minimum lifetime of a star is ~3 Myr, so introduce
-    # an artificial cutoff there.
-    df['lifetime'] = np.maximum(df.lifetime, 0.003)
-
-    # I don't think it's required but just in case
-    df.reset_index(drop=True, inplace=True)
-
-    # Remove temporary columns
-    df = df.drop(columns=['coalescence_time',
-                          'evolution_age',
-                          'rejuvenation_age',
-                          'circ',
-                          'divisor'
-                         ],
-                        inplace=False)
-
-    # Remove systems with lifetime > Hubble time
-    df.drop(df[df['lifetime'] > takahe.constants.HUBBLE_TIME].index, inplace=True)
-
     with tqdm(total=len(df)) as pbar:
-        df, bins = df.apply(evolve_system, axis=1, args=(pbar,period_bins,eccentricity_bins))
+        c = evolve_system(df['a0'].values,
+                          df['e0'].values,
+                          df['m1'].values,
+                          df['m2'].values)
 
-    return df
+    Po = np.log10(np.array([4.072, 0.102, 0.421, 0.320, 0.323, 0.206, 0.184, 8.634, 18.779, 1.176, 45.060, 13.638, 2.616, 0.078]))
+    eo = [0.113, 0.088, 0.274, 0.181, 0.617, 0.090, 0.606, 0.249,  0.828, 0.139,  0.399,  0.304, 0.169, 0.064]
+
+    C = np.sum(c, 0)
+
+    shp = C.shape
+
+    x = np.linspace(-2, 6, shp[0])
+    y = np.linspace(0, 1, shp[1])
+
+    X, Y = np.meshgrid(x, y, indexing='ij')
+
+    return X, Y, C, Po, Eo
+
+def compute_ct(coalescence_time, star):
+    # TODO: This needs work, there is a circular definition
+    G = takahe.constants.G
+    c = takahe.constants.c
+
+    M = star.m1 + star.m2
+
+    mu = star.m1 * star.m2 / (star.m1 + star.m2)
+    nu = mu / M
+
+    beta = star.beta
+    beta1 = G * M * (7 - nu) / (4 * c**2)
+    beta2 = G * M * (13-840*nu) / (336*c**2)
+
+    a1 = 1 # Something????
+    E1 = -G * M / (2*a1) + G * M / (8*c**2*a1**2) * (7-nu)
+
+    C1 = 3*beta1 - beta2
+    C2 = 5*beta1**2 - 2*beta1*beta2 + beta2**2
+    C3 = 5*beta1**3 - 2*beta1**2*beta2 + beta1*beta2**2 -beta2 **3
+    C4 = beta1**6*(6*beta1 - beta2)
+    C5 = beta1**4*(14*beta1**2 - 4*beta1*beta2 + beta2**2)
+    C6 = beta1**2*(14*beta1**3 -5*beta1**2*beta2 + 2*beta1*beta2**2 - beta2**3)
+
+    Tc  = a1**4 / (4*beta)
+    Tc += a1**3 * C1 / (3*beta)
+    Tc += a1**2 * C2 / (2*beta)
+    Tc += a1 * C3 / beta
+    Tc += beta2**4 / beta * np.log10((a1**2+a1*beta2-beta1*beta2)/(a1-beta1))
+    Tc += beta1**8 / (4*beta*(a1-beta1)**4)
+    Tc += C4 / (3*beta*(a1-beta1)**3)
+    Tc += C5 / (2*beta*(a1-beta1)**2)
+    Tc += C6 / (beta*(a1-beta1))
+
+    return Tc

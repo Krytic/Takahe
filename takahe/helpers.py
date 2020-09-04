@@ -1,12 +1,10 @@
 import warnings
 
-import integrator
+from julia import Main as jl
 from numba import njit
 import numpy as np
-from scipy import LowLevelCallable
 from scipy.optimize import fminbound
 from scipy.integrate import quad
-from scipy.integrate import RK45
 import takahe
 
 def memoize(f):
@@ -140,14 +138,14 @@ def compute_period(a, M, m):
         np.vectorize
 
     Arguments:
-        a {float} -- The SMA of the BSS
-        M {float} -- The mass of the primary star
-        m {float} -- The mass of the secondary star
+        a {float} -- The SMA of the BSS (in solar radii)
+        M {float} -- The mass of the primary star (in solar masses)
+        m {float} -- The mass of the secondary star (in solar masses)
 
     Returns:
-        {number} -- The period in days
+        {float} -- The period in days
     """
-    return np.sqrt(4 * np.pi **2 / (takahe.constants.G * (M+m) * 1.989e30) * (a * 696340000)**3) / (60 * 60 * 24)
+    return np.sqrt(4 * np.pi **2 / (takahe.constants.G * (M+m) * takahe.constants.SOLAR_MASS) * (a * takahe.constants.SOLAR_RADIUS)**3) / (60 * 60 * 24)
 
 @np.vectorize
 @memoize
@@ -195,272 +193,48 @@ def redshift_to_lookback(z):
 
     return takahe.constants.HUBBLE_TIME * rest
 
-@njit
-def comoving_vol(DH, omega_k, DC):
-    if omega_k > 0:
-        OK = np.sqrt(omega_k)
-        DM = DH / OK * np.sinh(OK * DC / DH)
-    elif omega_k == 0:
-        DM = DC
-    elif omega_k < 0:
-        OK = np.sqrt(np.abs(omega_k))
-        DM = DH / OK * np.sin(OK * DC / DH)
-
-    if omega_k == 0:
-        VC = 4*np.pi/3 * DM**3
-    else:
-        DH = DH
-        OK = np.sqrt(np.abs(omega_k))
-
-        coeff = 4*np.pi * DH**3 / (2*omega_k)
-        term1 = DM / DH * np.sqrt(1+omega_k*(DM/DH))**2
-
-        if omega_k > 0:
-            term2 = 1/OK * np.arcsinh(OK * DM / DH)
-        else:
-            term2 = 1/OK * np.arcsin(OK * DM / DH)
-
-        VC = coeff * (term1 - term2)
-
-    return VC
-
-@njit
-def _dadt(t, a, e, beta):
-    """Auxiliary function to compute Equation 3.
-
-    Arguments:
-        t {ndarray} -- A vector of times.
-        e {float}   -- The current eccentricity
-        a {float}   -- The current semimajor axis
-
-    Returns:
-        {float} -- The quantity da/dt - how the semimajor axis is changing
-                   with time.
-    """
-
-    initial_term = (-beta / (a**3 * (1-e**2)**(7/2)))
-
-    da = initial_term * (1 + 73/24 * e**2 + 37 / 96 * e ** 4)
-    # Units: km/s
-
-    return da
-
-@njit
-def _dedt(t, a, e, beta):
-    """Auxiliary function to compute Equation 4.
-
-    Arguments:
-        t {ndarray} -- A vector of times.
-        e {float}   -- The current eccentricity
-        a {float}   -- The current semimajor axis
-
-    Returns:
-        {float} -- The quantity de/dt - how the eccentricity is changing
-                   with time.
-    """
-
-    initial_term = (-19/12 * beta / (a**4*(1-e**2)**(5/2)))
-
-    de = initial_term * (e + 121/304 * e ** 3) # Units: s^-1
-
-    return de
-
-@njit
-def _coupled_eqs(t, p):
-    """Primary workhorse function. Computes the vector [da/dt, de/dt]
-    for use in our integrator.
-
-    Arguments:
-        t {ndarray} -- A vector of times
-        p {list}    -- A list or 2-tuple of arguments. Must take the
-                       form [a, e]
-
-    Returns:
-        {list} -- A list containing da/dt and de/dt
-    """
-
-    return np.array([_dadt(t, p[0], p[1], p[2]),
-                     _dedt(t, p[0], p[1], p[2]),
-                     p[2]])
-
-def integrate(t_eval, a0, e0, beta, etol=1e-4):
+def integrate(a0, e0, p):
     """Integrates the System of ODEs that govern binary star evolution
     in period-eccentricity space.
 
-    Uses an RKF45 integrator to integrate the equations of motion given
-    by [1]. Kills the integrator if:
-    - there is a sharp change in da/dt (i.e., da/dt < 0 at step i, and
-      da/dt > 0 at step i+1),
-    - the eccentricity becomes >= 1
-    - the semimajor axis becomes <= 1
+    Uses a custom Julia integrator to integrate the equations of motion
+    given by [1]. The integrator constrains the periods and eccentricities
+    to the intevals (cutoff_period, P0] and [0, 1] respectively.
 
     [1] Nyadzani, L. & Razzaque, S. (2019), An Analytical Solution to the Coalescence Time of Compact Binary Systems, Technical report, University of Johannesburg, Johannesburg.
 
     [2] 64/5 * G**3 * m1 * m2 * (m1 + m2) / c**5
-
-    Decorators:
-        njit
 
     Raises:
         AssertionError            -- If any parameter is not of an
                                      acceptable type or value.
 
     Arguments:
-        t_eval {list, np.ndarray} -- A list of timepoints to perform the
-                                     integration at. Used to compute the
-                                     step size for the integrator.
         a0 {float}                -- The initial value for the SMA in
                                      solar radii
         e0 {float}                -- The initial value for the
                                      eccentricity
-        beta {float}              -- The value beta, defined by [2] above
+        p {list, np.ndarray}      -- A vector of parameters:
+                                        p[0] = beta (defined by [2] above)
+                                        p[1] = m1 (in solar masses)
+                                        p[2] = m2 (in solar masses)
 
     Keyword Arguments:
-        etol {float}              -- The acceptable tolerance in step
-                                     size h (Default: 1e-4)
+        h {float}                 -- The step size (default: 0.01)
+        max_iter {float}          -- The maximum number of iterations of
+                                     the integrator (default: 10000)
+        cutoff_period {float}     -- The period at which to stop the
+                                     integration, in days (default: 1 hr)
 
     Returns:
         {tuple}                   -- A 2-tuple containing the semimajor
                                      axis array and eccentricity array.
     """
 
-    # Convert m^4 / s to Solar Radii^4 / Gyr
-    beta = beta / (6.957e+8)**4 * (1e9 * 60 * 60 * 24 * 365.25)
+    assert isinstance(a0, float),              "Expected a0 to be a float"
+    assert isinstance(e0, float),              "Expected e0 to be a float"
+    assert isinstance(p,  (np.ndarray, list)), "Expected p to be arraylike"
 
-    # Convert m to Solar Radii
-    a0 = a0 / 6.957e8
+    assert 0 <= e0 <= 1,                       "e0 outside of range [0, 1]"
 
-    integrand = LowLevelCallable.from_cython(integrator, 'integrand')
-
-    res = RK45(_coupled_eqs, t_eval[0], [a0, e0, beta], t_eval[1])
-
-    a, e, beta = res.y
-
-    A = [a]
-    E = [e]
-
-    for i in range(10000):
-        msg = res.step()
-        if res.status == 'running':
-            A.append(res.y[0] * 6.957e8)
-            E.append(res.y[1])
-        elif res.status == 'finished':
-            break
-        elif res.status == 'failed':
-            print(msg)
-            break
-
-    return np.array(A), np.array(E)
-
-    # assert isinstance(t_eval, (np.ndarray, list)), ("Expected t_eval to"
-    #                                                 " be a list-type in"
-    #                                                 " call to integrate()")
-
-    # assert len(t_eval >= 2), ("Expected t_eval to be longer than length 2"
-    #                           " in call to integrate()")
-
-    # assert isinstance(a0, float), ("Expected a0 to be a float in call to"
-    #                                " integrate()")
-
-    # assert isinstance(e0, float), ("Expected e0 to be a float in call to"
-    #                                " integrate()")
-
-    # assert 0 <= e0 <= 1, ("Expected e0 to be between 0 and 1 in call to"
-    #                       " integrate()")
-
-    # assert isinstance(beta, float), ("Expected beta to be a float in call to"
-    #                                " integrate()")
-
-    # h = t_eval[1] - t_eval[0]
-
-    # tolh = etol
-
-    # a, e = a0, e0
-
-    # a_arr = []
-    # e_arr = []
-
-    # # Implement the RKF45 algorithm.
-    # yk = np.array([a, e])
-
-    # da_last = -np.infty
-
-    # n = 0
-    # t = 0
-
-    # while t < t_eval[-1]:
-    #     c1 = _coupled_eqs(t, yk, beta)
-
-    #     # sometimes it "kicks up" again - period goes to 0, then suddenly
-    #     # trns around. This is unphysical and thus we kill it if there's
-    #     # a rapid change in da/dt's sign
-    #     da = c1[0]
-
-    #     if da > 0 and da_last < 0:
-    #         break
-
-    #     da_last = da
-
-    #     # RKF45 integrator
-
-    #     k1 = h * c1
-    #     k2 = h * _coupled_eqs(t + 1/4 * h, yk + 1/4 * k1, beta)
-
-    #     k3 = h * _coupled_eqs(t + 3/8 * h, yk + 3/32 * k1 \
-    #                                          + 9/32 * k2, beta)
-
-    #     k4 = h * _coupled_eqs(t+12/13 * h, yk + 1932/2197 * k1 \
-    #                                          - 7200/2197 * k2 \
-    #                                          + 7293/2197 * k3, beta)
-
-    #     k5 = h * _coupled_eqs(t + h, yk + 439/216 * k1 \
-    #                                    - 8*k2 \
-    #                                    + 3680/513 * k3
-    #                                    - 845/4104*k4, beta)
-
-    #     k6 = h * _coupled_eqs(t + 1/2 * h, yk - 8/27*k1 \
-    #                                          + 2*k2 \
-    #                                          - 3544/2565*k3 \
-    #                                          + 1859/4104 * k4 \
-    #                                          - 11/40 * k5, beta)
-
-    #     if yk[1] >= 1:# or yk[0] <= 1:
-    #         # runaway integration, we should kill it
-    #         # t_eval = (t_eval[0], t_eval[-1], len(e_arr))
-    #         break
-
-    #     if np.isnan(yk[1]) or np.isnan(yk[1]):
-    #         # runaway integration
-    #         break
-
-    #     a_arr.append(yk[0])
-    #     e_arr.append(yk[1])
-
-    #     ykplus1 = (yk + 25/216 * k1
-    #                   + 1408/2565 * k3
-    #                   + 2197/4101 * k4
-    #                   - 1/5 * k5)
-
-    #     zkplus1 = (yk + 16/135 * k1
-    #                   + 6656/12825*k3
-    #                   + 28561/56430 * k4
-    #                   - 9/50 *k5
-    #                   + 22/5 * k6)
-
-    #     s = (tolh / (2 * np.abs(zkplus1[0] - ykplus1[0]))) ** 0.25
-
-    #     h = s*h
-
-    #     yk = ykplus1
-
-    #     t = t_eval[0] + n * h
-    #     n += 1
-
-
-    # A, E = np.array(a_arr), np.array(e_arr)
-
-    # if len(A) == 0:
-    #     A = np.array([a0])
-    #     E = np.array([e0])
-
-    # return A, E
+    return takahe.integrate(a0, e0, p)

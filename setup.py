@@ -1,7 +1,7 @@
 from setuptools import setup, Extension
 import re
 
-USE_CYTHON = True
+USE_CYTHON = False
 
 description = 'A python library to evolve binary star systems in time.'
 
@@ -43,5 +43,10 @@ setup(name='takahe',
 	  packages			= ['takahe'],
 	  zip_safe			= False,
 	  ext_modules		= extensions,
-	  install_requires	= ['numpy', 'matplotlib', 'numba', 'pandas==1.0.1']
+	  install_requires	= ['numpy',
+	  					   'matplotlib',
+	  					   'numba',
+	  					   'pandas==1.0.1',
+	  					   'diffeqpy'
+	  					  ]
 	)
