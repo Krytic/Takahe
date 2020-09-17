@@ -1,3 +1,4 @@
+import bisect
 import warnings
 
 from julia import Main as jl
@@ -6,6 +7,13 @@ import numpy as np
 from scipy.optimize import fminbound
 from scipy.integrate import quad
 import takahe
+
+def find_between(a, low, high):
+    i = bisect.bisect_left(a, low)
+    g = bisect.bisect_right(a, high)
+    if i != len(a) and g != len(a):
+        return a[i:g]
+    raise ValueError
 
 def memoize(f):
     """Memoizes a function.

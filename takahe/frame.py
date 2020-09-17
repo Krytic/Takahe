@@ -1,6 +1,18 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
+"""
+
+,--.   ,--.,--.,------.     ,--.  ,--. ,-----. ,--------.,--. ,-----.,------.
+|  |   |  ||  ||  .--. '    |  ,'.|  |'  .-.  ''--.  .--'|  |'  .--./|  .---'
+|  |.'.|  ||  ||  '--' |    |  |' '  ||  | |  |   |  |   |  ||  |    |  `--,
+|   ,'.   ||  ||  | --'     |  | `   |'  '-'  '   |  |   |  |'  '--'\|  `---.
+'--'   '--'`--'`--'         `--'  `--' `-----'    `--'   `--' `-----'`------'
+
+This package is a WIP - it may change very quickly,
+and it may not stay around.
+"""
+
 class Frame:
     def __init__(self, x_axis, y_axis):
         self.x = x_axis
@@ -27,7 +39,8 @@ class FrameCollection:
         raise StopIteration
 
     def plot(self, *args, **kwargs):
-        pass
+        for frame in self:
+            frame.plot()
 
     def __len__(self):
         return self.__size

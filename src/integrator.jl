@@ -13,18 +13,19 @@ function integrate(a0, e0, p)
         A               An array of the semimajor axes of the binary system over time. (Solar Mass)
         E               An array of the eccentricities of the binary system over time. (no dim.)
     """
-    integrating = true
+    integrating  = true
 
     Solar_Mass   = 1.989e30  # kg
     Solar_Radius = 696340000 # m
-    G = 6.67e-11             # m^3 kg^-1 s^-2
-    c = 3e8                  # m/s
+               G = 6.67e-11  # m^3 kg^-1 s^-2
+               c = 3e8       # m/s
 
-    A = Float64[]
-    E = Float64[]
+               A = Float64[]
+               E = Float64[]
+               H = Float64[]
 
-    A = push!(A, a0 / Solar_Radius)
-    E = push!(E, e0)
+               A = push!(A, a0 / Solar_Radius)
+               E = push!(E, e0)
 
     m1, m2 = p[1], p[2]
 
@@ -34,13 +35,17 @@ function integrate(a0, e0, p)
     # number of seconds in a year
     secyr = 3600 * 24 * 365.25
 
-    ## Unit Check ##
+    #######################
+    ##     Unit Check     #
+    #######################
     a = a0 * Solar_Radius # Meters
     e = e0                # Dimensionless
     m1 = m1 * Solar_Mass  # Kilogram
     m2 = m2 * Solar_Mass  # Kilogram
     beta = beta           # Meters^4 / second
-    ## End Unit Check ##
+    #######################
+    ##   End Unit Check   #
+    #######################
 
     total_time = 0
 
@@ -51,12 +56,12 @@ function integrate(a0, e0, p)
         initial_term = (-19/12 * beta / (a^4*(1-e^2)^(5/2)))
         de = initial_term * (e + 121/304 * e^3) # Units: s^-1
 
-        timeA = abs(1e-2*a/da)
+        timeA = abs(1e-2 * a/da)
         if e > 1e-10
-            timeE = abs(1e-2*e/de)
+            timeE = abs(1e-2 * e/de)
         else
             de = 0
-            timeE=timeA*10e0
+            timeE=timeA * 10
         end
 
         dt = min(timeE, timeA)
@@ -66,10 +71,11 @@ function integrate(a0, e0, p)
 
         A = push!(A, a)
         E = push!(E, e)
+        H = push!(H, dt)
 
         total_time = total_time + dt
     end
 
     # Solar Radii, Dimensionless
-    return A / Solar_Radius, E
+    return A / Solar_Radius, E, H
 end

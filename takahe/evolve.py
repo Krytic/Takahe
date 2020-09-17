@@ -1,5 +1,3 @@
-import bisect
-
 import matplotlib.pyplot as plt
 import numpy as np
 from numba import njit
@@ -8,41 +6,36 @@ from scipy import stats
 import takahe
 from tqdm import tqdm
 
-def find_between(a, low, high):
-    i = bisect.bisect_left(a, low)
-    g = bisect.bisect_right(a, high)
-    if i != len(a) and g != len(a):
-        return a[i:g]
-    raise ValueError
-
-@np.vectorize
-def evolve_system(a0, e0, m1, m2):
+def evolve_system(a0, e0, m1, m2, lifetime, weight=1, SFRD=None):
     """Evolves a binary system until merger or the age of the Universe.
-
-    # TODO: [description]
 
     Decorators:
         np.vectorize
 
     Arguments:
-        a0 {float} -- The initial semimajor axis in Solar Radii
-        e0 {float} -- The initial eccentricity
-        m1 {float} -- The mass of the primary in Solar Masses
-        m2 {float} -- The mass of the secondary in Solar Masses
+        a0 {float}     -- The initial semimajor axis in Solar Radii
+        e0 {float}     -- The initial eccentricity
+        m1 {float}     -- The mass of the primary in Solar Masses
+        m2 {float}     -- The mass of the secondary in Solar Masses
+
+    Keyword Arguments:
+        weight {float} -- the BPASS weight of the system (# / 10^6
+                          solar masses)
 
     Returns:
-        {tuple} -- The initial and final parameters:
-                   - The initial eccentricity
-                   - The initial period (days)
-                   - The final eccentricity
-                   - The final period (days)
-                   - The number of samples
+        {tuple}        -- The initial and final parameters:
+                          - The initial eccentricity
+                          - The initial period (days)
+                          - The final eccentricity
+                          - The final period (days)
+                          - The number of samples
     """
-    global pbar
+
+    global pbar, matrix_elements
 
     params = [m1, m2]
 
-    a, e = takahe.helpers.integrate(a0, e0, params)
+    a, e, h = takahe.helpers.integrate(a0, e0, params)
 
     af = a[-1]
 
@@ -51,42 +44,46 @@ def evolve_system(a0, e0, m1, m2):
     P = takahe.helpers.compute_period(a, m1, m2)
     P0, Pf = P[0], P[-1]
 
-    nbin_width = 1e-2 # Todo: customisable
-    mbin_width = 1e-2
-
     logP = np.log10(P)
 
-    nbins = int(1 // nbin_width)
-    mbins = int(8 // mbin_width)
+    per_bins = int(8 // takahe.constants.PE_BINS_PER_W)
+    ecc_bins = int(1 // takahe.constants.PE_BINS_ECC_W)
 
-    binx = np.linspace(-2, 6, nbins)
-    biny = np.linspace(0,  1, mbins)
+    binx = np.linspace(-2, 6, per_bins)
+    biny = np.linspace(0,  1, ecc_bins)
 
-    ret = stats.binned_statistic_2d(logP, e, logP, 'count', bins=[binx, biny])
+    h_matrix = np.zeros((per_bins, ecc_bins))
 
-    bin_counts = ret.statistic
+    # Convert step sizes to years
+    h     /= takahe.constants.SECONDS_PER_YEAR
+    h_cum  = np.cumsum(h)
+
+    for i in range(len(a)):
+        if binx[0] <= logP[i] <= binx[-1]:
+            # Determine which bins the current point is
+            j = np.where(logP[i] >= binx)[0][-1]
+            k = np.where(e[i] >= biny)[0][-1]
+
+            # need the SFR for here too
+            bin_nr = SFRD.getBin(h_cum[i-1] / 1e9)
+            sfr = SFRD.getBinContent(sfr)
+
+            h_matrix[j][k] += (time * sfr)
+
+    time_in_bin = h_matrix * weight
+
+    # # * yr * / M_sun * (M_sun / yr / Mpc^3)
+    # = # / Mpc^3
 
     pbar.update(1)
 
-    return bin_counts
+    matrix_elements.append(time_in_bin)
 
-def period_eccentricity(in_df, transient_type="NSNS"):
+def period_eccentricity(in_df, transient_type="NSNS", Z=1):
     """Computes the period-eccentricity distribution for an ensemble.
 
     Evolves the ensemble from 0 to the Hubble time to see how systems
     behave.
-
-    Strictly this is an SMA-eccentricity routine but the period is
-    computable from the SMA using Kepler's third law.
-
-    Adds FOUR new columns to the DataFrame:
-        - a (the array of SMAs for this star)
-        - e (the array of eccentricities for this star)
-        - af (the final SMA for this star)
-        - ef (the final eccentricity for this star)
-
-    # Todo: Correct implementation.
-    # Todo: Return a period array.
 
     Arguments:
         in_df {pd.DataFrame} -- The DataFrame representing your ensemble.
@@ -96,11 +93,11 @@ def period_eccentricity(in_df, transient_type="NSNS"):
                                 under consideration. (default: {"NSNS"})
 
     Returns:
-        {pd.DataFrame} -- The DataFrame with the a and e arrays added
-                          as new columns.
+        {np.matrix}          -- A matrix of the binned Period-Eccentricty
+                                distribution.
     """
 
-    global pbar
+    global pbar, matrix_elements
 
     # Don't know why we have to do this, computation breaks otherwise.
     pd.set_option('compute.use_numexpr', False)
@@ -108,31 +105,41 @@ def period_eccentricity(in_df, transient_type="NSNS"):
     # Now we mask out what we're not interested in.
     df = takahe.event_rates.filter_transients(in_df, transient_type)
 
-    # Highly eccentric orbits lead to division by zero.
+    # Highly eccentric orbits lead to division by zero in the integrator.
     df.drop(df[df['e0'] == 1].index, inplace=True)
 
+    if len(df) == 0:
+        per_bins = int(8 // takahe.constants.PE_BINS_PER_W)
+        ecc_bins = int(1 // takahe.constants.PE_BINS_ECC_W)
+        return np.zeros((per_bins, ecc_bins))
+
+    matrix_elements = []
+
+    df['lifetime'] = df['evolution_age'] + df['rejuvenation_age']
+
+    Z = float(Z)
+
+    bins = takahe.constants.LINEAR_BINS
+    SFRD_data = takahe.event_rates.generate_sfrd(bins)[Z]
+    SFRD = takahe.histogram.histogram(edges=takahe.constants.LINEAR_BINS)
+    SFRD.fill(SFRD_data)
+
     with tqdm(total=len(df)) as pbar:
-        c = evolve_system(df['a0'].values,
-                          df['e0'].values,
-                          df['m1'].values,
-                          df['m2'].values)
+        evolve_system(df['a0'].values,
+                      df['e0'].values,
+                      df['m1'].values,
+                      df['m2'].values,
+                      df['lifetime'].values,
+                      weight=df['weight'].values,
+                      SFRD=SFRD)
 
-    Po = np.log10(np.array([4.072, 0.102, 0.421, 0.320, 0.323, 0.206, 0.184, 8.634, 18.779, 1.176, 45.060, 13.638, 2.616, 0.078]))
-    eo = [0.113, 0.088, 0.274, 0.181, 0.617, 0.090, 0.606, 0.249,  0.828, 0.139,  0.399,  0.304, 0.169, 0.064]
 
-    C = np.sum(c, 0)
+    C = np.sum(matrix_elements, 0)
 
-    shp = C.shape
-
-    x = np.linspace(-2, 6, shp[0])
-    y = np.linspace(0, 1, shp[1])
-
-    X, Y = np.meshgrid(x, y, indexing='ij')
-
-    return X, Y, C, Po, Eo
+    return C
 
 def compute_ct(coalescence_time, star):
-    # TODO: This needs work, there is a circular definition
+    # TODO: This needs work, there is a circular definition in the paper
     G = takahe.constants.G
     c = takahe.constants.c
 
@@ -166,3 +173,5 @@ def compute_ct(coalescence_time, star):
     Tc += C6 / (beta*(a1-beta1))
 
     return Tc
+
+evolve_system = np.vectorize(evolve_system, excluded=['SFRD'])

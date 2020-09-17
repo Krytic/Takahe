@@ -313,7 +313,7 @@ class histogram:
 
         """
         if x < self._bin_edges[0] or x > self._bin_edges[-1]:
-            raise Exception("x outside of range")
+            raise Exception(f"x={x} outside of range")
 
         out = np.where(x >= self._bin_edges)[0][-1]
 

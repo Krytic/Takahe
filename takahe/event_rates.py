@@ -147,7 +147,7 @@ def constrain_masses(df, transient_type):
         df['m1'] = 0.9 * df['m1']
         df['m2'] = 0.9 * df['m2']
 
-def generate_sfrd(tL_edges, func=None):
+def generate_sfrd(tL_edges, func=None, need_means=False, is_culmulative=False):
     """Generates the SFRD at every BPASS metallicity.
 
     Generates the SFRD for a given lookback time/s at every BPASS
@@ -168,6 +168,11 @@ def generate_sfrd(tL_edges, func=None):
         func {callable} -- The SFRD computation function to use. Takes
                            two arguments: the signature should be
                            func(Z, z). (default: {MadauDickinson})
+        need_means {bool} -- Whether you want the metallicities to be
+                             computed off grid (i.e., at step i, Z_comp
+                             would be np.mean(Z_{i-1}, Z_i) instead of
+                             Z_i). Useful for MadauDickinson formalism.
+                             (Default: {False}).
 
     Returns:
         dict -- The SFRD at each BPASS metallicity. Indexed by relative
@@ -184,8 +189,18 @@ def generate_sfrd(tL_edges, func=None):
                                             " callable type in call to"
                                             " generate_sfrd()")
 
+    assert isinstance(need_means, bool), ("Expected need_means to be "
+                                          "boolean in call to "
+                                          "generate_SFRD()")
+
+    assert isinstance(is_culmulative, bool), ("Expected is_culmulative "
+                                              "to be boolean in call to "
+                                              "generate_SFRD()")
+
     if func == None:
-        func = MadauDickinson
+        func = takahe.SFR.MadauDickinson
+        need_means = True
+        is_culmulative = True
 
     total_SFRD = np.zeros(len(tL_edges))
 
@@ -193,13 +208,16 @@ def generate_sfrd(tL_edges, func=None):
 
     Z_fmts = takahe.constants.BPASS_METALLICITIES_F
 
-    # Compute the array of means.
-    # This sets means_arr[i] = np.mean(Z_fmts[i], Z_fmts[i+1])
-    means_arr = [np.mean([Z_fmts[i], Z_fmts[i+1]]) for i in range(12)]
+    if need_means:
+        # Compute the array of means.
+        # This sets means_arr[i] = np.mean(Z_fmts[i], Z_fmts[i+1])
+        means_arr = [np.mean([Z_fmts[i], Z_fmts[i+1]]) for i in range(12)]
 
-    # Prepend 0 to the means array
-    means = [0.0]
-    means.extend(means_arr)
+        # Prepend 0 to the means array
+        Z_compute = [0.0]
+        Z_compute.extend(means_arr)
+    else:
+        Z_compute = Z_fmts
 
     z = takahe.helpers.lookback_to_redshift(tL_edges)
 
@@ -208,43 +226,17 @@ def generate_sfrd(tL_edges, func=None):
         Z = takahe.constants.BPASS_METALLICITIES[i]
         Z = takahe.helpers.format_metallicity(Z)
 
-        # Compute the *culmulative* metallicity up to this metallicity
-        SFRD_here = func(means[i], z)
+        # Compute the SFRD up to this metallicity
+        SFRD_here = func(Z_compute[i], z)
 
         # and remove all prior contributions
-        SFRD_here = SFRD_here - total_SFRD
-        total_SFRD = total_SFRD + SFRD_here
+        if is_culmulative:
+            SFRD_here = SFRD_here - total_SFRD
+            total_SFRD = total_SFRD + SFRD_here
 
         SFRD[Z] = list(SFRD_here)
 
     return SFRD
-
-def MadauDickinson(Z, z):
-    """Computes the Madau & Dickinson SFRD at metallicity Z and redshift z.
-
-    Implements the SFRD given by eqn(15) of [1]. Returns a value in
-    M_sun / yr / Mpc^3.
-
-    Assumes Z_sun = 0.020, and that input metallicity is NOT already
-    measured relative to this.
-
-    [1] https://www.annualreviews.org/doi/pdf/10.1146/annurev-astro-081811-125615
-
-    Arguments:
-        Z {float} -- The metallicity under consideration.
-        z {float} -- The redshift under consideration.
-
-    Returns:
-        {float} -- The SFRD at metallicity Z and redshift z.
-    """
-    GAM = gammainc(0.84, (Z / 0.02)**2 * 10**(0.3*z))
-    NUM = 0.015 * (1+z)**2.7
-    DEM = (1+((1+z)/2.9)**5.6)
-
-    SFRDi = GAM * (NUM / DEM)
-
-    return SFRDi
-
 
 def compute_dtd(in_df, extra_lt=None, transient_type='NSNS'):
     """Computes the DTD for a given transient type.
@@ -453,7 +445,8 @@ def single_event_rate(in_df,
     else:
         return events._values
 
-def composite_event_rates(dataframes, extra_lt=None, transient_type='NSNS'):
+def composite_event_rates(dataframes, extra_lt=None,
+                          transient_type='NSNS', SFRD_function=None):
     """Computes the event rate for a variety of stars at different
     metallicities.
 
@@ -481,6 +474,10 @@ def composite_event_rates(dataframes, extra_lt=None, transient_type='NSNS'):
                                the stellar properties). If None, then an
                                empty lambda will be used.
                                (default: {None})
+        SFRD_function {callable} -- A function from takahe.SFR to use
+                                    to generate the SFRD. See the
+                                    documentation for generate_SFRD()
+                                    for details. (default: {None})
 
     Returns:
         {takahe.histogram} -- A histogram representing the total event
@@ -502,6 +499,12 @@ def composite_event_rates(dataframes, extra_lt=None, transient_type='NSNS'):
                                                     "callable or None in call "
                                                     "to composite_event_rates")
 
+    assert callable(SFRD_function) or SFRD_function is None, ("Expected "
+                                                    "SFRD_function "
+                                                    "to be callable or None "
+                                                    "in call to "
+                                                    "composite_event_rates")
+
     types = ['NSNS', 'NSBH', 'BHBH', None]
 
     assert transient_type in types, ("Expected transient_type to be "
@@ -516,7 +519,7 @@ def composite_event_rates(dataframes, extra_lt=None, transient_type='NSNS'):
     edges = takahe.constants.LINEAR_BINS
 
     total_event_rate = np.zeros(len(edges))
-    SFRD = generate_sfrd(edges)
+    SFRD = generate_sfrd(edges, SFRD_function)
 
     N_datapoints = np.zeros(len(edges)-1)
 
@@ -546,6 +549,42 @@ def composite_event_rates(dataframes, extra_lt=None, transient_type='NSNS'):
     return TER
 
 def single_event_rate_save_result(datafile, transient_type, output_dir):
+    """Performs a single event rate calculation and stores the result.
+
+    Works a little differently to single_event_rate -- this is entirely
+    self-contained making it possibly as simple as a two-liner:
+
+    >>> import takahe
+    >>> takahe.single_event_rate_save_result("path/to/data.dat",
+                                             'NSNS',
+                                             'output/directory')
+
+    Arguments:
+        datafile {string}       -- The path to the .dat file to load
+        transient_type {string} -- The transient type (NSNS, NSBH, BHBH)
+                                   to compute for
+        output_dir {string}     -- The path to the output directory
+
+    Outputs:
+        A pickle in the directory output_dir, called
+        KICK-TRANSIENT_TYPE-METALLICITY.p, where:
+            KICK is the kick model (Bray, Hobbs) (Hobbs assumed if we
+            can't sniff it from the filename)
+            TRANSIENT_TYPE is the type specified by transient_type
+            (NSNS, NSBH, BHBH)
+            METALLICITY is the metallicity obtained from sniffing the
+            filename (formatted, so z020 maps to 1.0)
+
+        Example: the file
+        /data/Bray/Remnant-Birth-bin-imf135_300-z002_StandardJJ.dat
+        with transient_type = 'NSNS' will be named "Bray-NSNS-0.1.p"
+
+    Notes:
+        To load this in to takahe for future analysis, run
+        >>> takahe.histogram.from_pickle('Bray-NSNS-0.1.p')
+        or similar.
+
+    """
     kick = 'Bray' if 'Bray' in datafile else 'Hobbs'
     edges = takahe.constants.LINEAR_BINS
 
@@ -566,3 +605,4 @@ def single_event_rate_save_result(datafile, transient_type, output_dir):
                                   )
 
     event_rate.to_pickle(f"{output_dir}/{kick}-{transient_type}-{Z}.p")
+
