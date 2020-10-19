@@ -22,4 +22,8 @@ import takahe.SFR as SFR
 
 _integration_subroutine = pkgutil.get_data(__name__, "../src/integrator.jl")
 _integration_subroutine = _integration_subroutine.decode("utf-8")
-integrate = jl.eval(_integration_subroutine)
+integrate_eoms = jl.eval(_integration_subroutine)
+
+_peters_integrator = pkgutil.get_data(__name__, "../src/integrator_peters.jl")
+_peters_integrator = _peters_integrator.decode("utf-8")
+integrate_timescale = jl.eval(_peters_integrator)

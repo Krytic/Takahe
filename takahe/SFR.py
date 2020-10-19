@@ -33,6 +33,24 @@ def MadauDickinson(Z, z):
     return SFRDi
 
 def MilkyWay(Z, z):
+    """Implements the SFR equation from (Wiktorowicz et. al. 2020) [1]
+    for the Milky Way Galaxy.
+
+    Piecewise function for the SFR in the Milky Way galaxy. Assumes a
+    four-component formalism - consisting of a thin disk, thick disk,
+    bulge, and halo. Precise values of the SFR come from
+    (Olejak et. al 2019) [2].
+
+    [1] https://arxiv.org/pdf/2006.08317.pdf
+    [2] https://arxiv.org/pdf/1908.08775.pdf
+
+    Arguments:
+        Z {float} -- The metallicity under consideration.
+        z {float} -- The redshift under consideration.
+
+    Returns:
+        {float} -- The SFRD at metallicity Z and redshift z.
+    """
     SFR_arr = np.zeros(len(z))
     for i in range(len(z)):
         zi = z[i]

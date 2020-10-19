@@ -4,6 +4,7 @@ import warnings
 from julia import Main as jl
 from numba import njit
 import numpy as np
+import matplotlib.pyplot as plt
 from scipy.optimize import fminbound
 from scipy.integrate import quad
 import takahe
@@ -39,6 +40,26 @@ def memoize(f):
             memo[x] = f(x)
         return memo[x]
     return helper
+
+def identify(star):
+    """Simple helper function to identify a BSS.
+
+    [description]
+
+    Arguments:
+        star {pd.Series} -- the series object representing the BSS.
+    """
+    MASS_NS = takahe.constants.MASS_CUTOFF_NS
+    MASS_BH = takahe.constants.MASS_CUTOFF_BH
+
+    if star.m1 < MASS_NS and star.m2 < MASS_NS:
+        return 'NSNS'
+    if star.m1 < MASS_NS and star.m2 > MASS_BH:
+        return 'NSBH'
+    if star.m1 > MASS_BH and star.m2 < MASS_NS:
+        return 'NSBH'
+    if star.m1 > MASS_BH and star.m2 > MASS_BH:
+        return 'BHBH'
 
 def format_metallicity(Z, as_string=False, rel=True):
     r"""Converts a BPASS-formatted metallicity into a "real valued" one.
@@ -82,7 +103,7 @@ def format_metallicity(Z, as_string=False, rel=True):
         div = float("0." + Z)
 
     if rel:
-        res = div / 0.020
+        res = div / takahe.constants.SOLAR_METALLICITY
     else:
         res = div
 
@@ -90,6 +111,31 @@ def format_metallicity(Z, as_string=False, rel=True):
         return rf"${res}Z_\odot$"
     else:
         return res
+
+def find_contours(X, Y, Z, value):
+    try:
+        l = len(value)
+    except TypeError:
+        l = 1
+        value = np.array([value])
+
+    cs = plt.contour(X, Y, Z, value)
+    plt.close()
+    paths = dict()
+
+    for i in range(len(value)):
+        path = cs.collections[i].get_paths()
+
+        for j in range(len(path)):
+            verts = path[j].vertices
+            x = verts[:,0].tolist()
+            y = verts[:,1].tolist()
+            if j != 0:
+                paths[value[i]].append({'x': x, 'y': y})
+            else:
+                paths[value[i]] = [{'x': x, 'y': y}]
+
+    return paths
 
 def extract_metallicity(filename):
     """Extracts a metallicity from a filename.
@@ -154,6 +200,27 @@ def compute_period(a, M, m):
         {float} -- The period in days
     """
     return np.sqrt(4 * np.pi **2 / (takahe.constants.G * (M+m) * takahe.constants.SOLAR_MASS) * (a * takahe.constants.SOLAR_RADIUS)**3) / (60 * 60 * 24)
+
+@np.vectorize
+def compute_separation(P, M, m):
+    """Computes the separation of a BSS
+
+    Uses Kepler's third law to compute the separation, in days.
+
+    Decorators:
+        np.vectorize
+
+    Arguments:
+        P {float} -- The period of the binary star (in days)
+        M {float} -- The mass of the primary star (in solar masses)
+        m {float} -- The mass of the secondary star (in solar masses)
+
+    Returns:
+        {float} -- The orbital separation in Solar Radii
+    """
+    a = ((P * 60 * 60 * 24)**2 * (takahe.constants.G * (M+m) * takahe.constants.SOLAR_MASS) / (4 * np.pi **2))**(1/3) / takahe.constants.SOLAR_RADIUS
+
+    return a
 
 @np.vectorize
 @memoize
@@ -245,4 +312,4 @@ def integrate(a0, e0, p):
 
     assert 0 <= e0 <= 1,                       "e0 outside of range [0, 1]"
 
-    return takahe.integrate(a0, e0, p)
+    return takahe.integrate_eoms(a0, e0, p)

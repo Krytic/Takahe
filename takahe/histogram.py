@@ -115,6 +115,9 @@ class histogram:
         out._hits = self._hits
         return out
 
+    def inbounds(self, value):
+        return self._xlow <= value and self._xup >= value
+
     def copy(self):
         """ creates a copy of the histogram
 
@@ -424,6 +427,41 @@ class histogram:
 
             return total
 
+class histogram_2d:
+    def __init__(self, x_range, y_range, nr_bins_x, nr_bins_y):
+        xlow, xup         = x_range[0], x_range[1]
+        ylow, yup         = y_range[0], y_range[1]
+
+        self._xlow        = xlow
+        self._xup         = xup
+        self._ylow        = ylow
+        self._yup         = yup
+        self._values      = np.zeros((nr_bins_x, nr_bins_y))
+        self._num_hits    = np.zeros((nr_bins_x, nr_bins_y))
+
+        self._bin_edges_x = np.linspace(xlow, xup, nr_bins_x+1)
+        self._bin_edges_y = np.linspace(ylow, yup, nr_bins_y+1)
+
+    def fill(self, insertion_matrix):
+        assert self._values.shape == insertion_matrix.shape
+        self._values    = insertion_matrix
+        self._num_hits += 1
+
+    def insert(self, bin_nr_x, bin_nr_y, value):
+        self._values[bin_nr_x][bin_nr_y]   += value
+        self._num_hits[bin_nr_x][bin_nr_y] += 1
+
+    def getBin(self, x, y):
+        i = np.where(x >= self._bin_edges_x)[0][-1]
+        j = np.where(y >= self._bin_edges_y)[0][-1]
+
+        return (i,j)
+
+    def getBinContent(self, bin_nr_x, bin_nr_y):
+        val = self._values[bin_nr_x][bin_nr_y]
+        err = np.sqrt(self._num_hits[bin_nr_x][bin_nr_y])
+        return ufloat(val, err)
+
 class pickledHistogram(histogram):
     def __init__(self, pickle_path):
         with open(pickle_path, 'rb') as f:
@@ -433,3 +471,6 @@ class pickledHistogram(histogram):
 
             self._values = contents['values']
             self.reregister_hits(contents['hits'])
+
+def from_pickle(pickle_path):
+    return pickledHistogram(pickle_path)
