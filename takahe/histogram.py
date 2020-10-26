@@ -129,6 +129,7 @@ class histogram:
         """
         out = histogram(xlow=self._xlow, xup=self._xup, nr_bins=self._nr_bins)
         out._values = self._values
+        out._hits   = self._hits
         return out
 
     def fill(self, x, weight = 1):
@@ -354,7 +355,7 @@ class histogram:
 
         """
         if x1 >= x2:
-            raise Exception("x1 should be larger than x2")
+            raise Exception("x2 should be larger than x1")
         if x1 < self._bin_edges[0]:
             warnings.warn("Lower limit is below lowest bin edge", )
         if x2 > self._bin_edges[-1]:
@@ -400,7 +401,7 @@ class histogram:
 
         """
         if x1 >= x2:
-            raise Exception("x1 should be larger than x2")
+            raise Exception("x2 should be larger than x1")
         if x1 < self._bin_edges[0]:
             warnings.warn("Lower limit is below lowest bin edge")
         if x2 > self._bin_edges[-1]:
@@ -436,16 +437,20 @@ class histogram_2d:
         self._xup         = xup
         self._ylow        = ylow
         self._yup         = yup
+        self._num_x       = nr_bins_x
+        self._num_y       = nr_bins_y
         self._values      = np.zeros((nr_bins_x, nr_bins_y))
         self._num_hits    = np.zeros((nr_bins_x, nr_bins_y))
 
-        self._bin_edges_x = np.linspace(xlow, xup, nr_bins_x+1)
-        self._bin_edges_y = np.linspace(ylow, yup, nr_bins_y+1)
+        self._bin_edges_x = np.linspace(xlow, xup, nr_bins_x)
+        self._bin_edges_y = np.linspace(ylow, yup, nr_bins_y)
 
     def fill(self, insertion_matrix):
         assert self._values.shape == insertion_matrix.shape
+
         self._values    = insertion_matrix
-        self._num_hits += 1
+        # increment hits by 1 in every cell that contains a value:
+        self._num_hits += (insertion_matrix>0).astype(int)
 
     def insert(self, bin_nr_x, bin_nr_y, value):
         self._values[bin_nr_x][bin_nr_y]   += value
@@ -462,6 +467,68 @@ class histogram_2d:
         err = np.sqrt(self._num_hits[bin_nr_x][bin_nr_y])
         return ufloat(val, err)
 
+    def copy(self):
+        x = [self._xlow, self._xup]
+        y = [self._ylow, self._yup]
+
+        out = histogram_2d(x, y, self._num_x, self._num_y)
+        out._values   = self._values
+        out._num_hits = self._num_hits
+
+        return out
+
+    def plot(self, *args, **kwargs):
+        x = self._bin_edges_x
+        y = self._bin_edges_y
+        X, Y = np.meshgrid(x, y, indexing='ij')
+        plt.pcolormesh(X, Y, self._values.T, *args, **kwargs)
+
+    def to_pickle(self, pickle_path):
+        contents = {
+            'build_params': {
+                'xlow': self._xlow,
+                'xup' : self._xup,
+                'ylow': self._ylow,
+                'yup' : self._yup,
+                'y_nr': self._num_x,
+                'x_nr': self._num_y,
+            },
+            'values': self._values,
+            'hits': self._num_hits
+        }
+
+        with open(pickle_path, 'wb') as f:
+            pickle.dump(contents, f)
+
+    def probability_map(self):
+        out = self.copy()
+        total = np.sum(self._values)
+        out._values /= total
+
+        return out
+
+    def likelihood(self, Po, Eo):
+        pmap = self.probability_map()
+        probabilities = []
+        for obj in zip(Po, Eo):
+            bin_nr = self.getBin(obj[0], obj[1])
+            prob = pmap.getBinContent(bin_nr[0], bin_nr[1])
+            probabilities.append(prob)
+        print("probability:", probabilities)
+        return np.product(probabilities)
+
+    def __add__(self, other):
+        assert isinstance(other, histogram_2d)
+        assert self._xlow        == other._xlow
+        assert self._xup         == other._xup
+        assert self._ylow        == other._ylow
+        assert self._yup         == other._yup
+        assert self._bin_edges_x == other._bin_edges_x
+        assert self._bin_edges_y == other._bin_edges_y
+
+        self._values   = self._values + other._values
+        self._num_hits = self._num_hits + other._num_hits
+
 class pickledHistogram(histogram):
     def __init__(self, pickle_path):
         with open(pickle_path, 'rb') as f:
@@ -472,5 +539,26 @@ class pickledHistogram(histogram):
             self._values = contents['values']
             self.reregister_hits(contents['hits'])
 
-def from_pickle(pickle_path):
-    return pickledHistogram(pickle_path)
+class pickled2dHistogram(histogram_2d):
+    def __init__(self, pickle_path):
+        with open(pickle_path, 'rb') as f:
+            contents = pickle.load(f)
+
+            xlow = contents['build_params']['xlow']
+            xup  = contents['build_params']['xup']
+            ylow = contents['build_params']['ylow']
+            yup  = contents['build_params']['yup']
+
+            nr_x = contents['build_params']['x_nr']
+            nr_y = contents['build_params']['y_nr']
+
+            super().__init__([xlow,xup], [ylow,yup], nr_x, nr_y)
+
+            self._values   = contents['values']
+            self._num_hits = contents['hits']
+
+def from_pickle(pickle_path, is_2d=False):
+    if not is_2d:
+        return pickledHistogram(pickle_path)
+    if is_2d:
+        return pickled2dHistogram(pickle_path)
