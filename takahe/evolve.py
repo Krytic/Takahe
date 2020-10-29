@@ -12,7 +12,8 @@ from tqdm import tqdm
 
 def evolve_system(a0, e0, m1, m2,
                   weight=1, SFRD=None, beta=1,
-                  alpha=0, only_arrays=False):
+                  alpha=0, only_arrays=False,
+                  return_value=False):
     """Evolves a binary system until merger or the age of the Universe.
 
     A note about normalisation & units
@@ -46,7 +47,8 @@ def evolve_system(a0, e0, m1, m2,
         {mixed}
     """
 
-    global matrix_elements
+    if not return_value:
+        global matrix_elements
 
     params = [m1, m2, beta, alpha]
     a, e, h = takahe.helpers.integrate(a0, e0, params)
@@ -83,19 +85,23 @@ def evolve_system(a0, e0, m1, m2,
 
             # need the SFR for here too
             time = h_cum[i]
-            if SFRD.inbounds(time / 1e9):
+            if SFRD is not None and SFRD.inbounds(time / 1e9):
                 bin_nr = SFRD.getBin(time / 1e9)
-                sfr = SFRD.getBinContent(bin_nr) * SFRD.getBinWidth(bin_nr)
+                sfr = SFRD.getBinContent(bin_nr) * SFRD.getBinWidth(bin_nr) * 1e9
             else:
-                sfr = 0
+                sfr = 1
 
             h_matrix[j][k] += (sfr * 1e9)
 
     return_age_matrix = h_matrix * weight
 
-    matrix_elements.append(return_age_matrix)
+    if return_value:
+        return return_age_matrix
+    else:
+        if 'matrix_elements' in globals().keys():
+            matrix_elements.append(return_age_matrix)
 
-    return
+        return
 
 def period_eccentricity(in_df, Z=1, beta=1, alpha=0):
     """Computes the period-eccentricity distribution for an ensemble.
@@ -249,6 +255,6 @@ def constant_coalescence_isocontour(ct):
 
     return takahe.helpers.find_contours(P, E, Z, ct)
 
-evolve_system = np.vectorize(evolve_system, excluded=['SFRD', 'beta', 'alpha', 'only_arrays'])
+evolve_system = np.vectorize(evolve_system, excluded=['SFRD', 'beta', 'alpha', 'only_arrays', 'return_value'])
 
 _integrate_worker = np.vectorize(_integrate_worker, excluded=['m1', 'm2', 'pbar'])

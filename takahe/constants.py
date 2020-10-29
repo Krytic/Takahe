@@ -4,13 +4,13 @@ import numpy as np
 ## BPASS Configuration ##
 #########################
 
-BPASS_METALLICITIES   = np.array(['em5', 'em4', '001', '002', '003',
-                                  '004', '006', '008', '010', '014',
-                                  '020', '030', '040'])
+BPASS_METALLICITIES     = np.array(['em5', 'em4', '001', '002', '003',
+                                    '004', '006', '008', '010', '014',
+                                    '020', '030', '040'])
 
-BPASS_METALLICITIES_F = np.array([1e-5 , 1e-4 , 0.001, 0.002, 0.003,
-                                  0.004, 0.006, 0.008, 0.010, 0.014,
-                                  0.020, 0.030, 0.040])
+BPASS_METALLICITIES_F   = np.array([1e-5 , 1e-4 , 0.001, 0.002, 0.003,
+                                    0.004, 0.006, 0.008, 0.010, 0.014,
+                                    0.020, 0.030, 0.040])
 
 MASS_CUTOFF_NS = 2.5 # NS have mass LOWER than this
 MASS_CUTOFF_BH = 2.5 # BH have mass GREATER than this

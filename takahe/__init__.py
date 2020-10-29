@@ -19,6 +19,7 @@ import takahe.load as load
 import takahe.event_rates as event_rates
 import takahe.evolve as evolve
 import takahe.SFR as SFR
+import takahe.frame as frame
 
 _integration_subroutine = pkgutil.get_data(__name__, "../src/integrator.jl")
 _integration_subroutine = _integration_subroutine.decode("utf-8")

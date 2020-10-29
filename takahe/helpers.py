@@ -201,6 +201,8 @@ def compute_period(a, M, m):
     """
     return np.sqrt(4 * np.pi **2 / (takahe.constants.G * (M+m) * takahe.constants.SOLAR_MASS) * (a * takahe.constants.SOLAR_RADIUS)**3) / (60 * 60 * 24)
 
+# Something is fucked here
+
 @np.vectorize
 def compute_separation(P, M, m):
     """Computes the separation of a BSS
@@ -313,3 +315,10 @@ def integrate(a0, e0, p):
     assert 0 <= e0 <= 1,                       "e0 outside of range [0, 1]"
 
     return takahe.integrate_eoms(a0, e0, p)
+
+@np.vectorize
+def coalescence_time(m1, m2, a0, e0):
+    p = [m1, m2, 1, 0]
+    _, _, h = integrate(a0, e0, p)
+
+    return np.sum(h)

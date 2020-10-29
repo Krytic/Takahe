@@ -307,9 +307,10 @@ def compute_dtd(in_df, extra_lt=None, transient_type='NSNS'):
     df['divisor'] = ((1 - df['e0'] ** (7/4)) ** (1/5)
                   *  (1+121/304 * df['e0'] ** 2))
 
-    df['coalescence_time'] = ((df['circ'] * (1-df['e0']**2)**(7/2)
-                           / df['divisor'])
-                           / (1e9 * 60 * 60 * 24 * 365.25))
+    df['coalescence_time'] = takahe.helpers.coalescence_time(df.m1.values,
+                                                             df.m2.values,
+                                                             df.a0.values,
+                                                             df.e0.values)
 
     df['lifetime'] = (df['evolution_age'] / 1e9
                    +  df['rejuvenation_age'] / 1e9
@@ -422,21 +423,20 @@ def single_event_rate(in_df,
 
         t2 = lin_edges[i]
 
-        this_SFR = SFRD.integral(t1, t2) * 1e9
-
-        this_SFR /= (1e-3)**3
+        this_SFR = SFRD.integral(t1, t2) * 1e9 * 1e9 # M_sun / Gyr / Gpc^3
 
         # Convolve the SFH with the DTD to get the event rates
         for j in range(i):
-            t1_prime = t2 - lin_edges[j]
-            t2_prime = t2 - lin_edges[j+1]
+            t1_prime = t2 - lin_edges[j] # Gyr
+            t2_prime = t2 - lin_edges[j+1] # Gyr
 
-            events_in_bin = DTD.integral(t2_prime, t1_prime)
+            events_in_bin = DTD.integral(t2_prime, t1_prime) # events/M_sun
 
             events.fill(lin_edges[j], events_in_bin * this_SFR)
+            # events/Gyr/Gpc^3
 
     # Normalise to years:
-    events /= (np.diff(lin_edges) * 1e9)
+    events /= (np.diff(lin_edges) * 1e9) # events/yr/Gpc^3
 
     events._values = np.append(events._values, events._values[-1])
 
@@ -523,7 +523,7 @@ def composite_event_rates(dataframes, extra_lt=None,
 
     N_datapoints = np.zeros(len(edges)-1)
 
-    for i in range(13):
+    for i in tqdm(range(13)):
         Z = takahe.constants.BPASS_METALLICITIES[i]
         Z = takahe.helpers.format_metallicity(Z)
         df = dataframes[str(Z)]

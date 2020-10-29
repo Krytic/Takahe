@@ -467,6 +467,14 @@ class histogram_2d:
         err = np.sqrt(self._num_hits[bin_nr_x][bin_nr_y])
         return ufloat(val, err)
 
+    def range(self):
+        return np.min(self._values), np.max(self._values)
+
+    def to_extent(self):
+        x_axis = self._bin_edges_x
+        y_axis = self._bin_edges_y
+        return x_axis, y_axis
+
     def copy(self):
         x = [self._xlow, self._xup]
         y = [self._ylow, self._yup]
