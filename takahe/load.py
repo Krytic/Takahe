@@ -12,6 +12,9 @@ def from_file(filepath):
     name_hints.extend(['m1','m2','a0','e0'])
     name_hints.extend(['weight','evolution_age','rejuvenation_age'])
 
+    if "_ct" in filepath:
+        name_hints.extend(['coalescence_time'])
+
     df = pd.read_csv(filepath,
                      names=name_hints,
                      sep=r'\s+',
