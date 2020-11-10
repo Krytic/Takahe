@@ -15,10 +15,14 @@ def from_file(filepath):
     if "_ct" in filepath:
         name_hints.extend(['coalescence_time'])
 
-    df = pd.read_csv(filepath,
-                     names=name_hints,
-                     sep=r'\s+',
-                    )
+    if ".h5" in filepath:
+        df = pd.read_hdf(filepath, 'dataframe',
+                         columns=name_hints)
+    else:
+        df = pd.read_csv(filepath,
+                         names=name_hints,
+                         sep=r'\s+',
+                        )
 
     return df
 

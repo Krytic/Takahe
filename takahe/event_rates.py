@@ -290,10 +290,32 @@ def compute_dtd(in_df, extra_lt=None, transient_type='NSNS'):
     # Highly eccentric orbits lead to division by zero.
     df.drop(df[df['e0'] == 1].index, inplace=True)
 
-    df['coalescence_time'] = takahe.helpers.coalescence_time(df.m1.values,
-                                                             df.m2.values,
-                                                             df.a0.values,
-                                                             df.e0.values)
+    # Unit Conversions:
+    df['a0'] *= (69550 * 1000) # Solar Radius -> Metre
+    df['m1'] *= 1.989e30 # Solar Mass -> Kilogram
+    df['m2'] *= 1.989e30 # Solar Mass -> Kilogram
+
+    if 'coalescence_time' not in df.keys():
+        # Introduce some temporary terms, to make computation easier
+        df['beta'] = ((64/5) * G**3 * df['m1'] * df['m2']
+                             * (df['m1'] + df['m2'])
+                             / (c**5))
+
+        df.drop(df[df['beta'] == 0].index, inplace=True)
+
+        df['circ'] = df['a0']**4 / (4*df['beta'])
+
+        df['divisor'] = ((1 - df['e0'] ** (7/4)) ** (1/5)
+                      *  (1+121/304 * df['e0'] ** 2))
+
+        df['coalescence_time'] = ((df['circ'] * (1-df['e0']**2)**(7/2)
+                               / df['divisor'])
+                               / (1e9 * 60 * 60 * 24 * 365.25))
+
+        cols = ['beta', 'coalescence_time', 'evolution_age',
+                'rejuvenation_age', 'circ', 'divisor']
+    else:
+        cols = ['coalescence_time', 'evolution_age', 'rejuvenation_age']
 
     df['lifetime'] = (df['evolution_age'] / 1e9
                    +  df['rejuvenation_age'] / 1e9
@@ -303,6 +325,11 @@ def compute_dtd(in_df, extra_lt=None, transient_type='NSNS'):
     if extra_lt != None:
         df['lifetime'] = df['lifetime'].apply(extra_lt, args=(df,))
 
+    # Unit Conversions (back):
+    df['a0'] /= (69550 * 1000) # Metre -> Solar Radius
+    df['m1'] /= (1.989e30) # Kilogram -> Solar Mass
+    df['m2'] /= (1.989e30) # As above
+
     # The minimum lifetime of a star is ~3 Myr, so introduce
     # an artificial cutoff there.
     df['lifetime'] = np.maximum(df.lifetime, 0.003)
@@ -311,13 +338,7 @@ def compute_dtd(in_df, extra_lt=None, transient_type='NSNS'):
     df.reset_index(drop=True, inplace=True)
 
     # Remove temporary columns
-    population_at = df.drop(columns=['beta',
-                                     'coalescence_time',
-                                     'evolution_age',
-                                     'rejuvenation_age',
-                                     'circ',
-                                     'divisor'
-                                    ],
+    population_at = df.drop(columns=cols,
                             inplace=False)
 
     population_at['bins'] = pd.cut(population_at.lifetime,

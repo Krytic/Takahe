@@ -7,6 +7,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import fminbound
 from scipy.integrate import quad
+# import swifter
 import takahe
 
 def find_between(a, low, high):
@@ -15,6 +16,10 @@ def find_between(a, low, high):
     if i != len(a) and g != len(a):
         return a[i:g]
     raise ValueError
+
+def add_coalesence_time_column(df):
+    pass
+    # df['coalesence_time'] =
 
 def memoize(f):
     """Memoizes a function.
@@ -316,9 +321,9 @@ def integrate(a0, e0, p):
 
     return takahe.integrate_eoms(a0, e0, p)
 
-@np.vectorize
+# @np.vectorize
 def coalescence_time(m1, m2, a0, e0):
     p = [m1, m2, 1, 0]
-    _, _, h = integrate(a0, e0, p)
+    a, e, h = integrate(a0, e0, p)
 
-    return np.sum(h)
+    return np.sum(h) / takahe.constants.SECONDS_PER_GYR
