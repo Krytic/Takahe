@@ -321,7 +321,7 @@ def integrate(a0, e0, p):
 
     return takahe.integrate_eoms(a0, e0, p)
 
-# @np.vectorize
+@np.vectorize
 def coalescence_time(m1, m2, a0, e0):
     p = [m1, m2, 1, 0]
     a, e, h = integrate(a0, e0, p)
