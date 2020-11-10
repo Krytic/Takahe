@@ -3,17 +3,13 @@
 Loading Data
 ============
 
-Takahe's loader attempts to infer the right headers by sniffing the filename. As such, to receive the best benefits of using the loader, your files should conform to a certain filename structure.
+Takahe presumes a very strict naming convention when it comes to loading files. The file names contain valuable metadata; a `current project <https://github.com/Krytic/Takahe/issues/10>`_ is refactoring the loader to allow for this.
 
-Firstly, Takahe splits filenames based on the underscore character _. We call each part a "field" of the filename. If it sniffs a field beginning with the letter z, Takahe assumes that this field designates the metallicity of the sample.
-
-If Takahe detects "StandardJJ" in the filename, it presumes you are using J.J. Eldridge's StandardJJ structure, where the file is structured as follows:
+Takahe's naming convention is :code:`Remnant-Birth-bin-imf135_300-z{metallicity}_StandardJJ.dat` and it presumes that the files are structured as follows:
 
 +----+----+----+----+--------+---------------+------------------+
 | m1 | m2 | a0 | e0 | weight | evolution_age | rejuvenation_age |
 +----+----+----+----+--------+---------------+------------------+
-
-You cannot currently override the metallicity detection, but you *can* override the inference on the fields -- pass the dictionary :code:`name_hints` to the loader. Passing this will *always* override the inference.
 
 Finally, if there is a field :code:`_ct` in the filename, Takahe assumes the final field is the coalescence time of the system.
 
@@ -52,10 +48,20 @@ It's worth mentioning that Takahe, like BPASS, assumes that solar metallicity is
 | z040 | 0.040   |        2.00        |
 +------+---------+--------------------+
 
-Let's examine how Takahe analyses the file :code:`data/Remnant-Birth-bin-imf135_300-z001_StandardJJ_ct.dat`:
+Loading Directories
+-------------------
 
-1. We strip the file extension and containing directories: :code:`Remnant-Birth-bin-imf135_300-z001_StandardJJ_ct`
-2. We split the file from the right based on _: :code:`Remnant-Birth-bin-imf135_300-z001_StandardJJ`, :code:`ct`
-3. We split the first part of the filename based on -: :code:`Remnant`, :code:`Birth`, :code:`bin`, :code:`imf135_300`, :code:`z001_StandardJJ`, :code:`ct`
-4. We check each field and identify relevant parts: :code:`z001`, :code:`StandardJJ`, :code:`ct`.
-5. We confirm that this represents a 5% solar metallicity file, with headers as given by the StandardJJ prescription, containing coalescence times for the ensemble.
+Takahe provides a method to blanket-load an entire directory: :code:`takahe.load.from_directory`. This takes one argument, the directory you want to load.
+
+For instance, the following code loads from a directory :code:`data`:
+
+.. code-block:: python
+
+    import takahe
+    dfs = takahe.load.from_directory("../data")
+
+:code:`dfs` is indexed by *relative BPASS metallicity* as a string. For instance, to access the dataframe corresponding to :math:`0.7Z_\odot` (i.e., the :code:`z014` file), we write:
+
+.. code-block:: python
+
+    df = dfs['0.7']

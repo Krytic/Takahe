@@ -1,6 +1,8 @@
 Installing Takahe
 =================
 
+**Notice**: Takahe is not yet fully released, it should be considered a major *work in progress*.
+
 Takahe is hosted on PyPI (link here), though you can also build source from GitHub.
 
 From Source
@@ -8,11 +10,11 @@ From Source
 
 Building from source is straightforward:
 
-1. Fork the `Github Repo <https://github.com/Krytic/takahe>`_
-2. Locally, run :code:`git clone <your url>`
-3. In a terminal, navigate to the directory you installed takahe to
-4. Run :code:`pip install -e .` to install it as an editable PIP file
-5. Run :code:`f2py3.7 -c src/merge_rate.f95 -m merge_rate` to compile the event rate FORTRAN code.
+1. Ensure you have Julia and PyJulia installed
+2. Fork the `Github Repo <https://github.com/Krytic/takahe>`_
+3. Locally, run :code:`git clone <your url>`
+4. In a terminal, navigate to the directory you installed takahe to
+5. Run :code:`pip install -e .` to install it as an editable PIP file
 
 From PyPI
 ---------
