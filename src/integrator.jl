@@ -16,6 +16,7 @@ function integrate(a0, e0, p)
                  p[2] = m2 (units: Solar Mass)
                  p[3] = Beta for LT Adjustment (units: dimensionless)
                  p[4] = Alpha for LT adjustment (units: [unit]/s)
+                 p[5] = Lifetime (evolution + rejuvenation)
 
     Returns:
         A  - An array of the semimajor axes of the binary system over time. (Solar Mass)
@@ -31,7 +32,7 @@ function integrate(a0, e0, p)
                E = Float64[]
                H = Float64[]
 
-    m1, m2, expo, alph = p[1], p[2], p[3], p[4]
+    m1, m2, expo, alph, evotime = p[1], p[2], p[3], p[4], p[5]
 
     # number of seconds in a year
     seconds_per_year = 60 * 60 * 24 * 365.25
@@ -57,7 +58,7 @@ function integrate(a0, e0, p)
     total_time = 0
 
     # Integrate until past the end of the universe, or a 10km orbit
-    while total_time/seconds_per_year < 1e11 && a > 1e4
+    while total_time/seconds_per_year + evotime < 1e11 && a > 1e4
         initial_da = (- beta / ( (a^3) * (1 - e^2)^(7/2) ))
         da = initial_da * (1 + (73/24) * e^2 + (37/96) * e^4)
 
@@ -72,10 +73,20 @@ function integrate(a0, e0, p)
             timeE = abs(1e-2 * e/de)
         else
             de = 0
+            e = 1e-10
             timeE = timeA * 10
         end
 
-        dt = min(timeE, timeA)
+        dt2 = (evotime + total_time/seconds_per_year)*0.23076752*0.5*seconds_per_year
+
+        if false
+            println(string(m1 / Solar_Mass) * " " * string(m2 / Solar_Mass) * " " * string(a0 / Solar_Radius) * " " * string(e0))
+            println("de=" * string(de) * ", e=" * string(e) * ", e/de=" * string(e/de))
+            println("da=" * string(da) * ", a=" * string(a) * ", a/da=" * string(a/da))
+            println("-------------------")
+        end
+
+        dt = min(timeE, timeA, dt2)
 
         a = a + dt * da
         e = e + dt * de

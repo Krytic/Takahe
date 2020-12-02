@@ -13,7 +13,7 @@ from tqdm import tqdm
 def evolve_system(a0, e0, m1, m2,
                   weight=1, SFRD=None, beta=1,
                   alpha=0, only_arrays=False,
-                  return_value=False):
+                  return_value=False, evotime=0):
     """Evolves a binary system until merger or the age of the Universe.
 
     A note about normalisation & units
@@ -50,7 +50,7 @@ def evolve_system(a0, e0, m1, m2,
     if not return_value:
         global matrix_elements
 
-    params = [m1, m2, beta, alpha]
+    params = [m1, m2, beta, alpha, evotime]
     a, e, h = takahe.helpers.integrate(a0, e0, params)
 
     if only_arrays:

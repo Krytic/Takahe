@@ -274,7 +274,7 @@ def compute_dtd(in_df, extra_lt=None, transient_type='NSNS'):
     histogram_edges = np.linspace(6.05, 11.05, 51)
 
     bins = [0.0]
-    bins.extend(10**histogram_edges / 1e9)
+    bins.extend(10**histogram_edges / 1e9) # Gyr bins
 
     # Now we mask out what we're not interested in.
 
@@ -291,9 +291,9 @@ def compute_dtd(in_df, extra_lt=None, transient_type='NSNS'):
     df.drop(df[df['e0'] == 1].index, inplace=True)
 
     # Unit Conversions:
-    df['a0'] *= (69550 * 1000) # Solar Radius -> Metre
-    df['m1'] *= 1.989e30 # Solar Mass -> Kilogram
-    df['m2'] *= 1.989e30 # Solar Mass -> Kilogram
+    df['a0'] *= takahe.constants.SOLAR_RADIUS # Solar Radius -> Metre
+    df['m1'] *= takahe.constants.SOLAR_MASS # Solar Mass -> Kilogram
+    df['m2'] *= takahe.constants.SOLAR_MASS # Solar Mass -> Kilogram
 
     if 'coalescence_time' not in df.keys():
         # Introduce some temporary terms, to make computation easier
@@ -316,6 +316,7 @@ def compute_dtd(in_df, extra_lt=None, transient_type='NSNS'):
                 'rejuvenation_age', 'circ', 'divisor']
     else:
         cols = ['coalescence_time', 'evolution_age', 'rejuvenation_age']
+        df['coalescence_time'] /= 1e9
 
     df['lifetime'] = (df['evolution_age'] / 1e9
                    +  df['rejuvenation_age'] / 1e9
@@ -326,9 +327,9 @@ def compute_dtd(in_df, extra_lt=None, transient_type='NSNS'):
         df['lifetime'] = df['lifetime'].apply(extra_lt, args=(df,))
 
     # Unit Conversions (back):
-    df['a0'] /= (69550 * 1000) # Metre -> Solar Radius
-    df['m1'] /= (1.989e30) # Kilogram -> Solar Mass
-    df['m2'] /= (1.989e30) # As above
+    df['a0'] /= takahe.constants.SOLAR_RADIUS # Metre -> Solar Radius
+    df['m1'] /= takahe.constants.SOLAR_MASS # Kilogram -> Solar Mass
+    df['m2'] /= takahe.constants.SOLAR_MASS # As above
 
     # The minimum lifetime of a star is ~3 Myr, so introduce
     # an artificial cutoff there.
@@ -349,7 +350,7 @@ def compute_dtd(in_df, extra_lt=None, transient_type='NSNS'):
 
     out_df = out_df.values.ravel() / 1e6 / np.diff(bins)
 
-    return out_df # events/Msun/Gyr
+    return out_df # events / Msun / Gyr
 
 def single_event_rate(in_df,
                       Z,
@@ -357,7 +358,8 @@ def single_event_rate(in_df,
                       lin_edges,
                       extra_lt=None,
                       transient_type='NSNS',
-                      as_hist=False
+                      as_hist=False,
+                      ident=None
                      ):
     """Computes the event rate of a single metallicity.
 
@@ -403,39 +405,39 @@ def single_event_rate(in_df,
     pd.set_option('compute.use_numexpr', False)
 
     LOG_edges = [0.0]
-    LOG_edges.extend(10**np.linspace(6.05, 11.05, 51)/1e9)
+    LOG_edges.extend(10**np.linspace(6.05, 11.05, 51) / 1e9)
 
-    # TODO: Change to integrating the EOMs
-
-    DTD = takahe.histogram.histogram(edges=LOG_edges)
-    SFRD = takahe.histogram.histogram(edges=lin_edges)
+    DTD    = takahe.histogram.histogram(edges=LOG_edges)
+    SFRD   = takahe.histogram.histogram(edges=lin_edges)
     events = takahe.histogram.histogram(edges=lin_edges)
 
-    DTDi = compute_dtd(in_df, extra_lt, transient_type)
+    DTDi   = compute_dtd(in_df, extra_lt, transient_type)
 
-    DTD.fill(LOG_edges[:-1], DTDi)
+    DTD.fill(LOG_edges[:-1], DTDi)               # events / M_sun / Gyr
+    SFRD.fill(lin_edges, SFRDi)                  # M_sun / yr / Mpc^3
 
-    SFRD.fill(lin_edges, SFRDi)
+    SFRD._values *= 1e9                          # M_sun / Gyr / Mpc^3
 
     for i in range(1, len(lin_edges)):
-        t1 = lin_edges[i-1]
+        t1 = lin_edges[i-1]                      #  Gyr
+        t2 = lin_edges[i]                        #  Gyr
 
-        t2 = lin_edges[i]
-
-        this_SFR = SFRD.integral(t1, t2) * 1e9 * 1e9 # M_sun / Gyr / Gpc^3
+        this_SFR = SFRD.integral(t1, t2)         # M_sun / Mpc^3
 
         # Convolve the SFH with the DTD to get the event rates
         for j in range(i):
-            t1_prime = t2 - lin_edges[j] # Gyr
-            t2_prime = t2 - lin_edges[j+1] # Gyr
+            t1_prime = t2 - lin_edges[j]         # Gyr
+            t2_prime = t2 - lin_edges[j+1]       # Gyr
 
-            events_in_bin = DTD.integral(t2_prime, t1_prime) # events/M_sun
+            events_in_bin = DTD.integral(t2_prime, t1_prime)
+                                                 # events / M_sun
 
             events.fill(lin_edges[j], events_in_bin * this_SFR)
-            # events/Gyr/Gpc^3
+                                                 # events / Mpc^3
 
     # Normalise to years:
-    events /= (np.diff(lin_edges) * 1e9) # events/yr/Gpc^3
+    events /= (np.diff(lin_edges) * 1e9)         # events / yr / Mpc^3
+    events *= (1e9)                              # events / yr / Gpc^3
 
     events._values = np.append(events._values, events._values[-1])
 
@@ -525,7 +527,7 @@ def composite_event_rates(dataframes, extra_lt=None,
     for i in tqdm(range(13)):
         Z = takahe.constants.BPASS_METALLICITIES[i]
         Z = takahe.helpers.format_metallicity(Z)
-        df = dataframes[str(Z)]
+        df = dataframes[Z]
 
         SFRD_here = SFRD[Z]
 

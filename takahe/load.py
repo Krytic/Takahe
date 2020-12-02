@@ -7,7 +7,24 @@ import pandas as pd
 from tqdm import tqdm
 import takahe
 
-def from_file(filepath):
+def from_file(filepath, options=dict()):
+    """Loads a single file into memory.
+
+    Loads a single file from a directory into memory. Makes a few assumptions:
+        1. That the file structure is:
+           m1  m2  a0  e0  weight  evolution_age  rejuvenation_age
+        2. The presence of "_ct" in the filename indicates that the
+           eighth column
+
+    Arguments:
+        filepath {[type]} -- [description]
+
+    Keyword Arguments:
+        options {[type]} -- [description] (default: {dict()})
+
+    Returns:
+        [type] -- [description]
+    """
     name_hints = []
     name_hints.extend(['m1','m2','a0','e0'])
     name_hints.extend(['weight','evolution_age','rejuvenation_age'])
@@ -15,9 +32,9 @@ def from_file(filepath):
     if "_ct" in filepath:
         name_hints.extend(['coalescence_time'])
 
+    # this is wrong
     if ".h5" in filepath:
-        df = pd.read_hdf(filepath, 'dataframe',
-                         columns=name_hints)
+        df = pd.read_hdf(filepath, options['key_to_load'])
     else:
         df = pd.read_csv(filepath,
                          names=name_hints,
@@ -64,6 +81,6 @@ def from_directory(path):
 
         Z = takahe.helpers.format_metallicity(Zi)
 
-        dataframes[str(Z)] = df
+        dataframes[Z] = df
 
     return dataframes

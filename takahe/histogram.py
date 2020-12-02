@@ -219,7 +219,7 @@ class histogram:
         err_to_1_sf = f"{err:.1g}"
         num_dp = len(str(err_to_1_sf).split('.')[1])
 
-        return_string = rf"${nom:.{num_dp}f} \pm {err_to_1_sf}"
+        return_string = rf"${nom:.{num_dp}f} \pm {err_to_1_sf}$"
 
         return return_string
 

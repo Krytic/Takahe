@@ -17,10 +17,6 @@ def find_between(a, low, high):
         return a[i:g]
     raise ValueError
 
-def add_coalesence_time_column(df):
-    pass
-    # df['coalesence_time'] =
-
 def memoize(f):
     """Memoizes a function.
 
@@ -66,7 +62,7 @@ def identify(star):
     if star.m1 > MASS_BH and star.m2 > MASS_BH:
         return 'BHBH'
 
-def format_metallicity(Z, as_string=False, rel=True):
+def format_metallicity(Z):
     r"""Converts a BPASS-formatted metallicity into a "real valued" one.
 
     Interprets the BPASS-encoded metallicities as *fraction of solar
@@ -85,10 +81,10 @@ def format_metallicity(Z, as_string=False, rel=True):
         Z {string} -- The metallicity value to convert.
 
     Keyword Arguments:
-        as_string {bool} -- Whether or not to return the metallicity
+        as_math {bool}   -- Whether or not to return the metallicity
                             value as a string. If True, returns it
                             LaTeX-formatted for mathmode (e.g.
-                            format_metallicity("020", as_string=True)
+                            format_metallicity("020", as_math=True)
                             will return $1.0Z_\odot$.)
 
                             (default: {False})
@@ -107,15 +103,7 @@ def format_metallicity(Z, as_string=False, rel=True):
     else:
         div = float("0." + Z)
 
-    if rel:
-        res = div / takahe.constants.SOLAR_METALLICITY
-    else:
-        res = div
-
-    if as_string:
-        return rf"${res}Z_\odot$"
-    else:
-        return res
+    return div / takahe.constants.SOLAR_METALLICITY
 
 def find_contours(X, Y, Z, value):
     try:
@@ -322,8 +310,11 @@ def integrate(a0, e0, p):
     return takahe.integrate_eoms(a0, e0, p)
 
 @np.vectorize
-def coalescence_time(m1, m2, a0, e0):
-    p = [m1, m2, 1, 0]
+def coalescence_time(m1, m2, a0, e0, evotime=0, pbar=None):
+    p = [m1, m2, 1, 0, evotime]
     a, e, h = integrate(a0, e0, p)
+
+    if pbar is not None:
+        pbar.update(1)
 
     return np.sum(h) / takahe.constants.SECONDS_PER_GYR

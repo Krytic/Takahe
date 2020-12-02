@@ -62,4 +62,4 @@ PE_BINS_ECC_W = 0.01 # there will be 1 / PE_BINS_ECC_W bins
 ## Debug only ##
 ################
 
-DEBUG_MODE        = False
+DEBUG_MODE        = True
