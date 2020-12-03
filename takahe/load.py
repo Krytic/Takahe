@@ -43,6 +43,19 @@ def from_file(filepath, options=dict()):
 
     return df
 
+def from_gzip(filepath):
+    if ".gz" not in filepath:
+        filepath = filepath + ".gz"
+
+    if isfile(filepath):
+        with open(filepath, 'rb') as f:
+            df = from_file(gzip.GzipFile(fileobj=f))
+
+        return f
+
+    raise IOError(f"File {filepath} not found.")
+
+
 def from_directory(path):
     """Loads the contents of a directory into memory.
 
