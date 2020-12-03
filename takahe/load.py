@@ -51,7 +51,7 @@ def from_gzip(filepath):
         with open(filepath, 'rb') as f:
             df = from_file(gzip.GzipFile(fileobj=f))
 
-        return f
+        return df
 
     raise IOError(f"File {filepath} not found.")
 
