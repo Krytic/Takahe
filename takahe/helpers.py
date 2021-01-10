@@ -11,6 +11,25 @@ from scipy.integrate import quad
 import takahe
 
 def find_between(a, low, high):
+    """Finds all elements of a between low and high.
+
+    Simple binary search algorithm using the bisect module. Searches the
+    array a for all elements between low and high.
+
+    Useful for finding mergers that occur between time t1 and t2.
+
+    Arguments:
+        a {list} -- The list to search through.
+        low {float} -- The lower bound to find
+        high {float} -- The upper bound to find.
+
+    Returns:
+        list -- The filtered list
+.mes
+
+    Raises:
+        ValueError -- If the value could not be found.
+    """
     i = bisect.bisect_left(a, low)
     g = bisect.bisect_right(a, high)
     if i != len(a) and g != len(a):

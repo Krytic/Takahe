@@ -226,7 +226,9 @@ def find_nearest(df, column, needle):
     return nearest
 
 def _integrate_worker(p0, e0, m1=1.4, m2=1.4, pbar=None):
-    pbar.update(1)
+    if pbar is not None:
+        pbar.update(1)
+
     return takahe.integrate_timescale(m1, m2, p0, e0) / takahe.constants.SECONDS_PER_GYR
 
 def constant_coalescence_isocontour(ct):

@@ -10,6 +10,9 @@ Modified by: Sean Richards
 import matplotlib.pyplot as plt
 import numpy as np
 import pickle
+from scipy.stats import iqr
+from scipy.stats import multivariate_normal
+import takahe
 
 import warnings
 from uncertainties import ufloat
@@ -322,7 +325,7 @@ class histogram:
         out = np.where(x >= self._bin_edges)[0][-1]
 
         if out == self._nr_bins:
-            out = out-1
+            out = out - 1
         return out
 
     def getBinEdges(self):
@@ -508,22 +511,29 @@ class histogram_2d:
         with open(pickle_path, 'wb') as f:
             pickle.dump(contents, f)
 
-    def probability_map(self):
-        out = self.copy()
-        total = np.sum(self._values)
-        out._values /= total
-
-        return out
-
     def likelihood(self, Po, Eo):
-        pmap = self.probability_map()
-        probabilities = []
-        for obj in zip(Po, Eo):
-            bin_nr = self.getBin(obj[0], obj[1])
-            prob = pmap.getBinContent(bin_nr[0], bin_nr[1])
-            probabilities.append(prob)
-        print("probability:", probabilities)
-        return np.product(probabilities)
+        n = len(Po)
+        IQR_e = iqr(Eo)
+        IQR_p = iqr(Po)
+
+        m_e = min(np.sqrt(np.var(Eo)), IQR_e/1.349)
+        m_p = min(np.sqrt(np.var(Po)), IQR_p/1.349)
+
+        be    = 0.9 * m_e / (n**(1/5))
+        blogP = 0.9 * m_p / (n**(1/5))
+
+        logL = 0
+
+        for i in range(len(Po)):
+            w = self.getBin(Po[i], Eo[i])
+            w = self.getBinContent(w[0], w[1])
+
+            mu = np.array([Po[i], Eo[i]])
+            sigma = np.matrix([[blogP**2, 0], [0, be**2]])
+            N = multivariate_normal(mu, sigma)
+            logL += (w * N.pdf([Po[i], Eo[i]]))
+
+        return logL
 
     def __add__(self, other):
         assert isinstance(other, histogram_2d)

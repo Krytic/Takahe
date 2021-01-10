@@ -47,8 +47,18 @@ class FrameCollection:
             return frame
         raise StopIteration
 
+    def final_frame(self, culmulative):
+        if not culmulative:
+            return self.find(self.__times[-1])
+        else:
+            all_prev = np.ones((len(self.__xaxis), len(self.__yaxis)))
+            for frame in self:
+                all_prev += frame.z
+
+            return all_prev
+
     def find(self, time):
-        i = np.argwhere(self.__times >= (time * 1e9))
+        i = np.argwhere(np.array(self.__times) >= (time * 1e9))
         try:
             i = np.min(i)
         except ValueError:
@@ -56,7 +66,7 @@ class FrameCollection:
         return self.__frames[i]
 
         t = np.ceil(time * 1e9 / self.__dt) * self.__dt
-        i = np.argmin(np.abs(self.__times - t))
+        i = np.argmin(np.abs(np.array(self.__times) - t))
         return self.__frames[i]
 
     def boundary(self):

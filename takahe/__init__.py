@@ -26,15 +26,15 @@ from takahe._metadata import __version__
 def debug(msgtype, message):
     assert msgtype in ['warning', 'error', 'info']
 
-    if constants.DEBUG_MODE:
-        if msgtype == 'warning':
-            header = "\033[93m\033[1m[WARNING]\033[0m "
-        elif msgtype == 'error':
-            header = "\033[91m\033[1m[ERROR]\033[0m "
-        elif msgtype == 'info':
-            header = "\033[96m\033[1m[INFO]\033[0m "
+    if msgtype == 'warning':
+        header = "\033[93m\033[1m[WARNING]\033[0m "
+    elif msgtype == 'error':
+        header = "\033[91m\033[1m[ERROR]\033[0m "
+    elif msgtype == 'info':
+        header = "\033[96m\033[1m[INFO]\033[0m "
 
-        print(header + message)
+    if constants.DEBUG_MODE:
+        print(header + str(message))
 
 _integration_subroutine = pkgutil.get_data(__name__, "../src/integrator.jl")
 _integration_subroutine = _integration_subroutine.decode("utf-8")

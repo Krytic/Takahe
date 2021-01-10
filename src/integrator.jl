@@ -79,13 +79,6 @@ function integrate(a0, e0, p)
 
         dt2 = (evotime + total_time/seconds_per_year)*0.23076752*0.5*seconds_per_year
 
-        if false
-            println(string(m1 / Solar_Mass) * " " * string(m2 / Solar_Mass) * " " * string(a0 / Solar_Radius) * " " * string(e0))
-            println("de=" * string(de) * ", e=" * string(e) * ", e/de=" * string(e/de))
-            println("da=" * string(da) * ", a=" * string(a) * ", a/da=" * string(a/da))
-            println("-------------------")
-        end
-
         dt = min(timeE, timeA, dt2)
 
         a = a + dt * da
