@@ -2,8 +2,8 @@
 
 Histogram classes to contain event rate data and allow for easy plotting
 
-Original author: Max Briel
-Modified by: Sean Richards
+Original author: Max Briel (https://github.com/maxbriel)
+Modified by: Sean Richards (https://github.com/Krytic)
 
 """
 
@@ -13,46 +13,41 @@ import pickle
 from scipy.stats import iqr
 from scipy.stats import multivariate_normal
 import takahe
+from mpl_toolkits.mplot3d import Axes3D
+from matplotlib import cm
 
 import warnings
 from uncertainties import ufloat
 from uncertainties.umath import log10 as ulog10
 
 class histogram:
-    """A histogram which can contain data and can be manipulated.
+    """
+    A histogram which can contain data and can be manipulated.
 
     Either **xlow**, **xup**, and **nr_bins** is given or **edges**
 
-    As per any histogram, the upper edges are non inclusive, except for the
-    last bin.
+    As per any histogram, the upper edges are non inclusive, except for
+    the last bin.
 
-    Parameters
-    ----------
-    xlow : float
-        lower bound
-    xup : float
-        upper bound
-    nr_bins : int
-        the number of bins
-    edges : array
-        An array with items defining the edges.
+    Arguments:
+        xlow {float}  -- lower bound
+        xup {float}   -- upper bound
+        nr_bins {int} -- the number of bins
+        edges {array} -- An array with items defining the edges.
 
-    Attributes
-    ----------
-    _xlow : float
-        lower bound of the histogram
-    _xup : float
-        upper bound of the histogram
-    _nr_bins : int
-        the number of bins in the histogram
-    _bin_edges : array
-        An array of bin edges
-    _values : array
-        An array of length **_nr_bins** containing the value of each bin
-    lower_edges : array
-        An array of the lower edges of the bins in the histogram
-    upper_edges : array
-        An array of the upper edges of the bins in the histogram
+    Attributes:
+        _xlow {float}       -- lower bound of the histogram
+        _xup {float}        -- upper bound of the histogram
+        _nr_bins {int}      -- the number of bins in the histogram
+        _bin_edges {array}  -- An array of bin edges
+        _values {array}     -- An array of length **_nr_bins**
+                               containing the value of each bin
+        lower_edges {array} -- An array of the lower edges of the bins
+                               in the histogram
+        upper_edges {array} -- An array of the upper edges of the bins
+                               in the histogram
+        _hits {array}       -- An array containing the number of times
+                               each bin has been inserted into.
 
     """
 
@@ -86,6 +81,19 @@ class histogram:
         return f"The bins: {self._bin_edges}\nThe values: {self._values}"
 
     def __add__(self, other):
+        """
+        Addition
+
+        Performs element-wise addition with another histogram or float
+        object.
+
+        Arguments:
+            other {mixed} -- Either another histogram object, or a float
+                             type object,
+
+        Returns:
+            {histogram} -- A deep copy of the resultant histogram.
+        """
         out = self.copy()
 
         if isinstance(other, histogram):
@@ -96,21 +104,29 @@ class histogram:
         return out
 
     def __mul__(self, other):
+        """
+        Multiplication
+
+        Performs element-wise multiplication with a float type object.
+
+        Arguments:
+            other {float} -- The multiplier
+
+        Returns:
+            {histogram} -- A deep copy of the resultant histogram.
+        """
         out = self.copy()
         out._values = self._values * other
         return out
 
     def __rmul__(self, other):
-        return self * other
+        return self.__mul__(other)
 
     def __sub__(self, other):
         return self + -1 * other
 
     def __div__(self, other):
-        out = self.copy()
-        out._values = self._values / other
-        out._hits = self._hits
-        return out
+        return self.__truediv__(other)
 
     def __truediv__(self, other):
         out = self.copy()
@@ -119,15 +135,24 @@ class histogram:
         return out
 
     def inbounds(self, value):
+        """
+        Determines if a value is within the bounds of the histogram.
+
+        Arguments:
+            value {float} -- The value to checl
+
+        Returns:
+            {bool} -- Whether or not the value is within the histogram
+                      range.
+        """
         return self._xlow <= value and self._xup >= value
 
     def copy(self):
-        """ creates a copy of the histogram
+        """
+        Creates a copy of the histogram
 
-        Returns
-        -------
-        histogram
-            An exact (deep) copy of the histogram
+        Returns:
+            {histogram} -- An exact (deep) copy of the histogram
 
         """
         out = histogram(xlow=self._xlow, xup=self._xup, nr_bins=self._nr_bins)
@@ -136,16 +161,16 @@ class histogram:
         return out
 
     def fill(self, x, weight = 1):
-        """ Fill the histogram with data.
-
-
-        Parameters
-        ----------
-        x : float/array
-            Either a single entry or an array of *N* to put into the histogram
-        w : float/array
-            The weight of the entry of *N* entries to be added to the histogram.
         """
+        Fill the histogram with data.
+
+        Arguments:
+            x {mixed} --  Either a single entry or an array of *N* to
+                          put into the histogram
+            w {mixed} --  The weight of the entry of *N* entries to be
+                          added to the histogram.
+        """
+
         def _insert(f, g):
             if f >= self._xup:
                  self._values[self._nr_bins-1] += g
@@ -158,6 +183,8 @@ class histogram:
                 self._values[bin_nr] += g
                 self._hits[bin_nr] += 1
 
+        # Data va;odatopm. x can be either a float or an array type.
+        # First - is it a float type?
         if not isinstance(x, type(0.0)):
             if isinstance(weight, type(0)):
                 for i in range(0, len(x)):
@@ -167,15 +194,33 @@ class histogram:
             else:
                 for i in range(0, len(x)):
                     _insert(x[i], weight[i])
+        # Otherwise assume it is a list type.
         else:
             _insert(x, weight)
 
         return None
 
     def plot(self, with_errors=False, *argv, **kwargs):
-        """Plot the histogram. matplotlib.pyplot arguments can be passed on too
         """
-        entries, edges, _ = plt.hist(self._bin_edges[:-1], self._bin_edges, weights=self._values,histtype=u'step', *argv, **kwargs)
+        Plot the histogram.
+
+        Additional arguments (beyond with_errors) will be passed on to to the
+        call to plt.hist().
+
+        Arguments:
+            with_errors {bool} -- Whether or not to plot errors (error bars)
+                                  on the histogram. (default: {False})
+        """
+
+        xobj = self._bin_edges
+
+        wobj = self._values
+        if len(self._values) == len(xobj) - 1:
+            wobj = np.append(wobj, wobj[-1])
+        elif len(self._values) - 1 == len(xobj):
+            wobj = wobj[:-1]
+
+        entries, edges, _ = plt.hist(xobj, self._bin_edges, weights=wobj, histtype=u'step', *argv, **kwargs)
 
         if with_errors:
             plt.errorbar(self.getBinCenters(), self._values, yerr=np.sqrt(self._hits), fmt='r.')
@@ -183,7 +228,8 @@ class histogram:
         return None
 
     def plotLog(self, with_errors=False, *argv, **kwargs):
-        """Plot the histogram. matplotlib.pyplot arguments can be passed on too
+        """
+        Plot the histogram. matplotlib.pyplot arguments can be passed on too
         """
         entries, edges, _ = plt.hist(np.log10(self._bin_edges[:-1]), np.log10(self._bin_edges), weights=self._values,histtype=u'step', *argv, **kwargs)
 
@@ -432,7 +478,21 @@ class histogram:
             return total
 
 class histogram_2d:
-    def __init__(self, x_range, y_range, nr_bins_x, nr_bins_y):
+    def __init__(self, x_range=None,
+                       y_range=None,
+                       nr_bins_x=0,
+                       nr_bins_y=0,
+                       edges_x=None,
+                       edges_y=None):
+
+        linspace = True
+        if edges_x is not None and edges_y is not None:
+            x_range = (edges_x[0], edges_x[-1])
+            y_range = (edges_y[0], edges_y[-1])
+            nr_bins_x = len(edges_x)
+            nr_bins_y = len(edges_y)
+            linspace = False
+
         xlow, xup         = x_range[0], x_range[1]
         ylow, yup         = y_range[0], y_range[1]
 
@@ -445,8 +505,12 @@ class histogram_2d:
         self._values      = np.zeros((nr_bins_x, nr_bins_y))
         self._num_hits    = np.zeros((nr_bins_x, nr_bins_y))
 
-        self._bin_edges_x = np.linspace(xlow, xup, nr_bins_x)
-        self._bin_edges_y = np.linspace(ylow, yup, nr_bins_y)
+        if linspace == True:
+            self._bin_edges_x = np.linspace(xlow, xup, nr_bins_x)
+            self._bin_edges_y = np.linspace(ylow, yup, nr_bins_y)
+        else:
+            self._bin_edges_x = edges_x
+            self._bin_edges_y = edges_y
 
     def fill(self, insertion_matrix):
         assert self._values.shape == insertion_matrix.shape
@@ -492,7 +556,9 @@ class histogram_2d:
         x = self._bin_edges_x
         y = self._bin_edges_y
         X, Y = np.meshgrid(x, y, indexing='ij')
-        plt.pcolormesh(X, Y, self._values.T, *args, **kwargs)
+        fig = plt.figure()
+        ax = fig.gca(projection='3d')
+        ax.plot_surface(X, Y, self._values, *args, **kwargs)
 
     def to_pickle(self, pickle_path):
         contents = {
@@ -511,27 +577,27 @@ class histogram_2d:
         with open(pickle_path, 'wb') as f:
             pickle.dump(contents, f)
 
-    def likelihood(self, Po, Eo):
-        n = len(Po)
-        IQR_e = iqr(Eo)
-        IQR_p = iqr(Po)
+    def likelihood(self, x_obs, y_obs):
+        n = len(x_obs)
+        IQR_y = iqr(y_obs)
+        IQR_x = iqr(x_obs)
 
-        m_e = min(np.sqrt(np.var(Eo)), IQR_e/1.349)
-        m_p = min(np.sqrt(np.var(Po)), IQR_p/1.349)
+        m_y = min(np.sqrt(np.var(y_obs)), IQR_y/1.349)
+        m_x = min(np.sqrt(np.var(x_obs)), IQR_x/1.349)
 
-        be    = 0.9 * m_e / (n**(1/5))
-        blogP = 0.9 * m_p / (n**(1/5))
+        b_y    = 0.9 * m_y / (n**(1/5))
+        b_x = 0.9 * m_x / (n**(1/5))
 
         logL = 0
 
-        for i in range(len(Po)):
-            w = self.getBin(Po[i], Eo[i])
+        for i in range(len(x_obs)):
+            w = self.getBin(x_obs[i], y_obs[i])
             w = self.getBinContent(w[0], w[1])
 
-            mu = np.array([Po[i], Eo[i]])
-            sigma = np.matrix([[blogP**2, 0], [0, be**2]])
+            mu = np.array([x_obs[i], y_obs[i]])
+            sigma = np.matrix([[b_x**2, 0], [0, b_y**2]])
             N = multivariate_normal(mu, sigma)
-            logL += (w * N.pdf([Po[i], Eo[i]]))
+            logL += (w * N.pdf([x_obs[i], y_obs[i]]))
 
         return logL
 
@@ -546,6 +612,66 @@ class histogram_2d:
 
         self._values   = self._values + other._values
         self._num_hits = self._num_hits + other._num_hits
+
+class histogram_3d:
+    def __init__(self, x, y, z):
+        self._bin_edges_x = x
+        self._bin_edges_y = y
+        self._bin_edges_z = z
+
+        xlen = len(self._bin_edges_x)
+        ylen = len(self._bin_edges_y)
+        zlen = len(self._bin_edges_z)
+
+        self._values = [np.zeros((ylen, zlen)) for i in range(xlen)]
+
+    def insert(self, binx, biny, binz, val):
+        self._values[binx][biny][binz] += val
+
+    def getBin(self, x, y, z):
+        i = np.where(x >= self._bin_edges_x)[0][-1]
+        j = np.where(y >= self._bin_edges_y)[0][-1]
+        k = np.where(z >= self._bin_edges_z)[0][-1]
+
+        return (i,j,k)
+
+    def _explode(self, data):
+        shape_arr = np.array(data.shape)
+        size = shape_arr[:3]
+        exploded = np.zeros(np.concatenate([size, shape_arr[3:]]), dtype=data.dtype)
+        exploded[::1, ::1, ::1] = data
+        return exploded
+
+    def _expand_coordinates(self, indices):
+        x, y, z = indices
+        x[1::2, :, :] += 1
+        y[:, 1::2, :] += 1
+        z[:, :, 1::2] += 1
+        return x, y, z
+
+    def _normalize(self, arr):
+        arr_min = np.min(arr)
+        return (arr-arr_min)/(np.max(arr)-arr_min)
+
+    def plot(self, angle=320):
+        cube = self._values
+        cube = self._normalize(cube)
+
+        facecolors = cm.viridis(cube)
+        facecolors[:,:,:,-1] = cube
+        facecolors = self._explode(facecolors)
+
+        filled = facecolors[:,:,:,-1] != 0
+        x, y, z = self._expand_coordinates(np.indices(np.array(filled.shape) + 1))
+
+        fig = plt.figure(figsize=(30/2.54, 30/2.54))
+        ax = fig.gca(projection='3d')
+
+        IMG_DIM = len(self._bin_edges_x)
+
+        ax.view_init(30, angle)
+
+        ax.voxels(x, y, z, filled, facecolors=facecolors, shade=False)
 
 class pickledHistogram(histogram):
     def __init__(self, pickle_path):

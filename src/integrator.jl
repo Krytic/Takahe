@@ -2,8 +2,6 @@ function Adjust(da_or_de, beta, alpha)
     return da_or_de^beta + alpha
 end
 
-str(x) = string(x)
-
 function integrate(a0, e0, p)
     """
     General purpose integrator for Nyadzani & Razzaque eqns for a & e.
@@ -91,6 +89,16 @@ function integrate(a0, e0, p)
         total_time = total_time + dt
     end
 
+    stop_reason = "flag_not_set"
+
+    if total_time/seconds_per_year + evotime >= 1e11
+        stop_reason = "out_of_time"
+    end
+
+    if a <= 1e4
+        stop_reason = "merged"
+    end
+
     # Solar Radii, Dimensionless
-    return A / Solar_Radius, E, H
+    return A / Solar_Radius, E, H, stop_reason
 end

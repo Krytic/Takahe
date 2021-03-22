@@ -67,6 +67,7 @@ function integrate(m1, m2, p0, e0)
 
                 summand += this_integral
                 e       += de
+
                 convert(Float64, e)
             end
 

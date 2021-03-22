@@ -25,6 +25,7 @@ for item in metadata.keys():
         metadata[item] = match.group(1)
 
 setup(name='takahe',
+      license           = 'MIT License',
       version           = metadata['version'],
       description       = description,
       long_description  = long_description,
@@ -32,6 +33,7 @@ setup(name='takahe',
       author_email      = metadata['email'],
       packages          = ['takahe'],
       zip_safe          = False,
+      homepage          = 'https://github.com/Krytic/Takahe',
       install_requires  = ['numpy',
                            'matplotlib',
                            'numba',
