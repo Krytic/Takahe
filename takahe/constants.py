@@ -15,6 +15,8 @@ BPASS_METALLICITIES_F   = np.array([1e-5 , 1e-4 , 0.001, 0.002, 0.003,
 MASS_CUTOFF_NS = 2.5 # NS have mass LOWER than this
 MASS_CUTOFF_BH = 2.5 # BH have mass GREATER than this
 
+TRANSIENTS = ['NSNS', 'NSBH', 'BHBH']
+
 ######################
 ## Unit Conversions ##
 ######################
@@ -53,6 +55,7 @@ HUBBLE_TIME = 1 / (HUBBLE_PARAMETER / KILOPARSECS_PER_METER * SECONDS_PER_GYR)
 #############
 
 LINEAR_BINS = np.linspace(0, 14, 51)
+LOG_BINS = 10**np.linspace(6.05, 11.05, 51)
 BINS = lambda n: np.linspace(0, 14, n)
 
 PE_BINS_PER_W = 0.1 # there will be 8 / PE_BINS_PER_W bins

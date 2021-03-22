@@ -139,10 +139,36 @@ def _mass_worker_nsbh(m, M):
     return m, M
 
 def constrain_masses(df, transient_type):
+    """Constrains the masses to be baryonic only
+
+    Coerces the masses to be baryonic. Exact fomula is:
+
+    For BHs: M[i] = 0.9 * M[i]
+    For NSs: min(M[i] = 0.9 * M[i], -1 + sqrt(1+4*0.084*M[i])/(2*0.084))
+
+    This function modifies IN PLACE and does not return a value.
+
+    Arguments:
+        df {pd.DataFrame} -- The stellar DataFrame to coerce
+        transient_type {string} -- The transient type of the data.
+
+    Raises:
+        AssertionError -- on malformed input.
+    """
+
+    assert isinstance(df, pd.DataFrame), ("Expected df to be a DataFrame in "
+                                          "call to constrain_masses")
+
+    assert transient_type in takahe.constants.TRANSIENTS, ("Incorrect "
+                                                           "transient "
+                                                           "type.")
+
     if transient_type == 'NSNS':
-        df['m1'], df['m2'] = _mass_worker_nsns(df['m1'].to_numpy(), df['m2'].to_numpy())
+        df['m1'], df['m2'] = _mass_worker_nsns(df['m1'].to_numpy(),
+                                               df['m2'].to_numpy())
     elif transient_type == 'NSBH':
-        df['m1'], df['m2'] = _mass_worker_nsbh(df['m1'].to_numpy(), df['m2'].to_numpy())
+        df['m1'], df['m2'] = _mass_worker_nsbh(df['m1'].to_numpy(),
+                                               df['m2'].to_numpy())
     elif transient_type == 'BHBH':
         df['m1'] = 0.9 * df['m1']
         df['m2'] = 0.9 * df['m2']
@@ -206,18 +232,21 @@ def generate_sfrd(tL_edges, func=None, need_means=False, is_culmulative=False):
 
     SFRD = dict()
 
-    Z_fmts = takahe.constants.BPASS_METALLICITIES_F
+    Z_fmts =takahe.constants.BPASS_METALLICITIES_F
 
     if need_means:
         # Compute the array of means.
         # This sets means_arr[i] = np.mean(Z_fmts[i], Z_fmts[i+1])
         means_arr = [np.mean([Z_fmts[i], Z_fmts[i+1]]) for i in range(12)]
+        means_arr = [5e-5, 5e-4, 0.0015, 0.0025, 0.0035, 0.005, 0.007, 0.009000000000000001, 0.012, 0.017, 0.025, 0.035]
 
         # Prepend 0 to the means array
-        Z_compute = [0.0]
-        Z_compute.extend(means_arr)
+        Z_compute = means_arr
+        Z_compute.append(1-sum(means_arr))
     else:
         Z_compute = Z_fmts
+
+    takahe.debug('info', Z_compute)
 
     z = takahe.helpers.lookback_to_redshift(tL_edges)
 
@@ -269,6 +298,8 @@ def compute_dtd(in_df, extra_lt=None, transient_type='NSNS'):
                           the system.
     """
 
+    pd.set_option('compute.use_numexpr', False)
+
     # First we set up some basic variables.
 
     histogram_edges = np.linspace(6.05, 11.05, 51)
@@ -316,7 +347,6 @@ def compute_dtd(in_df, extra_lt=None, transient_type='NSNS'):
                 'rejuvenation_age', 'circ', 'divisor']
     else:
         cols = ['coalescence_time', 'evolution_age', 'rejuvenation_age']
-        df['coalescence_time'] /= 1e9
 
     df['lifetime'] = (df['evolution_age'] / 1e9
                    +  df['rejuvenation_age'] / 1e9

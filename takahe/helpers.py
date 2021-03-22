@@ -64,10 +64,11 @@ def memoize(f):
 def identify(star):
     """Simple helper function to identify a BSS.
 
-    [description]
-
     Arguments:
         star {pd.Series} -- the series object representing the BSS.
+
+    Returns:
+        {string} -- the type of binary system.
     """
     MASS_NS = takahe.constants.MASS_CUTOFF_NS
     MASS_BH = takahe.constants.MASS_CUTOFF_BH
@@ -99,15 +100,6 @@ def format_metallicity(Z):
     Arguments:
         Z {string} -- The metallicity value to convert.
 
-    Keyword Arguments:
-        as_math {bool}   -- Whether or not to return the metallicity
-                            value as a string. If True, returns it
-                            LaTeX-formatted for mathmode (e.g.
-                            format_metallicity("020", as_math=True)
-                            will return $1.0Z_\odot$.)
-
-                            (default: {False})
-
     Returns:
         mixed -- The converted metallicity values.
     """
@@ -125,12 +117,57 @@ def format_metallicity(Z):
     return div / takahe.constants.SOLAR_METALLICITY
 
 def find_contours(X, Y, Z, value):
+    """Extracts contours from a given dataset.
+
+    Extracts the contours for a given X / Y / Z dataset. X, Y, Z must
+    be in a format that can be passed to plt.contour.
+
+    Value can be a list of contours - in which case lists will be
+    generated for each value in the list.
+
+    A note about output format
+    --------------------------
+
+    This function returns data in the following format:
+        paths[contour value][i] = {
+            'x': [x coordinates]
+            'y': [y coordinates]
+        }
+
+    Where i is a counter variable. If the given contour exists only
+    once in the dataset, i will be 0 and paths[contour value] will have
+    a length of 1. If it exists n times, paths[contour value] will have
+    a length of n, and i will range from 0 to n-1.
+
+    Arguments:
+        X {np.array} -- A meshgrid object for the X axis.
+        Y {np.array} -- A meshgrid object for the Y axis.
+        Z {np.matrix} -- The matrix corresponding to the Z-values of the
+                         plot.
+        value {mixed} -- Either a single value, or a list of values
+                         to extract the contours from.
+
+    Returns:
+        {list} -- A list of each contour coordinates, in the format
+                  described above.
+    """
+
+    assert isinstance(X, np.array), "Expected X to be arraylike."
+    assert isinstance(Y, np.array), "Expected Y to be arraylike."
+    assert isinstance(Z, np.matrix), "Expected Z to be matrixlike."
+    assert isinstance(value, [np.float,
+                              np.int,
+                              np.ndarray,
+                              list]), ("Expected value to be a number "
+                                       "or listlike.")
+
     try:
         l = len(value)
     except TypeError:
         l = 1
         value = np.array([value])
 
+    plt.figure()
     cs = plt.contour(X, Y, Z, value)
     plt.close()
     paths = dict()
@@ -308,32 +345,15 @@ def integrate(a0, e0, p):
                                         p[1] = m1 (in solar masses)
                                         p[2] = m2 (in solar masses)
 
-    Keyword Arguments:
-        h {float}                 -- The step size (default: 0.01)
-        max_iter {float}          -- The maximum number of iterations of
-                                     the integrator (default: 10000)
-        cutoff_period {float}     -- The period at which to stop the
-                                     integration, in days (default: 1 hr)
-
     Returns:
         {tuple}                   -- A 2-tuple containing the semimajor
                                      axis array and eccentricity array.
     """
 
-    assert isinstance(a0, float),              "Expected a0 to be a float"
-    assert isinstance(e0, float),              "Expected e0 to be a float"
+    assert isinstance(a0, (float, int, np.int64, np.float)), "Expected a0 to be a float or int type"
+    assert isinstance(e0, (float, int, np.int64, np.float)), "Expected e0 to be a float or int type"
     assert isinstance(p,  (np.ndarray, list)), "Expected p to be arraylike"
 
     assert 0 <= e0 <= 1,                       "e0 outside of range [0, 1]"
 
     return takahe.integrate_eoms(a0, e0, p)
-
-@np.vectorize
-def coalescence_time(m1, m2, a0, e0, evotime=0, pbar=None):
-    p = [m1, m2, 1, 0, evotime]
-    a, e, h = integrate(a0, e0, p)
-
-    if pbar is not None:
-        pbar.update(1)
-
-    return np.sum(h) / takahe.constants.SECONDS_PER_GYR

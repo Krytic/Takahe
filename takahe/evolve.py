@@ -3,6 +3,7 @@ from io import BytesIO
 import matplotlib.pyplot as plt
 import numpy as np
 from numba import njit
+from os import path
 import pandas as pd
 import pkgutil
 from scipy import stats
@@ -10,28 +11,12 @@ from scipy.optimize import minimize
 import takahe
 from tqdm import tqdm
 
-def evolve_system(a0, e0, m1, m2,
-                  weight=1, SFRD=None, beta=1,
-                  alpha=0, only_arrays=False,
-                  return_value=False, evotime=0):
-    """Evolves a binary system until merger or the age of the Universe.
-
-    A note about normalisation & units
-    ----------------------------------
-
-    time_in_bin is our resultant matrix for this. It has units of:
-    => # * [yr] * ([M_sun] / [yr] / [Mpc^3]) / (1e6 * [M_sun]) / 1e6
-    => # / [Mpc^3]
-
-    If we use takahe.SFR.MilkyWay for the SFR, then this just becomes
-    a pure # plot -- because (Wiktorowicz et. al. 2020) is a "whole
-    galaxy" model and returns M_sun / yr for its SFR.
+def evolve_system(a0, e0, m1, m2, beta=1, alpha=0, evotime=0):
+    """
+    Evolves a binary system until merger or the age of the Universe.
 
     This is a wrapper for a Julia function (see src/integrator.jl for
     details)
-
-    Decorators:
-        np.vectorize
 
     Arguments:
         a0 {float}     -- The initial semimajor axis in Solar Radii
@@ -44,192 +29,160 @@ def evolve_system(a0, e0, m1, m2,
                           solar masses)
 
     Returns:
-        {mixed}
+        {tuple}        -- A tuple containing the semimajor axes (in solar
+                          radii), eccentricities, and timesteps (in
+                          seconds) of the binary star as it classically
+                          decays.
     """
-
-    if not return_value:
-        global matrix_elements
 
     params = [m1, m2, beta, alpha, evotime]
-    a, e, h = takahe.helpers.integrate(a0, e0, params)
+    a, e, h, reason = takahe.helpers.integrate(a0, e0, params)
 
-    if only_arrays:
-        return a, e, h
+    takahe.debug('info', (f'm1={m1}, m2={m2}, a0={a0},'
+                          f' e0={e0} stopped: {reason}'))
 
-    af = a[-1]
+    return a, e, h
 
-    e0 = e0
-    ef = e[-1]
-    P = takahe.helpers.compute_period(a, m1, m2)
-    P0, Pf = P[0], P[-1]
+def period_eccentricity(in_df, Z, transient_type='NSNS', outdir=None):
+    """
+    Computes the period-eccentricity-time cube for an ensemble of data.
 
-    logP = np.log10(P)
+    Uses the method outlined in (Richards 2021) to compute the
+    period-eccentricity distribution of a given dataset.
 
-    per_bins = int(8 // takahe.constants.PE_BINS_PER_W)
-    ecc_bins = int(1 // takahe.constants.PE_BINS_ECC_W)
-
-    binx = np.linspace(-2, 6, per_bins)
-    biny = np.linspace(0,  1, ecc_bins)
-
-    h_matrix = np.zeros((per_bins, ecc_bins))
-
-    # Convert step sizes to years
-    h     /= takahe.constants.SECONDS_PER_YEAR
-    h_cum  = np.cumsum(h)
-
-    for i in range(len(a)):
-        if binx[0] <= logP[i] <= binx[-1]:
-            # Determine which bins the current point is
-            j = np.where(logP[i] >= binx)[0][-1]
-            k = np.where(e[i] >= biny)[0][-1]
-
-            # need the SFR for here too
-            time = h_cum[i]
-            if SFRD is not None and SFRD.inbounds(time / 1e9):
-                bin_nr = SFRD.getBin(time / 1e9)
-                sfr = SFRD.getBinContent(bin_nr) * SFRD.getBinWidth(bin_nr) * 1e9
-            else:
-                sfr = 1
-
-            h_matrix[j][k] += (sfr * 1e9)
-
-    return_age_matrix = h_matrix * weight
-
-    if return_value:
-        return return_age_matrix
-    else:
-        if 'matrix_elements' in globals().keys():
-            matrix_elements.append(return_age_matrix)
-
-        return
-
-def period_eccentricity(in_df, Z=1, beta=1, alpha=0):
-    """Computes the period-eccentricity distribution for an ensemble.
-
-    Evolves the ensemble from 0 to the Hubble time to see how systems
-    behave.
+    Formally, this computes the period-eccentricity-time distribution -
+    the period-eccentricity distribution can be resolved by compressing
+    the cube along the time axis.
 
     Arguments:
-        in_df {pd.DataFrame} -- The DataFrame representing your ensemble.
+        in_df {pd.DataFrame} -- The input dataframe.
+        Z {mixed}            -- The metallicity corresponding to this
+                                file. Must be in a format we can coerce
+                                into a Takahe-formatted metallicity (see
+                                takahe.helpers.format_metallicity() for
+                                more details).
+
+    Keyword Arguments:
+        transient_type {string} -- The transient type (NSNS, BHBH, NSBH)
+                                   to compute for.
+        outdirectory {string}   -- a path to an output directory
+                                   to save. If None, Takahe will
+                                   not save its output.
+                                   (Default: None)
 
     Returns:
-        {np.matrix}          -- A matrix of the binned Period-Eccentricty
-                                distribution.
+        {tuple} -- Either a 2-tuple or a 1-tuple depending on if the
+                   cube was saved. It always returns the cube as the
+                   first element of the tuple. If outdir is set, then it
+                   returns the name of the output file as the second
+                   element in the tuple.
+
+    Raises:
+        AssertionError -- on malformed input.
     """
 
-    global pbar, matrix_elements
+    assert isinstance(in_df, pd.DataFrame), "Expected in_df to be a DataFrame"
+    assert isinstance(Z, []), "Expected Z to be a ..." # Complete
+    assert transient_type in ['NSNS', 'NSBH', 'BHBH'], ("Expected"
+                                                        " transient_type to be"
+                                                        " one of: NSNS, NSBH,"
+                                                        " or BHBH.")
+    assert isinstance(outdir, str), "Expected outdir to be a string"
+    assert path.exists(outdir), "Outdir must exist."
 
-    # Don't know why we have to do this, computation breaks otherwise.
-    pd.set_option('compute.use_numexpr', False)
+    df = takahe.event_rates.filter_transients(in_df, transient_type)
 
-    # Highly eccentric orbits lead to division by zero in the integrator.
-    df = in_df.drop(in_df[in_df['e0'] == 1].index, inplace=False)
+    df['age'] = df['evolution_age'] + df['rejuvenation_age']
+    df['e'] = df['e0']
 
-    if len(df) == 0:
-        per_bins = int(8 // takahe.constants.PE_BINS_PER_W)
-        ecc_bins = int(1 // takahe.constants.PE_BINS_ECC_W)
-        return np.zeros((per_bins, ecc_bins))
+    hist = takahe.histogram.histogram_2d((-2, 6), (0, 1), 80, 100)
 
-    matrix_elements = []
+    x_ex, y_ex = hist.to_extent()
 
-    Z = float(Z)
+    cube = takahe.frame.FrameCollection((x_ex, y_ex), (dt, unit))
 
-    bins = takahe.constants.LINEAR_BINS
-    SFRD_data = takahe.event_rates.generate_sfrd(bins)[Z]
+    Z_So_Far = np.zeros((80, 100))
+
+    SFR_obj = takahe.event_rates.generate_sfrd(takahe.constants.LINEAR_BINS)[float(metallicity)]
     SFRD = takahe.histogram.histogram(edges=takahe.constants.LINEAR_BINS)
-    SFRD.fill(SFRD_data)
+    SFRD.fill(SFR_obj)
 
-    evolve_system(df['a0'].values,
-                  df['e0'].values,
-                  df['m1'].values,
-                  df['m2'].values,
-                  weight=df['weight'].values,
-                  SFRD=SFRD,
-                  beta=beta,
-                  alpha=alpha)
+    for t in tqdm(range(0, int(np.ceil(takahe.constants.HUBBLE_TIME * 1e9)), int(dt))):
+        frame = takahe.frame.Frame(t, np.zeros((80, 100)))
+        cube.insert(frame)
 
-    C = np.sum(matrix_elements, 0)
+    i = 0
+    N = int(len(df))
 
-    return C, df
+    takahe.debug('info', 'Beginning numerical integration')
 
-def coalescence_time(star, nyadzani=False, a=None):
-    """Computes the coalescence time for a BSS.
+    with tqdm(total=N) as pbar:
+        for _, row in df.iterrows():
+            a0, e0, m1, m2, weight = row.a0, row.e0, row.m1, row.m2, row.weight
+            evotime = row.age
+            a, e, h = evolve_system(a0, e0, m1, m2, evotime=row.age)
 
-    Uses eqn(16) of [1] to compute the coalescence time to 1PN accuracy.
+            h = np.cumsum(h)
 
-    [1] https://arxiv.org/pdf/1905.06086.pdf
+            for j in range(len(h)):
+                t   = (h[j] + evotime) / takahe.constants.SECONDS_PER_GYR
+                P   = np.log10(takahe.helpers.compute_period(a[j], m1, m2))
+                ecc = e[j]
+
+                if P < -2 or P > 6:
+                    continue
+                if np.isnan(P) or ecc < 0 or ecc > 1:
+                    takahe.debug("warning", f"Invalid P ({P}) or e ({ecc}) - skipping")
+                    continue
+
+                frame = cube.find(t)
+                bins = hist.getBin(P, ecc)
+
+                binnr = SFRD.getBin(np.min([t, takahe.constants.HUBBLE_TIME]))
+                sfr = SFRD.getBinContent(binnr) * SFRD.getBinWidth(binnr) * 1e9
+
+                frame.z[bins[0]][bins[1]] += (weight * 1)
+
+            i += 1
+
+            pbar.update(1)
+
+    if outdir != None:
+        takahe.debug('info', "Saving Cube...")
+
+        fname = f"{outdir}/Period_eccentricity_cube-{kick}-{alpha}-{beta}.fr"
+
+        cube.save(fname)
+
+        return cube, fname
+
+    return (cube, )
+
+def coalescence_time(star):
+    """Computes the coalescence time of a star.
+
+    Computes the coalescence time of a binary star by explicitly evolving
+    the binary in time until coalesence, or well past the age of the
+    Universe. Returns min(coalescence_time, 100) Gyr.
 
     Arguments:
-        star {pd.Series} -- The star to compute the CT for.
+        star {pd.Series} -- The binary star system under consideration
 
     Returns:
-        {float} -- the coalescence time in years.
+        {float} -- The coalesence time in gigayears.
     """
 
-    if nyadzani:
-        G = takahe.constants.G
-        c = takahe.constants.c
-        M_sun = takahe.constants.SOLAR_MASS
-        m1 = star.m1 * M_sun
-        m2 = star.m2 * M_sun
+    assert isinstance(star, pd.Series), ("Expected a Series object to be "
+                                         "passed to coalescence_time.")
 
-        M = m1 + m2
+    evo = star.evolution_age + star.rejuvenation_age
+    _, _, h, _ = evolve_system(star.a0,
+                               star.e0,
+                               star.m1,
+                               star.m2,
+                               evotime=evo)
 
-        mu = m1 * m2 / (m1 + m2)
-        nu = mu / M
-
-        beta = (64/5) * G**3 * m1 * m2 * (m1 + m2) / (c**5)
-        beta1 = G * M * (7 - nu) / (4 * c**2)
-        beta2 = G * M * (13-840*nu) / (336*c**2)
-
-        # Not from paper - derived by hand
-        a1 = G*M/(1-G*M) / (4*c**2/(7-nu))
-
-        C1 = 3*beta1 - beta2
-        C2 = 5*beta1**2 - 2*beta1*beta2 + beta2**2
-        C3 = 5*beta1**3 - 2*beta1**2*beta2 + beta1*beta2**2 -beta2 **3
-        C4 = beta1**6*(6*beta1 - beta2)
-        C5 = beta1**4*(14*beta1**2 - 4*beta1*beta2 + beta2**2)
-        C6 = beta1**2*(14*beta1**3 -5*beta1**2*beta2 + 2*beta1*beta2**2 - beta2**3)
-
-        Tc  = a1**4 / (4*beta)
-        Tc += a1**3 * C1 / (3*beta)
-        Tc += a1**2 * C2 / (2*beta)
-        Tc += a1 * C3 / beta
-
-        valtolog = np.abs((a1**2+a1*beta2-beta1*beta2)/(a1-beta1))
-
-        Tc += beta2**4 / beta * np.log10(valtolog)
-        Tc += beta1**8 / (4*beta*(a1-beta1)**4)
-        Tc += C4 / (3*beta*(a1-beta1)**3)
-        Tc += C5 / (2*beta*(a1-beta1)**2)
-        Tc += C6 / (  beta*(a1-beta1)   )
-
-        return Tc / takahe.constants.SECONDS_PER_YEAR
-    else:
-        # https://link.springer.com/article/10.12942/lrr-2012-8
-        # eqn(1), 2.5PN, assume point masses
-        if a is None:
-            a = star.a0
-
-        q = star.m2 / star.m1
-        Rsun = takahe.constants.SOLAR_RADIUS
-        Msun = takahe.constants.SOLAR_MASS
-        T_GW = 2.2e8 / (q*(1+q)) * (a/Rsun)**4 / (star.m1/(1.4*Msun))**3
-
-        return T_GW / 4
-
-def find_nearest(df, column, needle):
-    index = abs(df[column] - needle)
-    nearest = df[index.isin([index.nsmallest(1)])]
-
-    return nearest
-
-def _integrate_worker(p0, e0, m1=1.4, m2=1.4, pbar=None):
-    if pbar is not None:
-        pbar.update(1)
-
-    return takahe.integrate_timescale(m1, m2, p0, e0) / takahe.constants.SECONDS_PER_GYR
+    return np.sum(h) / takahe.constants.SECONDS_PER_GYR
 
 def constant_coalescence_isocontour(ct):
     """Computes the isocontour of the coalescence time in
@@ -244,7 +197,7 @@ def constant_coalescence_isocontour(ct):
                         array: all requested isocontours plotted
                         int/float: just that isocontour plotted
     """
-    if isinstance(ct, float) or isinstance(ct, int):
+    if isinstance(ct, [np.float, np.int]):
         ct = np.array([ct])
 
     p = np.linspace(1e-2, 1e2, 5000) # days
@@ -257,6 +210,5 @@ def constant_coalescence_isocontour(ct):
 
     return takahe.helpers.find_contours(P, E, Z, ct)
 
-evolve_system = np.vectorize(evolve_system, excluded=['SFRD', 'beta', 'alpha', 'only_arrays', 'return_value'])
+evolve_system = np.vectorize(evolve_system, excluded=['beta', 'alpha'])
 
-_integrate_worker = np.vectorize(_integrate_worker, excluded=['m1', 'm2', 'pbar'])
