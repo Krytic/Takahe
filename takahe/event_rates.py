@@ -246,8 +246,6 @@ def generate_sfrd(tL_edges, func=None, need_means=False, is_culmulative=False):
     else:
         Z_compute = Z_fmts
 
-    takahe.debug('info', Z_compute)
-
     z = takahe.helpers.lookback_to_redshift(tL_edges)
 
     for i in range(13):

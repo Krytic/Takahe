@@ -50,6 +50,14 @@ class Frame:
         if self.time > other.time:
             return  1
 
+class FrameCollectionExtent:
+    def __init__(self, x_from, x_to, nr_bins_x, y_from, y_to, nr_bins_y):
+        self.__xaxis = np.linspace(x_from, x_to, nr_bins_x)
+        self.__yaxis = np.linspace(y_from, y_to, nr_bins_y)
+
+    def fetch(self):
+        return (self.__xaxis, self.__yaxis)
+
 class FrameCollection:
     """Represents a collection of Frames - an (x, y, z) cube of data."""
     def __init__(self, extent, time=None):
@@ -88,17 +96,20 @@ class FrameCollection:
                                                             "is not a valid "
                                                             "timestep.")
 
-        assert isinstance(extent, tuple), "Expected extent to be a 2-tuple."
+        if not isinstance(extent, FrameCollectionExtent):
+            assert isinstance(extent, tuple), "Expected extent to be a 2-tuple."
 
-        assert isinstance(extent[0], np.ndarray), ("Expected extent[0] to be "
-                                                 "an arraylike object.")
+            assert isinstance(extent[0], np.ndarray), ("Expected extent[0] to be "
+                                                     "an arraylike object.")
 
-        assert isinstance(extent[1], np.ndarray), ("Expected extent[1] to be "
-                                                 "an arraylike object.")
+            assert isinstance(extent[1], np.ndarray), ("Expected extent[1] to be "
+                                                     "an arraylike object.")
 
-        assert len(extent[0]) > 0 and len(extent[1]) > 0, ("Expected extent "
-                                                           "contents to be "
-                                                           "non-empty.")
+            assert len(extent[0]) > 0 and len(extent[1]) > 0, ("Expected extent "
+                                                               "contents to be "
+                                                               "non-empty.")
+        else:
+            extent = extent.fetch()
 
         if time == None:
             self.__dt = 1e6
@@ -114,6 +125,9 @@ class FrameCollection:
         self.__xaxis   = extent[0]
         self.__yaxis   = extent[1]
         self.__times   = []
+
+        self.__probability_map = takahe.histogram.histogram_2d(edges_x=self.__xaxis,
+                                                               edges_y=self.__yaxis)
 
     # Iteration methods
     def __iter__(self):
@@ -141,11 +155,16 @@ class FrameCollection:
         if not culmulative:
             return self.find(self.__times[-1])
         else:
+            takahe.debug("info", "ok extracting frame")
             all_prev = np.ones((len(self.__xaxis), len(self.__yaxis)))
+            takahe.debug("info", "all_prev is a " + str(type(all_prev)))
             for frame in self:
                 all_prev += frame.z
+            takahe.debug('info', "reached end of loop")
 
             new_frame = Frame(self.__times[-1], all_prev)
+
+            takahe.debug('info', 'made the new frame, shall we return?')
             return new_frame
 
     def get_grid(self):

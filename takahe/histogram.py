@@ -19,6 +19,7 @@ from matplotlib import cm
 import warnings
 from uncertainties import ufloat
 from uncertainties.umath import log10 as ulog10
+from uncertainties.umath import log as ulog
 
 class histogram:
     """
@@ -512,6 +513,21 @@ class histogram_2d:
             self._bin_edges_x = edges_x
             self._bin_edges_y = edges_y
 
+    def sample(self, x, y):
+        """Samples the histogram at data coordinates (x, y).
+
+        Syntactic sugar for self.getBinContent(self.getBin(x, y))
+
+        Arguments:
+            x {float} -- The x-coordinate to sample at
+            y {float} -- The y-coordinate to sample at
+
+        Returns:
+            {float} -- The content of the bin corresponding to the coordinate (x, y)
+        """
+        i, j = self.getBin(x, y)
+        return self.getBinContent(i, j)
+
     def fill(self, insertion_matrix):
         assert self._values.shape == insertion_matrix.shape
 
@@ -585,10 +601,10 @@ class histogram_2d:
         m_y = min(np.sqrt(np.var(y_obs)), IQR_y/1.349)
         m_x = min(np.sqrt(np.var(x_obs)), IQR_x/1.349)
 
-        b_y    = 0.9 * m_y / (n**(1/5))
+        b_y = 0.9 * m_y / (n**(1/5))
         b_x = 0.9 * m_x / (n**(1/5))
 
-        logL = 0
+        logL = None
 
         for i in range(len(x_obs)):
             w = self.getBin(x_obs[i], y_obs[i])
@@ -597,7 +613,11 @@ class histogram_2d:
             mu = np.array([x_obs[i], y_obs[i]])
             sigma = np.matrix([[b_x**2, 0], [0, b_y**2]])
             N = multivariate_normal(mu, sigma)
-            logL += (w * N.pdf([x_obs[i], y_obs[i]]))
+
+            if logL == None:
+                logL = ulog(w * N.pdf([x_obs[i], y_obs[i]]))
+            else:
+                logL *= ulog(w * N.pdf([x_obs[i], y_obs[i]]))
 
         return logL
 
