@@ -152,13 +152,14 @@ def find_contours(X, Y, Z, value):
                   described above.
     """
 
-    assert isinstance(X, np.array), "Expected X to be arraylike."
-    assert isinstance(Y, np.array), "Expected Y to be arraylike."
-    assert isinstance(Z, np.matrix), "Expected Z to be matrixlike."
-    assert isinstance(value, [np.float,
+    assert isinstance(X, np.ndarray), "Expected X to be arraylike."
+    assert isinstance(Y, np.ndarray), "Expected Y to be arraylike."
+    assert isinstance(Z, (np.matrix,
+                          np.ndarray)), "Expected Z to be matrixlike."
+    assert isinstance(value, (np.float,
                               np.int,
                               np.ndarray,
-                              list]), ("Expected value to be a number "
+                              list)), ("Expected value to be a number "
                                        "or listlike.")
 
     try:

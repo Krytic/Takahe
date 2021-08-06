@@ -216,12 +216,23 @@ class histogram:
         xobj = self._bin_edges
 
         wobj = self._values
+
+        # Sometimes the histogram has one too few values for the y-axis
+        # (and sometimes it has one too many). We coerce the histogram
+        # into having the right shape in this instance (and fail if it
+        # still does not).
+
         if len(self._values) == len(xobj) - 1:
             wobj = np.append(wobj, wobj[-1])
         elif len(self._values) - 1 == len(xobj):
             wobj = wobj[:-1]
 
-        entries, edges, _ = plt.hist(xobj, self._bin_edges, weights=wobj, histtype=u'step', *argv, **kwargs)
+        entries, edges, _ = plt.hist(xobj,
+                                     self._bin_edges,
+                                     weights=wobj,
+                                     histtype=u'step',
+                                     *argv,
+                                     **kwargs)
 
         if with_errors:
             plt.errorbar(self.getBinCenters(), self._values, yerr=np.sqrt(self._hits), fmt='r.')
@@ -230,9 +241,21 @@ class histogram:
 
     def plotLog(self, with_errors=False, *argv, **kwargs):
         """
-        Plot the histogram. matplotlib.pyplot arguments can be passed on too
+        Plot the histogram with a logged x-axis.
+
+        Additional arguments (beyond with_errors) will be passed on to to the
+        call to plt.hist().
+
+        Arguments:
+            with_errors {bool} -- Whether or not to plot errors (error bars)
+                                  on the histogram. (default: {False})
         """
-        entries, edges, _ = plt.hist(np.log10(self._bin_edges[:-1]), np.log10(self._bin_edges), weights=self._values,histtype=u'step', *argv, **kwargs)
+        entries, edges, _ = plt.hist(np.log10(self._bin_edges[:-1]),
+                                     np.log10(self._bin_edges),
+                                     weights=self._values,
+                                     histtype=u'step',
+                                     *argv,
+                                     **kwargs)
 
         if with_errors:
             plt.errorbar(self.getBinCenters(), self._values, yerr=np.sqrt(self._hits), fmt='r.')
@@ -240,24 +263,92 @@ class histogram:
         return None
 
     def getBinCenters(self):
+        """Gets the center of each bin of the histogram."""
         return [self.getBinCenter(i) for i in range(self.getNBins())]
 
     def reregister_hits(self, hits):
+        """Resets the hit counter of the histogram.
+
+        Arguments:
+            hits {array} -- The array of new hit values for the
+                            histogram
+        """
+        assert isinstance(hits, [list, np.ndarray]), "hits must be arraylike."
+
         for i in range(len(self._hits)):
             self._hits[i] = hits[i]
 
     def getUncertainty(self, bin):
-        return np.sqrt(self._hits[bin])
+        """Returns the Poissonian uncertainty of the bin at bin# "bin".
+
+        Returns the Poissonian uncertainty of the requested bin. Poisson
+        uncertainties take error ~ 1/sqrt(N) where N is the number of
+        data points in the bin.
+
+        Arguments:
+            bin {int} -- The bin number
+
+        Returns:
+            {float} -- The uncertainty in the bin.
+        """
+
+        assert isinstance(bin, np.int)
+
+        return 1 / np.sqrt(self._hits[bin])
 
     def get(self, bin):
+        """Retrieves the ufloat (nominal + uncertainty) of the bin
+
+        Arguments:
+            bin {int} -- The bin number to request
+
+        Returns:
+            {ufloat} -- The bin content in the form
+                        content +- uncertainty
+        """
         return ufloat(self.getBinContent(bin), self.getUncertainty(bin))
 
     def getLog(self, bin):
+        """Retrieves the log of the uncertainty for the bin.
+
+        Same as histogram.get() but puts through ulog10 first.
+
+        Arguments:
+            bin {int} -- The bin number to request
+
+        Returns:
+            {ufloat} -- The bin content in the form
+                        content +- uncertainty
+        """
         val = self.get(bin)
         val = ulog10(val)
         return val
 
     def present_value(self, bin, log=False):
+        """Presents the value in a human readable format.
+
+        Formats the value of a bin in a human-readable (LaTeX) format.
+        Will present the error to 1 significant figure, and the nominal
+        value to the same number of decimal places.
+
+        Arguments:
+            bin {int} -- The bin number to extract the value from.
+
+        Keyword Arguments:
+            log {bool} -- Whether to  take the log of the value or not.
+                          (default: {False})
+
+        Returns:
+            {string} -- The LaTeX-formatted value.
+        """
+
+        assert isinstance(bin, np.integer), "Expected bin to be an integer."
+        assert isinstance(bin, bool), "Expected log to be boolean."
+        assert bin <= self.getNBins(), ("Expected bin to be a valid bin. "
+                                       f"There are {self.getNBins()} in this "
+                                        "histogram, and you have requested "
+                                       f"bin number {bin}.")
+
         if log:
             val = self.getLog(bin)
         else:
@@ -274,6 +365,15 @@ class histogram:
         return return_string
 
     def to_pickle(self, pickle_path):
+        """Saves a histogram as a pickle file.
+
+        Preserves the edges, values, and hits, of the histogram.
+
+        Arguments:
+            pickle_path {string} -- The path to save the pickle file at.
+        """
+        assert isinstance(pickle_path, str), ("Expected pickle_path to be a "
+                                              "string.")
         contents = {
             'edges': self._bin_edges,
             'values': self._values,
@@ -286,14 +386,11 @@ class histogram:
     def getBinContent(self, bin_nr):
         """Return the value of the given bin
 
-        Parameters
-        ----------
-        bin_nr : int
-            bin number
+        Arguments:
+            bin_nr {int} -- the bin number to fetch
 
-        Returns
-        -------
-        float
+        Returns:
+            {float} -- the content of the given bin.
             The bincontent of the bin
         """
 
@@ -632,66 +729,6 @@ class histogram_2d:
 
         self._values   = self._values + other._values
         self._num_hits = self._num_hits + other._num_hits
-
-class histogram_3d:
-    def __init__(self, x, y, z):
-        self._bin_edges_x = x
-        self._bin_edges_y = y
-        self._bin_edges_z = z
-
-        xlen = len(self._bin_edges_x)
-        ylen = len(self._bin_edges_y)
-        zlen = len(self._bin_edges_z)
-
-        self._values = [np.zeros((ylen, zlen)) for i in range(xlen)]
-
-    def insert(self, binx, biny, binz, val):
-        self._values[binx][biny][binz] += val
-
-    def getBin(self, x, y, z):
-        i = np.where(x >= self._bin_edges_x)[0][-1]
-        j = np.where(y >= self._bin_edges_y)[0][-1]
-        k = np.where(z >= self._bin_edges_z)[0][-1]
-
-        return (i,j,k)
-
-    def _explode(self, data):
-        shape_arr = np.array(data.shape)
-        size = shape_arr[:3]
-        exploded = np.zeros(np.concatenate([size, shape_arr[3:]]), dtype=data.dtype)
-        exploded[::1, ::1, ::1] = data
-        return exploded
-
-    def _expand_coordinates(self, indices):
-        x, y, z = indices
-        x[1::2, :, :] += 1
-        y[:, 1::2, :] += 1
-        z[:, :, 1::2] += 1
-        return x, y, z
-
-    def _normalize(self, arr):
-        arr_min = np.min(arr)
-        return (arr-arr_min)/(np.max(arr)-arr_min)
-
-    def plot(self, angle=320):
-        cube = self._values
-        cube = self._normalize(cube)
-
-        facecolors = cm.viridis(cube)
-        facecolors[:,:,:,-1] = cube
-        facecolors = self._explode(facecolors)
-
-        filled = facecolors[:,:,:,-1] != 0
-        x, y, z = self._expand_coordinates(np.indices(np.array(filled.shape) + 1))
-
-        fig = plt.figure(figsize=(30/2.54, 30/2.54))
-        ax = fig.gca(projection='3d')
-
-        IMG_DIM = len(self._bin_edges_x)
-
-        ax.view_init(30, angle)
-
-        ax.voxels(x, y, z, filled, facecolors=facecolors, shade=False)
 
 class pickledHistogram(histogram):
     def __init__(self, pickle_path):
