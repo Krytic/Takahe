@@ -637,6 +637,10 @@ class histogram_2d:
         self._num_hits[bin_nr_x][bin_nr_y] += 1
 
     def getBin(self, x, y):
+        if x < self._xlow or x > self._xup or y < self._ylow or y > self._yup:
+            # out of bounds
+            return -1, -1
+
         i = np.where(x >= self._bin_edges_x)[0][-1]
         j = np.where(y >= self._bin_edges_y)[0][-1]
 
@@ -672,6 +676,8 @@ class histogram_2d:
         fig = plt.figure()
         ax = fig.gca(projection='3d')
         ax.plot_surface(X, Y, self._values, *args, **kwargs)
+
+        return ax
 
     def to_pickle(self, pickle_path):
         contents = {
