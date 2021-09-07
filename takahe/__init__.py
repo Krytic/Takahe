@@ -11,7 +11,9 @@ Sample Usage:
 """
 import pkgutil
 
-from julia import Main as jl
+from julia.api import Julia
+jl = Julia(compiled_modules=False)
+
 import takahe.histogram as histogram
 import takahe.constants as constants
 import takahe.helpers as helpers

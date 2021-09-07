@@ -12,7 +12,6 @@ Building from source is straightforward:
 2. Locally, run :code:`git clone <your url>`
 3. In a terminal, navigate to the directory you installed takahe to
 4. Run :code:`pip install -e .` to install it as an editable PIP file
-5. Run :code:`f2py3.7 -c src/merge_rate.f95 -m merge_rate` to compile the event rate FORTRAN code.
 
 From PyPI
 ---------

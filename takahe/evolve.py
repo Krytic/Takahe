@@ -38,8 +38,8 @@ def evolve_system(a0, e0, m1, m2, beta=1, alpha=0, evotime=0):
     params = [m1, m2, beta, alpha, evotime]
     a, e, h, reason = takahe.helpers.integrate(a0, e0, params)
 
-    takahe.debug('info', (f'm1={m1}, m2={m2}, a0={a0},'
-                          f' e0={e0} stopped: {reason}'))
+    # takahe.debug('info', (f'm1={m1}, m2={m2}, a0={a0},'
+    #                       f' e0={e0} stopped: {reason}'))
 
     return a, e, h
 
@@ -82,7 +82,7 @@ def period_eccentricity(in_df, Z, transient_type='NSNS', outdir=None):
     """
 
     assert isinstance(in_df, pd.DataFrame), "Expected in_df to be a DataFrame"
-    assert isinstance(Z, []), "Expected Z to be a ..." # Complete
+    assert isinstance(Z, (str, float)), "Expected Z to be a ..." # Complete
     assert transient_type in ['NSNS', 'NSBH', 'BHBH'], ("Expected"
                                                         " transient_type to be"
                                                         " one of: NSNS, NSBH,"
