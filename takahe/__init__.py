@@ -53,7 +53,6 @@ def debug(msgtype, message, fatal=True):
                                                      "not recognised.")
 
     assert fatal == True or fatal == False, "fatal must be a boolean type."
-    assert isinstance(message, str), "Message passed must be a string"
 
     if constants.DEBUG_MODE:
         if msgtype == 'warning':

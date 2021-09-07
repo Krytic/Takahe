@@ -20,6 +20,7 @@ import warnings
 from uncertainties import ufloat
 from uncertainties.umath import log as ulog
 from uncertainties.umath import log10 as ulog10
+from uncertainties.umath import log as ulog
 
 class histogram:
     """
@@ -610,6 +611,21 @@ class histogram_2d:
             self._bin_edges_x = edges_x
             self._bin_edges_y = edges_y
 
+    def sample(self, x, y):
+        """Samples the histogram at data coordinates (x, y).
+
+        Syntactic sugar for self.getBinContent(self.getBin(x, y))
+
+        Arguments:
+            x {float} -- The x-coordinate to sample at
+            y {float} -- The y-coordinate to sample at
+
+        Returns:
+            {float} -- The content of the bin corresponding to the coordinate (x, y)
+        """
+        i, j = self.getBin(x, y)
+        return self.getBinContent(i, j)
+
     def fill(self, insertion_matrix):
         assert self._values.shape == insertion_matrix.shape
 
@@ -622,6 +638,10 @@ class histogram_2d:
         self._num_hits[bin_nr_x][bin_nr_y] += 1
 
     def getBin(self, x, y):
+        if x < self._xlow or x > self._xup or y < self._ylow or y > self._yup:
+            # out of bounds
+            return -1, -1
+
         i = np.where(x >= self._bin_edges_x)[0][-1]
         j = np.where(y >= self._bin_edges_y)[0][-1]
 
@@ -658,6 +678,8 @@ class histogram_2d:
         ax = fig.gca(projection='3d')
         ax.plot_surface(X, Y, self._values, *args, **kwargs)
 
+        return ax
+
     def to_pickle(self, pickle_path):
         contents = {
             'build_params': {
@@ -683,7 +705,7 @@ class histogram_2d:
         m_y = min(np.sqrt(np.var(y_obs)), IQR_y/1.349)
         m_x = min(np.sqrt(np.var(x_obs)), IQR_x/1.349)
 
-        b_y    = 0.9 * m_y / (n**(1/5))
+        b_y = 0.9 * m_y / (n**(1/5))
         b_x = 0.9 * m_x / (n**(1/5))
 
         logL = None
