@@ -13,3 +13,10 @@ Welcome to Takahe's documentation!
    usage/installation
    usage/quickstart
    usage/loading
+   usage/pe_dists
+
+.. toctree::
+   :maxdepth: 2
+   :caption: API Documentation`
+
+   source/takahe
