@@ -2,7 +2,6 @@ import bisect
 import warnings
 
 from julia import Main as jl
-from numba import njit
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import fminbound

@@ -1,15 +1,23 @@
 """
-Takahe is a part of my Master of Science thesis at the University of
-Auckland, and is in constant, rolling development.
+                  .
 
-Sample Usage:
->>> import takahe
->>> data = takahe.load.from_directory("../path/to/data.dat")
->>> events = takahe.event_rates.composite_event_rates(data)
->>> events.plot()
+                   .
+         /^\     .
+    /\   "V"
+   /__\   I      O  o
+  //..\\  I     .
+  \].`[/  I
+  /l\/j\  (]    .  O
+ /. ~~ ,\/I          .
+ \\L__j^\/I       o
+  \/--v}  I     o   .
+  |    |  I   _________
+  |    |  I c(`       ')o
+  |    l  I   \.     ,/
+_/j  L l\_!  _//^---^\\_
 
+Here be wizard.
 """
-import pkgutil
 
 from julia.api import Julia
 jl = Julia(compiled_modules=False)
@@ -23,6 +31,8 @@ import takahe.evolve as evolve
 import takahe.exceptions as exceptions
 import takahe.SFR as SFR
 import takahe.frame as frame
+
+import pkgutil
 
 from takahe._metadata import __version__
 
@@ -73,6 +83,9 @@ def debug(msgtype, message, fatal=True):
         elif msgtype == 'info':
             print(f"\033[96m\033[1m[INFO]\033[0m {message}")
 
+def toggle_debug():
+    takahe.constants.DEBUG_MODE = not takahe.constants.DEBUG_MODE
+
 _integration_subroutine = pkgutil.get_data(__name__, "../src/integrator.jl")
 _integration_subroutine = _integration_subroutine.decode("utf-8")
 integrate_eoms = jl.eval(_integration_subroutine)
@@ -80,5 +93,3 @@ integrate_eoms = jl.eval(_integration_subroutine)
 _peters_integrator = pkgutil.get_data(__name__, "../src/integrator_peters.jl")
 _peters_integrator = _peters_integrator.decode("utf-8")
 integrate_timescale = jl.eval(_peters_integrator)
-
-debug('info', "This is Takahe v" + __version__)

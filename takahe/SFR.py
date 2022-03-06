@@ -1,5 +1,4 @@
 import matplotlib.pyplot as plt
-from numba import njit
 import numpy as np
 import pandas as pd
 from scipy.special import gamma, gammainc

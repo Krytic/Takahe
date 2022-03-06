@@ -1,7 +1,3 @@
-function Adjust(da_or_de, beta, alpha)
-    return da_or_de^beta + alpha
-end
-
 function integrate(a0, e0, p)
     """
     General purpose integrator for Nyadzani & Razzaque eqns for a & e.
@@ -55,6 +51,8 @@ function integrate(a0, e0, p)
 
     total_time = 0
 
+    # TODO: stop at last ISCO
+
     # Integrate until past the end of the universe, or a 10km orbit
     while total_time/seconds_per_year + evotime < 1e11 && a > 1e4
         initial_da = (- beta / ( (a^3) * (1 - e^2)^(7/2) ))
@@ -62,9 +60,6 @@ function integrate(a0, e0, p)
 
         intial_de = (((-19/12) * beta) / (a^4*(1-e^2)^(5/2)))
         de = intial_de * (e + (121/304) * e^3) # Units: s^-1
-
-        # da = Adjust(da, expo, alph)
-        # de = Adjust(de, expo, alph)
 
         timeA = abs(1e-2 * a/da)
         if e > 1e-10
@@ -75,6 +70,7 @@ function integrate(a0, e0, p)
             timeE = timeA * 10
         end
 
+        # maximum timestep is the width of the smallest BPASS time bin
         dt2 = (evotime + total_time/seconds_per_year)*0.23076752*0.5*seconds_per_year
 
         dt = min(timeE, timeA, dt2)
