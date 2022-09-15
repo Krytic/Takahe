@@ -2,7 +2,6 @@ from io import BytesIO
 
 import matplotlib.pyplot as plt
 import numpy as np
-from numba import njit
 from os import path
 import pandas as pd
 import pkgutil
@@ -11,7 +10,7 @@ from scipy.optimize import minimize
 import takahe
 from tqdm import tqdm
 
-def evolve_system(a0, e0, m1, m2, beta=1, alpha=0, evotime=0):
+def evolve_system(a0, e0, m1, m2, beta=1, alpha=0, evotime=0, engine='julia'):
     """
     Evolves a binary system until merger or the age of the Universe.
 
@@ -34,7 +33,6 @@ def evolve_system(a0, e0, m1, m2, beta=1, alpha=0, evotime=0):
                           seconds) of the binary star as it classically
                           decays.
     """
-
     params = [m1, m2, beta, alpha, evotime]
     a, e, h, reason = takahe.helpers.integrate(a0, e0, params)
 
@@ -79,7 +77,7 @@ def period_eccentricity(in_df, Z, transient_type='NSNS', outdir=None):
     """
 
     assert isinstance(in_df, pd.DataFrame), "Expected in_df to be a DataFrame"
-    assert isinstance(Z, []), "Expected Z to be a ..." # Complete
+    assert isinstance(Z, (str, float)), "Expected Z to be a ..." # Complete
     assert transient_type in ['NSNS', 'NSBH', 'BHBH'], ("Expected"
                                                         " transient_type to be"
                                                         " one of: NSNS, NSBH,"

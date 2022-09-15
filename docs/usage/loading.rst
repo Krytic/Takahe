@@ -59,3 +59,10 @@ Let's examine how Takahe analyses the file :code:`data/Remnant-Birth-bin-imf135_
 3. We split the first part of the filename based on -: :code:`Remnant`, :code:`Birth`, :code:`bin`, :code:`imf135_300`, :code:`z001_StandardJJ`, :code:`ct`
 4. We check each field and identify relevant parts: :code:`z001`, :code:`StandardJJ`, :code:`ct`.
 5. We confirm that this represents a 5% solar metallicity file, with headers as given by the StandardJJ prescription, containing coalescence times for the ensemble.
+
+Naming Convention
+-----------------
+
+Takahe employs a naming convention for data files. In future this will be customisable, but for now it is not.
+
+Files in a data directory must be named according to the convention :code:`Remnant-Birth-bin-imf135_300-z020_StandardJJ.dat`. Optionally, one may suffix this with :code:`.gz`, and one may customise the metallicity away from :code:`z020`. One may also add :code:`_ct` after :code:`StandardJJ` to indicate the presence of an eigth column indicating the coalescence time.

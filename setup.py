@@ -4,7 +4,7 @@ import re
 description = 'A python library to evolve binary star systems in time.'
 
 try:
-    with open('README.md', 'r') as f:
+    with open('README.md', 'r', encoding='utf-8') as f:
         long_description = f.read()
 except FileNotFoundError:
     long_description = description
@@ -37,7 +37,8 @@ setup(name='takahe',
       install_requires  = ['numpy',
                            'matplotlib',
                            'numba',
-                           'pandas==1.0.1',
-                           'diffeqpy'
+                           'pandas',
+                           'diffeqpy',
+                           'imageio'
                           ]
     )

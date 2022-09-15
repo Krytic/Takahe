@@ -1,5 +1,4 @@
 import matplotlib.pyplot as plt
-from numba import njit
 import numpy as np
 import pandas as pd
 from scipy.special import gamma, gammainc
@@ -112,7 +111,7 @@ def filter_transients(in_df, transient_type):
 
     return df
 
-@njit
+@np.vectorize
 def _mass_worker_nsns(m, M):
     for i in range(len(m)):
         mi = -1 + np.sqrt(1+4*0.084*m[i]) / (2*0.084)
@@ -126,7 +125,7 @@ def _mass_worker_nsns(m, M):
 
     return m, M
 
-@njit
+@np.vectorize
 def _mass_worker_nsbh(m, M):
     for i in range(len(m)):
         if m[i] < M[i]:
@@ -265,7 +264,7 @@ def generate_sfrd(tL_edges, func=None, need_means=False, is_culmulative=False):
 
     return SFRD
 
-def compute_dtd(in_df, extra_lt=None, transient_type='NSNS'):
+def compute_dtd(in_df, extra_lt=None, transient_type='NSNS', bins=None):
     """Computes the DTD for a given transient type.
 
     Computes the Delay-Time distribution for a given transient type.
@@ -300,10 +299,11 @@ def compute_dtd(in_df, extra_lt=None, transient_type='NSNS'):
 
     # First we set up some basic variables.
 
-    histogram_edges = np.linspace(6.05, 11.05, 51)
+    if bins is None:
+        histogram_edges = np.linspace(6.05, 11.05, 51)
 
-    bins = [0.0]
-    bins.extend(10**histogram_edges / 1e9) # Gyr bins
+        bins = [0.0]
+        bins.extend(10**histogram_edges / 1e9) # Gyr bins
 
     # Now we mask out what we're not interested in.
 
@@ -319,45 +319,57 @@ def compute_dtd(in_df, extra_lt=None, transient_type='NSNS'):
     # Highly eccentric orbits lead to division by zero.
     df.drop(df[df['e0'] == 1].index, inplace=True)
 
-    # Unit Conversions:
-    df['a0'] *= takahe.constants.SOLAR_RADIUS # Solar Radius -> Metre
-    df['m1'] *= takahe.constants.SOLAR_MASS # Solar Mass -> Kilogram
-    df['m2'] *= takahe.constants.SOLAR_MASS # Solar Mass -> Kilogram
+    df['p0'] = takahe.helpers.compute_period(df.a0.values, df.m1.values, df.m2.values)
+
+    # # Unit Conversions:
+    # df['a0'] *= takahe.constants.SOLAR_RADIUS # Solar Radius -> Metre
+    # df['m1'] *= takahe.constants.SOLAR_MASS # Solar Mass -> Kilogram
+    # df['m2'] *= takahe.constants.SOLAR_MASS # Solar Mass -> Kilogram
 
     if 'coalescence_time' not in df.keys():
         # Introduce some temporary terms, to make computation easier
-        df['beta'] = ((64/5) * G**3 * df['m1'] * df['m2']
-                             * (df['m1'] + df['m2'])
-                             / (c**5))
+        # df['beta'] = ((64/5) * G**3 * df['m1'] * df['m2']
+        #                      * (df['m1'] + df['m2'])
+        #                      / (c**5))
 
-        df.drop(df[df['beta'] == 0].index, inplace=True)
+        # df.drop(df[df['beta'] == 0].index, inplace=True)
 
-        df['circ'] = df['a0']**4 / (4*df['beta'])
+        # df['circ'] = df['a0']**4 / (4*df['beta'])
 
-        df['divisor'] = ((1 - df['e0'] ** (7/4)) ** (1/5)
-                      *  (1+121/304 * df['e0'] ** 2))
+        # df['divisor'] = ((1 - df['e0'] ** (7/4)) ** (1/5)
+        #               *  (1+121/304 * df['e0'] ** 2))
 
-        df['coalescence_time'] = ((df['circ'] * (1-df['e0']**2)**(7/2)
-                               / df['divisor'])
-                               / (1e9 * 60 * 60 * 24 * 365.25))
+        # df['coalescence_time'] = ((df['circ'] * (1-df['e0']**2)**(7/2)
+        #                        / df['divisor'])
+        #                        / (1e9 * 60 * 60 * 24 * 365.25))
 
-        cols = ['beta', 'coalescence_time', 'evolution_age',
-                'rejuvenation_age', 'circ', 'divisor']
+        # cols = ['beta', 'coalescence_time', 'evolution_age',
+        #         'rejuvenation_age', 'circ', 'divisor']
+
+        df['coalescence_time'] = 0.0
+        for i, row in df.iterrows():
+            df.loc[i, 'coalescence_time'] = takahe.integrate_timescale(row['m1'],
+                                                                       row['m2'],
+                                                                       row['p0'],
+                                                                       row['e0'])
+
+        # df['coalescence_time'] = df['circ'] * (1+0.27*df['e0']**10+0.33*df['e0']**20+0.2*df['e0']**1000) * (1-df['e0']**2)**(7/2) / (1e9 * 60 * 60 * 24 * 365.25)
+        cols = ['coalescence_time', 'evolution_age', 'rejuvenation_age']
     else:
         cols = ['coalescence_time', 'evolution_age', 'rejuvenation_age']
 
     df['lifetime'] = (df['evolution_age'] / 1e9
                    +  df['rejuvenation_age'] / 1e9
-                   +  df['coalescence_time']
+                   +  df['coalescence_time'] / takahe.constants.SECONDS_PER_GYR
                      )
 
     if extra_lt != None:
         df['lifetime'] = df['lifetime'].apply(extra_lt, args=(df,))
 
     # Unit Conversions (back):
-    df['a0'] /= takahe.constants.SOLAR_RADIUS # Metre -> Solar Radius
-    df['m1'] /= takahe.constants.SOLAR_MASS # Kilogram -> Solar Mass
-    df['m2'] /= takahe.constants.SOLAR_MASS # As above
+    # df['a0'] /= takahe.constants.SOLAR_RADIUS # Metre -> Solar Radius
+    # df['m1'] /= takahe.constants.SOLAR_MASS # Kilogram -> Solar Mass
+    # df['m2'] /= takahe.constants.SOLAR_MASS # As above
 
     # The minimum lifetime of a star is ~3 Myr, so introduce
     # an artificial cutoff there.
@@ -435,13 +447,13 @@ def single_event_rate(in_df,
     LOG_edges = [0.0]
     LOG_edges.extend(10**np.linspace(6.05, 11.05, 51) / 1e9)
 
-    DTD    = takahe.histogram.histogram(edges=LOG_edges)
+    DTD    = takahe.histogram.histogram(edges=lin_edges)
     SFRD   = takahe.histogram.histogram(edges=lin_edges)
     events = takahe.histogram.histogram(edges=lin_edges)
 
-    DTDi   = compute_dtd(in_df, extra_lt, transient_type)
+    DTDi   = compute_dtd(in_df, extra_lt, transient_type, bins=lin_edges)
 
-    DTD.fill(LOG_edges[:-1], DTDi)               # events / M_sun / Gyr
+    DTD.fill(lin_edges[:-1], DTDi)               # events / M_sun / Gyr
     SFRD.fill(lin_edges, SFRDi)                  # M_sun / yr / Mpc^3
 
     SFRD._values *= 1e9                          # M_sun / Gyr / Mpc^3

@@ -18,6 +18,7 @@ from matplotlib import cm
 
 import warnings
 from uncertainties import ufloat
+from uncertainties.umath import log as ulog
 from uncertainties.umath import log10 as ulog10
 from uncertainties.umath import log as ulog
 
@@ -273,7 +274,7 @@ class histogram:
             hits {array} -- The array of new hit values for the
                             histogram
         """
-        assert isinstance(hits, [list, np.ndarray]), "hits must be arraylike."
+        assert isinstance(hits, (list, np.ndarray)), "hits must be arraylike."
 
         for i in range(len(self._hits)):
             self._hits[i] = hits[i]
@@ -711,7 +712,8 @@ class histogram_2d:
 
         for i in range(len(x_obs)):
             w = self.getBin(x_obs[i], y_obs[i])
-            w = self.getBinContent(w[0], w[1])
+            w = self.getBinContent(w[0], w[1]) - 1
+            if w.n <= 0: w = 0.0001
 
             mu = np.array([x_obs[i], y_obs[i]])
             sigma = np.matrix([[b_x**2, 0], [0, b_y**2]])
@@ -720,7 +722,7 @@ class histogram_2d:
             if logL == None:
                 logL = ulog(w * N.pdf([x_obs[i], y_obs[i]]))
             else:
-                logL *= ulog(w * N.pdf([x_obs[i], y_obs[i]]))
+                logL += ulog(w * N.pdf([x_obs[i], y_obs[i]]))
 
         return logL
 
