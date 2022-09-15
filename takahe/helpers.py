@@ -1,7 +1,6 @@
 import bisect
 import warnings
 
-from julia import Main as jl
 from numba import njit
 import numpy as np
 import matplotlib.pyplot as plt
@@ -251,8 +250,6 @@ def compute_period(a, M, m):
     """
     return np.sqrt(4 * np.pi **2 / (takahe.constants.G * (M+m) * takahe.constants.SOLAR_MASS) * (a * takahe.constants.SOLAR_RADIUS)**3) / (60 * 60 * 24)
 
-# Something is fucked here
-
 @np.vectorize
 def compute_separation(P, M, m):
     """Computes the separation of a BSS
@@ -356,5 +353,9 @@ def integrate(a0, e0, p):
     assert isinstance(p,  (np.ndarray, list)), "Expected p to be arraylike"
 
     assert 0 <= e0 <= 1,                       "e0 outside of range [0, 1]"
+
+    if not takahe.integrator_initialized:
+        takahe.debug('info', 'Integrator not initialized. Initializing...')
+        takahe.initialize_integrator()
 
     return takahe.integrate_eoms(a0, e0, p)
