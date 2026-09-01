@@ -10,6 +10,87 @@ from scipy.optimize import minimize
 import takahe
 from tqdm import tqdm
 
+
+def _python_integrator(a0, e0, p):
+    Solar_Mass = 1.989e30  # kg
+    Solar_Radius = 696340000.0  # m
+    G = 6.67e-11  # m^3 kg^-1 s^-2
+    c = 299792458.0  # m/s
+
+    A = np.array([])
+    E = np.array([])
+    H = np.array([])
+
+    m1, m2, expo, alph, evotime = p[0], p[1], p[2], p[3], p[4]
+
+    # number of seconds in a year
+    seconds_per_year = 60 * 60 * 24 * 365.25
+
+    ########################
+    #      Unit Check      #
+    ########################
+    a = a0 * Solar_Radius  # Meters
+    e = e0                 # Dimensionless
+    m1 = m1 * Solar_Mass   # Kilogram
+    m2 = m2 * Solar_Mass   # Kilogram
+    ########################
+    #    End Unit Check    #
+    ########################
+
+    # Beta has units m^4 / s
+    beta = ((64/5) * G**3 * m1 * m2 * (m1 + m2) / (c**5))
+
+    A = np.append(A, a)
+    E = np.append(E, e)
+    H = np.append(H, 0.0)
+
+    total_time = 0
+
+    # TODO: stop at last ISCO
+
+    # Integrate until past the end of the universe, or a 10km orbit
+    while total_time/seconds_per_year + evotime < 1e11 and a > 1e4:
+        initial_da = (- beta / ((a**3) * (1 - e**2)**(7/2)))
+        da = initial_da * (1 + (73/24) * e**2 + (37/96) * e**4)
+
+        intial_de = (((-19/12) * beta) / (a**4*(1-e**2)**(5/2)))
+        de = intial_de * (e + (121/304) * e**3)  # Units: s^-1
+
+        timeA = abs(1e-2 * a/da)
+
+        if e > 1e-10:
+            timeE = abs(1e-2 * e/de)
+        else:
+            de = 0
+            e = 1e-10
+            timeE = timeA * 10
+
+        # maximum timestep is the width of the smallest BPASS time bin
+        dt2 = (evotime + total_time/seconds_per_year)*0.23076752*0.5*seconds_per_year
+
+        dt = min(timeE, timeA, dt2)
+
+        a = a + dt * da
+        e = e + dt * de
+
+        A = np.append(A, a)
+        E = np.append(E, e)
+        H = np.append(H, dt)
+
+        total_time = total_time + dt
+
+    stop_reason = "flag_not_set"
+
+    if total_time/seconds_per_year + evotime >= 1e11:
+        stop_reason = "out_of_time"
+
+    if a <= 1e4:
+        stop_reason = "merged"
+
+    # Solar Radii, Dimensionless
+    return A / Solar_Radius, E, H, stop_reason
+
+
 def evolve_system(a0, e0, m1, m2, beta=1, alpha=0, evotime=0, engine='julia'):
     """
     Evolves a binary system until merger or the age of the Universe.
@@ -34,9 +115,13 @@ def evolve_system(a0, e0, m1, m2, beta=1, alpha=0, evotime=0, engine='julia'):
                           decays.
     """
     params = [m1, m2, beta, alpha, evotime]
-    a, e, h, reason = takahe.helpers.integrate(a0, e0, params)
+    if engine == 'julia':
+        a, e, h, reason = takahe.helpers.integrate(a0, e0, params)
+    elif engine == 'python':
+        a, e, h, reason = _python_integrator(a0, e0, params)
 
-    return a, e, h
+    return a, e, h, reason
+
 
 def period_eccentricity(in_df, Z, transient_type='NSNS', outdir=None):
     """
@@ -192,7 +277,7 @@ def constant_coalescence_isocontour(ct):
                         array: all requested isocontours plotted
                         int/float: just that isocontour plotted
     """
-    if isinstance(ct, [np.float, np.int]):
+    if isinstance(ct, [float, int]):
         ct = np.array([ct])
 
     p = np.linspace(1e-2, 1e2, 5000) # days

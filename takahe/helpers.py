@@ -3,6 +3,9 @@ import warnings
 
 from numba import njit
 import numpy as np
+
+import matplotlib
+# matplotlib.use('agg')
 import matplotlib.pyplot as plt
 from scipy.optimize import fminbound
 from scipy.integrate import quad
@@ -155,16 +158,16 @@ def find_contours(X, Y, Z, value):
     assert isinstance(Y, np.ndarray), "Expected Y to be arraylike."
     assert isinstance(Z, (np.matrix,
                           np.ndarray)), "Expected Z to be matrixlike."
-    assert isinstance(value, (np.float,
-                              np.int,
+    assert isinstance(value, (float,
+                              int,
                               np.ndarray,
                               list)), ("Expected value to be a number "
                                        "or listlike.")
 
     try:
-        l = len(value)
+        length = len(value)
     except TypeError:
-        l = 1
+        length = 1
         value = np.array([value])
 
     plt.figure()
@@ -172,13 +175,14 @@ def find_contours(X, Y, Z, value):
     plt.close()
     paths = dict()
 
-    for i in range(len(value)):
+    for i in range(length):
         path = cs.collections[i].get_paths()
 
         for j in range(len(path)):
             verts = path[j].vertices
-            x = verts[:,0].tolist()
-            y = verts[:,1].tolist()
+            x = verts[:, 0].tolist()
+            y = verts[:, 1].tolist()
+
             if j != 0:
                 paths[value[i]].append({'x': x, 'y': y})
             else:
@@ -348,14 +352,10 @@ def integrate(a0, e0, p):
                                      axis array and eccentricity array.
     """
 
-    assert isinstance(a0, (float, int, np.int64, np.float)), "Expected a0 to be a float or int type"
-    assert isinstance(e0, (float, int, np.int64, np.float)), "Expected e0 to be a float or int type"
+    assert isinstance(a0, (int, float)), "Expected a0 to be a float or int type"
+    assert isinstance(e0, (int, float)), "Expected e0 to be a float or int type"
     assert isinstance(p,  (np.ndarray, list)), "Expected p to be arraylike"
 
     assert 0 <= e0 <= 1,                       "e0 outside of range [0, 1]"
-
-    if not takahe.integrator_initialized:
-        takahe.debug('info', 'Integrator not initialized. Initializing...')
-        takahe.initialize_integrator()
 
     return takahe.integrate_eoms(a0, e0, p)

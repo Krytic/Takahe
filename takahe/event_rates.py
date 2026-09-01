@@ -347,11 +347,12 @@ def compute_dtd(in_df, extra_lt=None, transient_type='NSNS', bins=None):
         #         'rejuvenation_age', 'circ', 'divisor']
 
         df['coalescence_time'] = 0.0
-        for i, row in df.iterrows():
+        for i, row in tqdm(df.iterrows(), total=len(df)):
             df.loc[i, 'coalescence_time'] = takahe.integrate_timescale(row['m1'],
                                                                        row['m2'],
                                                                        row['p0'],
-                                                                       row['e0'])
+                                                                       row['e0'],
+                                                                       1000)
 
         # df['coalescence_time'] = df['circ'] * (1+0.27*df['e0']**10+0.33*df['e0']**20+0.2*df['e0']**1000) * (1-df['e0']**2)**(7/2) / (1e9 * 60 * 60 * 24 * 365.25)
         cols = ['coalescence_time', 'evolution_age', 'rejuvenation_age']

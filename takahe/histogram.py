@@ -6,6 +6,8 @@ Original author: Max Briel (https://github.com/maxbriel)
 Modified by: Sean Richards (https://github.com/Krytic)
 
 """
+import matplotlib
+# matplotlib.use('agg')
 
 import matplotlib.pyplot as plt
 import numpy as np
