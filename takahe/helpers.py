@@ -345,9 +345,9 @@ def integrate(a0, e0, p):
     """Integrates the System of ODEs that govern binary star evolution
     in period-eccentricity space.
 
-    Uses a custom Julia integrator to integrate the equations of motion
-    given by [1]. The integrator constrains the periods and eccentricities
-    to the intevals (cutoff_period, P0] and [0, 1] respectively.
+    Integrates the equations of motion given by [1]. The integrator
+    constrains the periods and eccentricities to the intevals
+    (cutoff_period, P0] and [0, 1] respectively.
 
     [1] Nyadzani, L. & Razzaque, S. (2019), An Analytical Solution to
         the Coalescence Time of Compact Binary Systems, Technical

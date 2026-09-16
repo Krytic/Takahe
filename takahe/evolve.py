@@ -114,7 +114,7 @@ def _python_integrator(a0, e0, p):
     return A / Solar_Radius, E, H, stop_reason
 
 
-def evolve_system(a0, e0, m1, m2, beta=1, alpha=0, evotime=0, engine='julia'):
+def evolve_system(a0, e0, m1, m2, beta=1, alpha=0, evotime=0):
     """
     Evolves a binary system until merger or the age of the Universe.
 
@@ -128,7 +128,7 @@ def evolve_system(a0, e0, m1, m2, beta=1, alpha=0, evotime=0, engine='julia'):
         m2 {float}     -- The mass of the secondary in Solar Masses
 
     Keyword Arguments:
-        weight {float} -- the BPASS weight of the system (# / 10^6
+        beta {float} -- the BPASS weight of the system (# / 10^6
                           solar masses)
 
     Returns:
@@ -138,10 +138,7 @@ def evolve_system(a0, e0, m1, m2, beta=1, alpha=0, evotime=0, engine='julia'):
                           decays.
     """
     params = [m1, m2, beta, alpha, evotime]
-    if engine == 'julia':
-        a, e, h, reason = takahe.helpers.integrate(a0, e0, params)
-    elif engine == 'python':
-        a, e, h, reason = _python_integrator(a0, e0, params)
+    a, e, h, reason = takahe.helpers.integrate(a0, e0, params)
 
     return a, e, h, reason
 
@@ -185,7 +182,7 @@ def period_eccentricity(in_df, Z, transient_type='NSNS', outdir=None):
     """
 
     assert isinstance(in_df, pd.DataFrame), "Expected in_df to be a DataFrame"
-    assert isinstance(Z, (str, float)), "Expected Z to be a ..."  # Complete
+    assert isinstance(Z, (str, float)), "Expected Z to be a metallicity spec"
     assert transient_type in ['NSNS', 'NSBH', 'BHBH'], ("Expected"
                                                         " transient_type to be"
                                                         " one of: NSNS, NSBH,"
@@ -259,7 +256,7 @@ def period_eccentricity(in_df, Z, transient_type='NSNS', outdir=None):
     if outdir is not None:
         takahe.debug('info', "Saving Cube...")
 
-        fname = f"{outdir}/Period_eccentricity_cube-{kick}-{alpha}-{beta}.fr"
+        fname = f"{outdir}/Period_eccentricity_cube.fr"
 
         cube.save(fname)
 
@@ -293,33 +290,6 @@ def coalescence_time(star):
                                evotime=evo)
 
     return np.sum(h) / takahe.constants.SECONDS_PER_GYR
-
-
-def constant_coalescence_isocontour(ct):
-    """Computes the isocontour of the coalescence time in
-    period-eccentricity space.
-
-    Uses a precomputed grid to determine the isocontours representing
-    a given coalescence time. Can extract isocontours for arbitrarily
-    many such times.
-
-    Arguments:
-        ct {mixed} -- the isocontour(s) required. If:
-                        array: all requested isocontours plotted
-                        int/float: just that isocontour plotted
-    """
-    if isinstance(ct, [float, int]):
-        ct = np.array([ct])
-
-    p = np.linspace(1e-2, 1e2, 5000)  # days
-    e = np.linspace(0.0, 1.0, 5000)  # no dim.
-
-    P, E = np.meshgrid(p, e, indexing='ij')
-
-    fobj = BytesIO(pkgutil.get_data(__name__, 'data/isocontour_data.npy'))
-    Z = np.load(fobj)
-
-    return takahe.helpers.find_contours(P, E, Z, ct)
 
 
 evolve_system = np.vectorize(evolve_system, excluded=['beta', 'alpha'])
