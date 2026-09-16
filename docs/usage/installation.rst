@@ -1,7 +1,8 @@
 Installing Takahe
 =================
 
-Takahe is hosted on PyPI (link here), though you can also build source from GitHub.
+Takahe is not yet released on PyPI; for now it is installed directly from
+source on GitHub.
 
 From Source
 -----------

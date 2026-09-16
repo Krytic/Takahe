@@ -1,0 +1,25 @@
+# Dependencies needed to build Takahe's documentation.
+#
+# This covers both the documentation toolchain itself (Sphinx and its
+# extensions) and Takahe's own runtime dependencies, since the API
+# reference is built by importing the live `takahe` package and
+# introspecting it with autodoc.
+#
+# Install with: pip install -r docs/requirements.txt
+
+# --- Documentation toolchain ---
+sphinx>=7.0
+sphinx_rtd_theme>=2.0
+recommonmark>=0.7
+
+# --- Takahe's own runtime dependencies (kept in sync with setup.py) ---
+numpy
+matplotlib
+pandas
+scipy
+numba
+imageio
+tqdm
+uncertainties
+diffeqpy
+glisten
