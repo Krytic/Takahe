@@ -113,6 +113,18 @@ def filter_transients(in_df, transient_type):
 
 @np.vectorize
 def _mass_worker_nsns(m, M):
+    """Coerces NSNS component masses to their baryonic equivalents.
+
+    Vectorized worker for constrain_masses() when transient_type is
+    NSNS. Both m and M are treated as neutron star masses.
+
+    Arguments:
+        m {array} -- The primary masses (m1), in Solar Masses.
+        M {array} -- The secondary masses (m2), in Solar Masses.
+
+    Returns:
+        {tuple} -- The (m, M) arrays, coerced to baryonic masses.
+    """
     for i in range(len(m)):
         mi = -1 + np.sqrt(1+4*0.084*m[i]) / (2*0.084)
         Mi = -1 + np.sqrt(1+4*0.084*M[i]) / (2*0.084)
@@ -127,6 +139,19 @@ def _mass_worker_nsns(m, M):
 
 @np.vectorize
 def _mass_worker_nsbh(m, M):
+    """Coerces NSBH component masses to their baryonic equivalents.
+
+    Vectorized worker for constrain_masses() when transient_type is
+    NSBH. Whichever of m, M is the lower mass is treated as the
+    neutron star; the other is treated as the black hole.
+
+    Arguments:
+        m {array} -- The primary masses (m1), in Solar Masses.
+        M {array} -- The secondary masses (m2), in Solar Masses.
+
+    Returns:
+        {tuple} -- The (m, M) arrays, coerced to baryonic masses.
+    """
     for i in range(len(m)):
         if m[i] < M[i]:
             m[i] = -1 + np.sqrt(1+4*0.084*m[i]) / (2*0.084)

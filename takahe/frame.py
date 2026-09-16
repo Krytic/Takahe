@@ -43,6 +43,15 @@ class Frame:
         self.time = time
 
     def __cmp__(self, other):
+        """Compares this Frame to another Frame by time.
+
+        Arguments:
+            other {takahe.frame.Frame} -- The Frame to compare against.
+
+        Returns:
+            {int} -- -1 if this Frame is earlier, 0 if the Frames are
+                     simultaneous, or 1 if this Frame is later.
+        """
         if self.time < other.time:
             return -1
         if self.time == other.time:
@@ -51,11 +60,28 @@ class Frame:
             return  1
 
 class FrameCollectionExtent:
+    """Builds the (x, y) extent axes for a FrameCollection."""
     def __init__(self, x_from, x_to, nr_bins_x, y_from, y_to, nr_bins_y):
+        """Creates the extent.
+
+        Arguments:
+            x_from {float}    -- The lower bound of the x-axis.
+            x_to {float}      -- The upper bound of the x-axis.
+            nr_bins_x {int}   -- The number of bins along the x-axis.
+            y_from {float}    -- The lower bound of the y-axis.
+            y_to {float}      -- The upper bound of the y-axis.
+            nr_bins_y {int}   -- The number of bins along the y-axis.
+        """
         self.__xaxis = np.linspace(x_from, x_to, nr_bins_x)
         self.__yaxis = np.linspace(y_from, y_to, nr_bins_y)
 
     def fetch(self):
+        """Fetches the extent axes.
+
+        Returns:
+            {tuple} -- A 2-tuple of (xaxis, yaxis), suitable for use as
+                       the extent argument of FrameCollection().
+        """
         return (self.__xaxis, self.__yaxis)
 
 class FrameCollection:
@@ -131,9 +157,22 @@ class FrameCollection:
 
     # Iteration methods
     def __iter__(self):
+        """Returns the iterator object.
+
+        Returns:
+            {takahe.frame.FrameCollection} -- This FrameCollection.
+        """
         return self
 
     def __next__(self):
+        """Returns the next Frame in the FrameCollection.
+
+        Returns:
+            {takahe.frame.Frame} -- The next Frame.
+
+        Raises:
+            StopIteration -- once every Frame has been visited.
+        """
         i = self.__i
         if self.__i < self.__size:
             frame = self.__frames[i]
@@ -356,6 +395,11 @@ class FrameCollection:
         imageio.mimsave(outname, images, loop=0, fps=fps)
 
     def __len__(self):
+        """Returns the number of Frames in the FrameCollection.
+
+        Returns:
+            {int} -- The number of Frames.
+        """
         return self.__size
 
     def insert(self, item):
@@ -384,6 +428,11 @@ class pickledFrameCollection(FrameCollection):
         FrameCollection
     """
     def __init__(self, infile):
+        """Reconstructs a FrameCollection from a pickle file.
+
+        Arguments:
+            infile {string} -- The path to the pickle file to load.
+        """
         with open(infile, 'rb') as f:
             contents = pickle.load(f)
 

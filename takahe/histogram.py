@@ -56,6 +56,21 @@ class histogram:
     """
 
     def __init__(self, xlow=None, xup=None, nr_bins=None, edges=None):
+        """Creates the histogram.
+
+        Either xlow, xup, and nr_bins must be given, or edges.
+
+        Arguments:
+            xlow {float}    -- lower bound
+            xup {float}     -- upper bound
+            nr_bins {int}   -- the number of bins
+            edges {array}   -- An array with items defining the edges.
+                               Overrides xlow, xup, and nr_bins if given.
+
+        Raises:
+            Exception -- if neither (xlow, xup, nr_bins) nor edges is
+                        given.
+        """
         if xlow != None and xup != None and nr_bins != None:
             self._xlow = xlow
             self._xup = xup
@@ -76,12 +91,27 @@ class histogram:
         self.upper_edges = self._bin_edges[1:]
 
     def __len__(self):
+        """Returns the number of bins in the histogram.
+
+        Returns:
+            {int} -- The number of bins.
+        """
         return len(self._values)
 
     def __str__(self):
+        """Returns a human-readable string of the bin values.
+
+        Returns:
+            {string} -- The bin values.
+        """
         return str(self._values)
 
     def __repr__(self):
+        """Returns a human-readable string of the bin edges and values.
+
+        Returns:
+            {string} -- The bin edges and values.
+        """
         return f"The bins: {self._bin_edges}\nThe values: {self._values}"
 
     def __add__(self, other):
@@ -124,15 +154,59 @@ class histogram:
         return out
 
     def __rmul__(self, other):
+        """Multiplication (reflected)
+
+        Performs element-wise multiplication with a float type object.
+        Called when the histogram is the right-hand operand (e.g.
+        2 * hist).
+
+        Arguments:
+            other {float} -- The multiplier
+
+        Returns:
+            {histogram} -- A deep copy of the resultant histogram.
+        """
         return self.__mul__(other)
 
     def __sub__(self, other):
+        """Subtraction
+
+        Performs element-wise subtraction of another histogram or
+        float object.
+
+        Arguments:
+            other {mixed} -- Either another histogram object, or a float
+                             type object.
+
+        Returns:
+            {histogram} -- A deep copy of the resultant histogram.
+        """
         return self + -1 * other
 
     def __div__(self, other):
+        """Division (Python 2 compatibility)
+
+        Alias for __truediv__().
+
+        Arguments:
+            other {float} -- The divisor
+
+        Returns:
+            {histogram} -- A deep copy of the resultant histogram.
+        """
         return self.__truediv__(other)
 
     def __truediv__(self, other):
+        """Division
+
+        Performs element-wise division by a float type object.
+
+        Arguments:
+            other {float} -- The divisor
+
+        Returns:
+            {histogram} -- A deep copy of the resultant histogram.
+        """
         out = self.copy()
         out._values = self._values / other
         out._hits = self._hits
@@ -592,13 +666,39 @@ class histogram:
             return total
 
 class histogram_2d:
+    """A two-dimensional histogram which can contain data and be plotted.
+
+    Either **x_range**, **y_range**, **nr_bins_x**, and **nr_bins_y** is
+    given, or **edges_x** and **edges_y**.
+
+    Arguments:
+        x_range {tuple}   -- A 2-tuple of (xlow, xup), the lower and
+                             upper bounds of the x-axis.
+        y_range {tuple}   -- A 2-tuple of (ylow, yup), the lower and
+                             upper bounds of the y-axis.
+        nr_bins_x {int}   -- The number of bins along the x-axis.
+        nr_bins_y {int}   -- The number of bins along the y-axis.
+        edges_x {array}   -- An array defining the x-axis bin edges.
+        edges_y {array}   -- An array defining the y-axis bin edges.
+    """
     def __init__(self, x_range=None,
                        y_range=None,
                        nr_bins_x=0,
                        nr_bins_y=0,
                        edges_x=None,
                        edges_y=None):
+        """Creates the 2D histogram.
 
+        Arguments:
+            x_range {tuple} -- A 2-tuple of (xlow, xup).
+            y_range {tuple} -- A 2-tuple of (ylow, yup).
+            nr_bins_x {int} -- The number of bins along the x-axis.
+            nr_bins_y {int} -- The number of bins along the y-axis.
+            edges_x {array} -- An array defining the x-axis bin edges.
+                               Overrides x_range and nr_bins_x if given.
+            edges_y {array} -- An array defining the y-axis bin edges.
+                               Overrides y_range and nr_bins_y if given.
+        """
         linspace = True
         if edges_x is not None and edges_y is not None:
             x_range = (edges_x[0], edges_x[-1])
@@ -642,6 +742,16 @@ class histogram_2d:
         return self.getBinContent(i, j)
 
     def fill(self, insertion_matrix):
+        """Overwrites the histogram's values with a full matrix of data.
+
+        Unlike histogram.fill(), this replaces the entire content
+        matrix in one go, rather than incrementing individual entries.
+
+        Arguments:
+            insertion_matrix {np.ndarray} -- A matrix of the same shape
+                                             as the histogram, containing
+                                             the new bin values.
+        """
         assert self._values.shape == insertion_matrix.shape
 
         self._values    = insertion_matrix
@@ -649,10 +759,27 @@ class histogram_2d:
         self._num_hits += (insertion_matrix>0).astype(int)
 
     def insert(self, bin_nr_x, bin_nr_y, value):
+        """Inserts a value into a specific bin.
+
+        Arguments:
+            bin_nr_x {int}   -- The x-axis bin number to insert into.
+            bin_nr_y {int}   -- The y-axis bin number to insert into.
+            value {float}    -- The value to add to the bin.
+        """
         self._values[bin_nr_x][bin_nr_y]   += value
         self._num_hits[bin_nr_x][bin_nr_y] += 1
 
     def getBin(self, x, y):
+        """Returns the bin numbers at value (x, y).
+
+        Arguments:
+            x {float} -- The x-coordinate to look up.
+            y {float} -- The y-coordinate to look up.
+
+        Returns:
+            {tuple} -- The (i, j) bin numbers, or (-1, -1) if (x, y) is
+                       outside the histogram's range.
+        """
         if x < self._xlow or x > self._xup or y < self._ylow or y > self._yup:
             # out of bounds
             return -1, -1
@@ -663,19 +790,45 @@ class histogram_2d:
         return (i,j)
 
     def getBinContent(self, bin_nr_x, bin_nr_y):
+        """Returns the content of the given bin, with its uncertainty.
+
+        Arguments:
+            bin_nr_x {int} -- The x-axis bin number.
+            bin_nr_y {int} -- The y-axis bin number.
+
+        Returns:
+            {ufloat} -- The bin content in the form content +- uncertainty,
+                       where uncertainty is Poissonian (sqrt(hits)).
+        """
         val = self._values[bin_nr_x][bin_nr_y]
         err = np.sqrt(self._num_hits[bin_nr_x][bin_nr_y])
         return ufloat(val, err)
 
     def range(self):
+        """Returns the minimum and maximum values in the histogram.
+
+        Returns:
+            {tuple} -- A 2-tuple of (min, max) bin values.
+        """
         return np.min(self._values), np.max(self._values)
 
     def to_extent(self):
+        """Returns the bin edges of both axes.
+
+        Returns:
+            {tuple} -- A 2-tuple of (x_axis, y_axis), the bin edges
+                       along the x- and y-axes respectively.
+        """
         x_axis = self._bin_edges_x
         y_axis = self._bin_edges_y
         return x_axis, y_axis
 
     def copy(self):
+        """Creates a copy of the 2D histogram.
+
+        Returns:
+            {histogram_2d} -- An exact (deep) copy of the histogram.
+        """
         x = [self._xlow, self._xup]
         y = [self._ylow, self._yup]
 
@@ -686,6 +839,15 @@ class histogram_2d:
         return out
 
     def plot(self, *args, **kwargs):
+        """Plots the 2D histogram as a 3D surface.
+
+        Additional arguments are passed on to the call to
+        ax.plot_surface().
+
+        Returns:
+            {mpl_toolkits.mplot3d.Axes3D} -- The 3D axes the surface was
+                                             plotted on.
+        """
         x = self._bin_edges_x
         y = self._bin_edges_y
         X, Y = np.meshgrid(x, y, indexing='ij')
@@ -696,6 +858,14 @@ class histogram_2d:
         return ax
 
     def to_pickle(self, pickle_path):
+        """Saves the 2D histogram as a pickle file.
+
+        Preserves the build parameters, values, and hits, of the
+        histogram.
+
+        Arguments:
+            pickle_path {string} -- The path to save the pickle file at.
+        """
         contents = {
             'build_params': {
                 'xlow': self._xlow,
@@ -713,6 +883,21 @@ class histogram_2d:
             pickle.dump(contents, f)
 
     def likelihood(self, x_obs, y_obs):
+        """Computes the log-likelihood of a set of observations.
+
+        Uses a Gaussian kernel density estimate (bandwidth chosen via
+        Silverman's rule, robust to outliers via the IQR) evaluated at
+        each observed (x, y) point against the histogram's binned
+        content, to compute the summed log-likelihood of the observed
+        data given this histogram.
+
+        Arguments:
+            x_obs {array} -- The observed x-coordinates.
+            y_obs {array} -- The observed y-coordinates.
+
+        Returns:
+            {ufloat} -- The summed log-likelihood, with uncertainty.
+        """
         n = len(x_obs)
         IQR_y = iqr(y_obs)
         IQR_x = iqr(x_obs)
@@ -742,6 +927,15 @@ class histogram_2d:
         return logL
 
     def __add__(self, other):
+        """Addition
+
+        Performs element-wise addition with another histogram_2d.
+        Modifies this histogram in place; does not return a value.
+
+        Arguments:
+            other {histogram_2d} -- The histogram to add. Must share
+                                    this histogram's bin edges.
+        """
         assert isinstance(other, histogram_2d)
         assert self._xlow        == other._xlow
         assert self._xup         == other._xup
@@ -754,7 +948,17 @@ class histogram_2d:
         self._num_hits = self._num_hits + other._num_hits
 
 class pickledHistogram(histogram):
+    """Represents a pickled version of a histogram.
+
+    Extends:
+        histogram
+    """
     def __init__(self, pickle_path):
+        """Reconstructs a histogram from a pickle file.
+
+        Arguments:
+            pickle_path {string} -- The path to the pickle file to load.
+        """
         with open(pickle_path, 'rb') as f:
             contents = pickle.load(f)
 
@@ -764,7 +968,17 @@ class pickledHistogram(histogram):
             self.reregister_hits(contents['hits'])
 
 class pickled2dHistogram(histogram_2d):
+    """Represents a pickled version of a histogram_2d.
+
+    Extends:
+        histogram_2d
+    """
     def __init__(self, pickle_path):
+        """Reconstructs a 2D histogram from a pickle file.
+
+        Arguments:
+            pickle_path {string} -- The path to the pickle file to load.
+        """
         with open(pickle_path, 'rb') as f:
             contents = pickle.load(f)
 
@@ -782,6 +996,20 @@ class pickled2dHistogram(histogram_2d):
             self._num_hits = contents['hits']
 
 def from_pickle(pickle_path, is_2d=False):
+    """Loads a pickled histogram from disk.
+
+    Arguments:
+        pickle_path {string} -- The path to the pickle file to load.
+
+    Keyword Arguments:
+        is_2d {bool} -- Whether the pickled histogram is a histogram_2d
+                        (True) or a plain histogram (False).
+                        (default: {False})
+
+    Returns:
+        {mixed} -- A pickledHistogram, or a pickled2dHistogram if is_2d
+                   is True.
+    """
     if not is_2d:
         return pickledHistogram(pickle_path)
     if is_2d:

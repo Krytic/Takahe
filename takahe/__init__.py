@@ -27,6 +27,11 @@ class Function(object):
     """Function is a wrap over standard python function."""
 
     def __init__(self, fn):
+        """Wraps a function so it can be registered in the Namespace.
+
+        Arguments:
+            fn {callable} -- The function to wrap.
+        """
         self.fn = fn
 
     def __call__(self, *args, **kwargs):
@@ -66,6 +71,11 @@ class Namespace(object):
     __instance = None
 
     def __init__(self):
+        """Creates the singleton Namespace instance.
+
+        Raises:
+            Exception -- if a Namespace has already been instantiated.
+        """
         if self.__instance is None:
             self.function_map = dict()
             Namespace.__instance = self
@@ -74,6 +84,13 @@ class Namespace(object):
 
     @staticmethod
     def get_instance():
+        """Fetches the singleton Namespace instance.
+
+        Creates the Namespace if it does not already exist.
+
+        Returns:
+            {Namespace} -- The singleton Namespace instance.
+        """
         if Namespace.__instance is None:
             Namespace()
         return Namespace.__instance
@@ -153,6 +170,12 @@ integrator_initialized = True
 
 
 def initialize_integrator():
+    """Retained for backwards compatibility with older scripts.
+
+    The Julia integrator no longer requires explicit initialization,
+    so this function is now a no-op that just emits a deprecation
+    notice via takahe.debug().
+    """
     debug('info', ("The Julia integrator is broken and has been deprecated. "
                    "The integrator no longer needs to be initialized, you can "
                    "simply call the integration functions."))

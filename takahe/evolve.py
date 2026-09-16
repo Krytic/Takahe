@@ -12,6 +12,28 @@ from tqdm import tqdm
 
 
 def _python_integrator(a0, e0, p):
+    """Pure-Python fallback integrator for Nyadzani & Razzaque eqns.
+
+    Used by evolve_system() when engine='python', in place of the
+    (faster) Julia integrator.
+
+    Arguments:
+        a0 {float} -- The initial semimajor axis, measured in solar radii.
+        e0 {float} -- The initial eccentricity, dimensionless.
+        p {list}   -- A vector of parameters:
+                          p[0] = m1 (units: Solar Mass)
+                          p[1] = m2 (units: Solar Mass)
+                          p[2] = unused
+                          p[3] = unused
+                          p[4] = Lifetime (evolution + rejuvenation)
+
+    Returns:
+        {tuple} -- A / Solar_Radius, E, H, stop_reason -- the
+                   semimajor axes (Solar Radii) and eccentricities
+                   (dimensionless) of the binary over time, the
+                   timesteps taken (seconds), and the reason
+                   integration stopped.
+    """
     Solar_Mass = 1.989e30  # kg
     Solar_Radius = 696340000.0  # m
     G = 6.67e-11  # m^3 kg^-1 s^-2

@@ -44,6 +44,21 @@ def from_file(filepath, options=dict()):
     return df
 
 def from_gzip(filepath):
+    """Loads a single gzip-compressed file into memory.
+
+    Behaves like from_file(), but decompresses the file first. Appends
+    a ".gz" extension to filepath if it is not already present.
+
+    Arguments:
+        filepath {string} -- The path to the (optionally already
+                             ".gz"-suffixed) file to load.
+
+    Returns:
+        {pd.DataFrame} -- The loaded data.
+
+    Raises:
+        IOError -- if the (gzip-suffixed) file cannot be found.
+    """
     if ".gz" not in filepath:
         filepath = filepath + ".gz"
 
