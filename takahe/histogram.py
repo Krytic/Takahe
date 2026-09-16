@@ -377,53 +377,53 @@ class histogram:
         for i in range(len(self._hits)):
             self._hits[i] = hits[i]
 
-    def getUncertainty(self, bin):
-        """Returns the Poissonian uncertainty of the bin at bin# "bin".
+    def getUncertainty(self, bin_nr):
+        """Returns the Poissonian uncertainty of the bin at bin# "bin_nr".
 
         Returns the Poissonian uncertainty of the requested bin. Poisson
         uncertainties take error ~ 1/sqrt(N) where N is the number of
         data points in the bin.
 
         Arguments:
-            bin {int} -- The bin number
+            bin_nr {int} -- The bin number
 
         Returns:
             {float} -- The uncertainty in the bin.
         """
 
-        assert isinstance(bin, np.int)
+        assert isinstance(bin_nr, int)
 
-        return 1 / np.sqrt(self._hits[bin])
+        return 1 / np.sqrt(self._hits[bin_nr])
 
-    def get(self, bin):
+    def get(self, bin_nr):
         """Retrieves the ufloat (nominal + uncertainty) of the bin
 
         Arguments:
-            bin {int} -- The bin number to request
+            bin_nr {int} -- The bin number to request
 
         Returns:
             {ufloat} -- The bin content in the form
                         content +- uncertainty
         """
-        return ufloat(self.getBinContent(bin), self.getUncertainty(bin))
+        return ufloat(self.getBinContent(bin_nr), self.getUncertainty(bin_nr))
 
-    def getLog(self, bin):
+    def getLog(self, bin_nr):
         """Retrieves the log of the uncertainty for the bin.
 
         Same as histogram.get() but puts through ulog10 first.
 
         Arguments:
-            bin {int} -- The bin number to request
+            bin_nr {int} -- The bin number to request
 
         Returns:
             {ufloat} -- The bin content in the form
                         content +- uncertainty
         """
-        val = self.get(bin)
+        val = self.get(bin_nr)
         val = ulog10(val)
         return val
 
-    def present_value(self, bin, log=False):
+    def present_value(self, bin_nr, log=False):
         """Presents the value in a human readable format.
 
         Formats the value of a bin in a human-readable (LaTeX) format.
@@ -431,7 +431,7 @@ class histogram:
         value to the same number of decimal places.
 
         Arguments:
-            bin {int} -- The bin number to extract the value from.
+            bin_nr {int} -- The bin number to extract the value from.
 
         Keyword Arguments:
             log {bool} -- Whether to  take the log of the value or not.
@@ -441,17 +441,17 @@ class histogram:
             {string} -- The LaTeX-formatted value.
         """
 
-        assert isinstance(bin, np.integer), "Expected bin to be an integer."
-        assert isinstance(bin, bool), "Expected log to be boolean."
-        assert bin <= self.getNBins(), ("Expected bin to be a valid bin. "
-                                        f"There are {self.getNBins()} in this "
-                                        "histogram, and you have requested "
-                                        f"bin number {bin}.")
+        assert isinstance(bin_nr, int), ("Expected bin_nr to be an integer.")
+        assert isinstance(log, bool), "Expected log to be boolean."
+        assert bin_nr <= self.getNBins(), ("Expected bin_nr to be a valid "
+                                           f"bin. There are {self.getNBins()} "
+                                           "in this histogram, and you have "
+                                           f"requested bin number {bin_nr}.")
 
         if log:
-            val = self.getLog(bin)
+            val = self.getLog(bin_nr)
         else:
-            val = self.get(bin)
+            val = self.get(bin_nr)
 
         err = val.s * val.n
         nom = val.n
@@ -957,8 +957,8 @@ class histogram_2d:
         assert self._xup == other._xup
         assert self._ylow == other._ylow
         assert self._yup == other._yup
-        assert self._bin_edges_x == other._bin_edges_x
-        assert self._bin_edges_y == other._bin_edges_y
+        assert self._bin_edges_x.tolist() == other._bin_edges_x.tolist()
+        assert self._bin_edges_y.tolist() == other._bin_edges_y.tolist()
 
         self._values = self._values + other._values
         self._num_hits = self._num_hits + other._num_hits
