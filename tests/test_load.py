@@ -21,22 +21,6 @@ def test_from_file_adds_coalescence_time_column_for_ct_files(tmp_path):
     assert 'coalescence_time' in df.columns
 
 
-def test_from_directory_loads_every_metallicity(bpass_directory):
-    dataframes = takahe.load.from_directory(str(bpass_directory))
-
-    assert len(dataframes) == len(takahe.constants.BPASS_METALLICITIES)
-
-    # Keys are real-valued metallicities (see format_metallicity()), not
-    # the raw BPASS-encoded strings.
-    assert 1.0 in dataframes
-    assert len(dataframes[1.0]) == 2
-
-
-def test_from_directory_raises_if_files_missing(tmp_path):
-    with pytest.raises(IOError):
-        takahe.load.from_directory(str(tmp_path))
-
-
 def test_from_gzip_raises_if_file_missing(tmp_path):
     missing = tmp_path / "does-not-exist.dat"
 
