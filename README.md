@@ -1,6 +1,12 @@
 ![Takahe Logo](TakaheLogo.png)
 
+<div align="center">
+
 [![Documentation Status](https://readthedocs.org/projects/takahe/badge/?version=latest)](https://takahe.readthedocs.io/en/latest/?badge=latest)
+
+[![License](https://badgen.net/github/license/krytic/takahe)](LICENSE)
+
+</div>
 
 Takahe is a simple libary that takes binary star systems (such as the [BPASS model sets](https://bpass.auckland.ac.nz/)), and allows you to evolve them through time, to see how they merge, when they merge, and what happens in the final moments before merger.
 
