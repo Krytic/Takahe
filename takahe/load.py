@@ -7,6 +7,7 @@ import pandas as pd
 from tqdm import tqdm
 import takahe
 
+
 def from_file(filepath, options=dict()):
     """Loads a single file into memory.
 
@@ -26,8 +27,8 @@ def from_file(filepath, options=dict()):
         [type] -- [description]
     """
     name_hints = []
-    name_hints.extend(['m1','m2','a0','e0'])
-    name_hints.extend(['weight','evolution_age','rejuvenation_age'])
+    name_hints.extend(['m1', 'm2', 'a0', 'e0'])
+    name_hints.extend(['weight', 'evolution_age', 'rejuvenation_age'])
 
     if "_ct" in filepath:
         name_hints.extend(['coalescence_time'])
@@ -39,9 +40,10 @@ def from_file(filepath, options=dict()):
         df = pd.read_csv(filepath,
                          names=name_hints,
                          sep=r'\s+',
-                        )
+                         )
 
     return df
+
 
 def from_gzip(filepath):
     """Loads a single gzip-compressed file into memory.
@@ -103,7 +105,7 @@ def from_directory(path):
                     df = from_file(gzip.GzipFile(fileobj=f))
             else:
                 raise IOError((f"File {filepath} not found (tried looking "
-                                "for gzip file too)."))
+                               "for gzip file too)."))
         else:
             df = from_file(filepath)
 

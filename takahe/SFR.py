@@ -5,6 +5,7 @@ from scipy.special import gamma, gammainc
 import takahe
 from tqdm import tqdm
 
+
 def MadauDickinson(Z, z):
     """Computes the Madau & Dickinson SFRD at metallicity Z and redshift z.
 
@@ -23,13 +24,14 @@ def MadauDickinson(Z, z):
     Returns:
         {float} -- The SFRD at metallicity Z and redshift z.
     """
-    GAM = gammainc(0.84, (Z / 0.02)**2 * 10**(0.3*z))
-    NUM = 0.015 * (1+z)**2.7
-    DEM = (1+((1+z)/2.9)**5.6)
+    GAM = gammainc(0.84, (Z / 0.02)**2 * 10**(0.3 * z))
+    NUM = 0.015 * (1 + z)**2.7
+    DEM = (1 + ((1 + z) / 2.9)**5.6)
 
     SFRDi = GAM * (NUM / DEM)
 
     return SFRDi
+
 
 def MilkyWay(Z, z):
     """Implements the SFR equation from (Wiktorowicz et. al. 2020) [1]

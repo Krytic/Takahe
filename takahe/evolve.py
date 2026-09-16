@@ -60,7 +60,7 @@ def _python_integrator(a0, e0, p):
     ########################
 
     # Beta has units m^4 / s
-    beta = ((64/5) * G**3 * m1 * m2 * (m1 + m2) / (c**5))
+    beta = ((64 / 5) * G**3 * m1 * m2 * (m1 + m2) / (c**5))
 
     A = np.append(A, a)
     E = np.append(E, e)
@@ -71,24 +71,25 @@ def _python_integrator(a0, e0, p):
     # TODO: stop at last ISCO
 
     # Integrate until past the end of the universe, or a 10km orbit
-    while total_time/seconds_per_year + evotime < 1e11 and a > 1e4:
-        initial_da = (- beta / ((a**3) * (1 - e**2)**(7/2)))
-        da = initial_da * (1 + (73/24) * e**2 + (37/96) * e**4)
+    while total_time / seconds_per_year + evotime < 1e11 and a > 1e4:
+        initial_da = (- beta / ((a**3) * (1 - e**2)**(7 / 2)))
+        da = initial_da * (1 + (73 / 24) * e**2 + (37 / 96) * e**4)
 
-        intial_de = (((-19/12) * beta) / (a**4*(1-e**2)**(5/2)))
-        de = intial_de * (e + (121/304) * e**3)  # Units: s^-1
+        intial_de = (((-19 / 12) * beta) / (a**4 * (1 - e**2)**(5 / 2)))
+        de = intial_de * (e + (121 / 304) * e**3)  # Units: s^-1
 
-        timeA = abs(1e-2 * a/da)
+        timeA = abs(1e-2 * a / da)
 
         if e > 1e-10:
-            timeE = abs(1e-2 * e/de)
+            timeE = abs(1e-2 * e / de)
         else:
             de = 0
             e = 1e-10
             timeE = timeA * 10
 
         # maximum timestep is the width of the smallest BPASS time bin
-        dt2 = (evotime + total_time/seconds_per_year)*0.23076752*0.5*seconds_per_year
+        dt2 = (evotime + total_time / seconds_per_year) * \
+            0.23076752 * 0.5 * seconds_per_year
 
         dt = min(timeE, timeA, dt2)
 
@@ -103,7 +104,7 @@ def _python_integrator(a0, e0, p):
 
     stop_reason = "flag_not_set"
 
-    if total_time/seconds_per_year + evotime >= 1e11:
+    if total_time / seconds_per_year + evotime >= 1e11:
         stop_reason = "out_of_time"
 
     if a <= 1e4:
@@ -184,7 +185,7 @@ def period_eccentricity(in_df, Z, transient_type='NSNS', outdir=None):
     """
 
     assert isinstance(in_df, pd.DataFrame), "Expected in_df to be a DataFrame"
-    assert isinstance(Z, (str, float)), "Expected Z to be a ..." # Complete
+    assert isinstance(Z, (str, float)), "Expected Z to be a ..."  # Complete
     assert transient_type in ['NSNS', 'NSBH', 'BHBH'], ("Expected"
                                                         " transient_type to be"
                                                         " one of: NSNS, NSBH,"
@@ -205,11 +206,16 @@ def period_eccentricity(in_df, Z, transient_type='NSNS', outdir=None):
 
     Z_So_Far = np.zeros((80, 100))
 
-    SFR_obj = takahe.event_rates.generate_sfrd(takahe.constants.LINEAR_BINS)[float(metallicity)]
+    SFR_obj = takahe.event_rates.generate_sfrd(
+        takahe.constants.LINEAR_BINS)[float(metallicity)]
     SFRD = takahe.histogram.histogram(edges=takahe.constants.LINEAR_BINS)
     SFRD.fill(SFR_obj)
 
-    for t in tqdm(range(0, int(np.ceil(takahe.constants.HUBBLE_TIME * 1e9)), int(dt))):
+    for t in tqdm(
+        range(
+            0, int(
+            np.ceil(
+                takahe.constants.HUBBLE_TIME * 1e9)), int(dt))):
         frame = takahe.frame.Frame(t, np.zeros((80, 100)))
         cube.insert(frame)
 
@@ -227,14 +233,15 @@ def period_eccentricity(in_df, Z, transient_type='NSNS', outdir=None):
             h = np.cumsum(h)
 
             for j in range(len(h)):
-                t   = (h[j] + evotime) / takahe.constants.SECONDS_PER_GYR
-                P   = np.log10(takahe.helpers.compute_period(a[j], m1, m2))
+                t = (h[j] + evotime) / takahe.constants.SECONDS_PER_GYR
+                P = np.log10(takahe.helpers.compute_period(a[j], m1, m2))
                 ecc = e[j]
 
                 if P < -2 or P > 6:
                     continue
                 if np.isnan(P) or ecc < 0 or ecc > 1:
-                    takahe.debug("warning", f"Invalid P ({P}) or e ({ecc}) - skipping")
+                    takahe.debug(
+                        "warning", f"Invalid P ({P}) or e ({ecc}) - skipping")
                     continue
 
                 frame = cube.find(t)
@@ -249,7 +256,7 @@ def period_eccentricity(in_df, Z, transient_type='NSNS', outdir=None):
 
             pbar.update(1)
 
-    if outdir != None:
+    if outdir is not None:
         takahe.debug('info', "Saving Cube...")
 
         fname = f"{outdir}/Period_eccentricity_cube-{kick}-{alpha}-{beta}.fr"
@@ -259,6 +266,7 @@ def period_eccentricity(in_df, Z, transient_type='NSNS', outdir=None):
         return cube, fname
 
     return (cube, )
+
 
 def coalescence_time(star):
     """Computes the coalescence time of a star.
@@ -286,6 +294,7 @@ def coalescence_time(star):
 
     return np.sum(h) / takahe.constants.SECONDS_PER_GYR
 
+
 def constant_coalescence_isocontour(ct):
     """Computes the isocontour of the coalescence time in
     period-eccentricity space.
@@ -302,8 +311,8 @@ def constant_coalescence_isocontour(ct):
     if isinstance(ct, [float, int]):
         ct = np.array([ct])
 
-    p = np.linspace(1e-2, 1e2, 5000) # days
-    e = np.linspace(0.0 , 1.0, 5000) # no dim.
+    p = np.linspace(1e-2, 1e2, 5000)  # days
+    e = np.linspace(0.0, 1.0, 5000)  # no dim.
 
     P, E = np.meshgrid(p, e, indexing='ij')
 
@@ -312,5 +321,5 @@ def constant_coalescence_isocontour(ct):
 
     return takahe.helpers.find_contours(P, E, Z, ct)
 
-evolve_system = np.vectorize(evolve_system, excluded=['beta', 'alpha'])
 
+evolve_system = np.vectorize(evolve_system, excluded=['beta', 'alpha'])

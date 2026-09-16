@@ -12,6 +12,7 @@ from scipy.integrate import quad
 # import swifter
 import takahe
 
+
 def find_between(a, low, high):
     """Finds all elements of a between low and high.
 
@@ -38,6 +39,7 @@ def find_between(a, low, high):
         return a[i:g]
     raise ValueError
 
+
 def memoize(f):
     """Memoizes a function.
 
@@ -57,11 +59,13 @@ def memoize(f):
         {callable} -- The memoized function.
     """
     memo = {}
+
     def helper(x):
         if x not in memo:
             memo[x] = f(x)
         return memo[x]
     return helper
+
 
 def identify(star):
     """Simple helper function to identify a BSS.
@@ -83,6 +87,7 @@ def identify(star):
         return 'NSBH'
     if star.m1 > MASS_BH and star.m2 > MASS_BH:
         return 'BHBH'
+
 
 def format_metallicity(Z):
     r"""Converts a BPASS-formatted metallicity into a "real valued" one.
@@ -107,16 +112,20 @@ def format_metallicity(Z):
     """
     Z = str(Z)
 
+    if Z[0] == 'z':
+        Z = Z[1:]
+
     if Z == "0":
         div = 0
     elif "." in Z:
         div = float(Z)
     elif Z[:2] == "em":
-        div = 1*10**(-int(Z[-1]))
+        div = 1 * 10**(-int(Z[-1]))
     else:
         div = float("0." + Z)
 
     return div / takahe.constants.SOLAR_METALLICITY
+
 
 def find_contours(X, Y, Z, value):
     """Extracts contours from a given dataset.
@@ -190,6 +199,7 @@ def find_contours(X, Y, Z, value):
 
     return paths
 
+
 def extract_metallicity(filename):
     """Extracts a metallicity from a filename.
 
@@ -215,8 +225,8 @@ def extract_metallicity(filename):
     assert isinstance(filename, str), ("Expected filename to be a string in "
                                        "call to extract_metallicity.")
 
-    fname = filename.split("/")[-1] # Extract filename if it has a
-                                    # directory prepended.
+    fname = filename.split("/")[-1]  # Extract filename if it has a
+    # directory prepended.
 
     fname = fname.split(".")[0]     # Remove file extension
     parts = fname.split("-")        # Split into parts
@@ -224,16 +234,17 @@ def extract_metallicity(filename):
 
     for part in parts:
         if part[0] == "z":          # Detect the term that has the Z
-                                    # specification
+            # specification
             if "_" in part:         # We allow z020_StandardJJ for
-                                    # example as this usually contains
-                                    # the kick specification
+                # example as this usually contains
+                # the kick specification
 
                 part = part.split("_")[0]
 
             Z = part[1:]
 
     return format_metallicity(Z)
+
 
 @np.vectorize
 def compute_period(a, M, m):
@@ -252,7 +263,10 @@ def compute_period(a, M, m):
     Returns:
         {float} -- The period in days
     """
-    return np.sqrt(4 * np.pi **2 / (takahe.constants.G * (M+m) * takahe.constants.SOLAR_MASS) * (a * takahe.constants.SOLAR_RADIUS)**3) / (60 * 60 * 24)
+    return np.sqrt(4 * np.pi ** 2 / (takahe.constants.G * (M + m)
+                   * takahe.constants.SOLAR_MASS)
+                   * (a * takahe.constants.SOLAR_RADIUS)**3) / (60 * 60 * 24)
+
 
 @np.vectorize
 def compute_separation(P, M, m):
@@ -271,9 +285,12 @@ def compute_separation(P, M, m):
     Returns:
         {float} -- The orbital separation in Solar Radii
     """
-    a = ((P * 60 * 60 * 24)**2 * (takahe.constants.G * (M+m) * takahe.constants.SOLAR_MASS) / (4 * np.pi **2))**(1/3) / takahe.constants.SOLAR_RADIUS
+    a = ((P * 60 * 60 * 24)**2
+         * (takahe.constants.G * (M + m) * takahe.constants.SOLAR_MASS)
+         / (4 * np.pi ** 2))**(1 / 3) / takahe.constants.SOLAR_RADIUS
 
     return a
+
 
 @np.vectorize
 @memoize
@@ -290,11 +307,13 @@ def lookback_to_redshift(tL):
                    tL
     """
 
-    f = lambda z: np.abs(redshift_to_lookback(z) - tL)
+    def f(z): return np.abs(redshift_to_lookback(z) - tL)
 
-    zbest, _, _, _ = fminbound(f, 1e-8, 1000, maxfun=500, full_output=1, xtol=1e-8)
+    zbest, _, _, _ = fminbound(
+        f, 1e-8, 1000, maxfun=500, full_output=1, xtol=1e-8)
 
     return zbest
+
 
 @np.vectorize
 def redshift_to_lookback(z):
@@ -312,14 +331,15 @@ def redshift_to_lookback(z):
 
     def integrand(z):
         def E(z):
-            return np.sqrt(takahe.constants.OMEGA_M * (1+z)**3
-                         + takahe.constants.OMEGA_K * (1+z)**2
-                         + takahe.constants.OMEGA_L)
-        return 1 / ((1+z) * E(z))
+            return np.sqrt(takahe.constants.OMEGA_M * (1 + z)**3
+                           + takahe.constants.OMEGA_K * (1 + z)**2
+                           + takahe.constants.OMEGA_L)
+        return 1 / ((1 + z) * E(z))
 
     rest, err = quad(integrand, 0, z)
 
     return takahe.constants.HUBBLE_TIME * rest
+
 
 def integrate(a0, e0, p):
     """Integrates the System of ODEs that govern binary star evolution
@@ -329,7 +349,9 @@ def integrate(a0, e0, p):
     given by [1]. The integrator constrains the periods and eccentricities
     to the intevals (cutoff_period, P0] and [0, 1] respectively.
 
-    [1] Nyadzani, L. & Razzaque, S. (2019), An Analytical Solution to the Coalescence Time of Compact Binary Systems, Technical report, University of Johannesburg, Johannesburg.
+    [1] Nyadzani, L. & Razzaque, S. (2019), An Analytical Solution to
+        the Coalescence Time of Compact Binary Systems, Technical
+        report, University of Johannesburg, Johannesburg.
 
     [2] 64/5 * G**3 * m1 * m2 * (m1 + m2) / c**5
 
@@ -352,10 +374,12 @@ def integrate(a0, e0, p):
                                      axis array and eccentricity array.
     """
 
-    assert isinstance(a0, (int, float)), "Expected a0 to be a float or int type"
-    assert isinstance(e0, (int, float)), "Expected e0 to be a float or int type"
-    assert isinstance(p,  (np.ndarray, list)), "Expected p to be arraylike"
+    assert isinstance(
+        a0, (int, float)), "Expected a0 to be a float or int type"
+    assert isinstance(
+        e0, (int, float)), "Expected e0 to be a float or int type"
+    assert isinstance(p, (np.ndarray, list)), "Expected p to be arraylike"
 
-    assert 0 <= e0 <= 1,                       "e0 outside of range [0, 1]"
+    assert 0 <= e0 <= 1, "e0 outside of range [0, 1]"
 
     return takahe.integrate_eoms(a0, e0, p)

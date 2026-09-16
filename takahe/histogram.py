@@ -24,6 +24,7 @@ from uncertainties.umath import log as ulog
 from uncertainties.umath import log10 as ulog10
 from uncertainties.umath import log as ulog
 
+
 class histogram:
     """
     A histogram which can contain data and can be manipulated.
@@ -71,16 +72,17 @@ class histogram:
             Exception -- if neither (xlow, xup, nr_bins) nor edges is
                         given.
         """
-        if xlow != None and xup != None and nr_bins != None:
+        if xlow is not None and xup is not None and nr_bins is not None:
             self._xlow = xlow
             self._xup = xup
             self._nr_bins = nr_bins
-            self._bin_edges = np.linspace(xlow, xup, nr_bins+1)
+            self._bin_edges = np.linspace(xlow, xup, nr_bins + 1)
 
-        elif isinstance(edges, type([])) or isinstance(edges, type(np.array([]))):
+        elif (isinstance(edges, type([]))
+                or isinstance(edges, type(np.array([])))):
             self._xlow = edges[0]
             self._xup = edges[-1]
-            self._nr_bins = len(edges)-1
+            self._nr_bins = len(edges) - 1
             self._bin_edges = np.array(edges)
         else:
             raise Exception("Not given the correct input")
@@ -235,10 +237,10 @@ class histogram:
         """
         out = histogram(xlow=self._xlow, xup=self._xup, nr_bins=self._nr_bins)
         out._values = self._values
-        out._hits   = self._hits
+        out._hits = self._hits
         return out
 
-    def fill(self, x, weight = 1):
+    def fill(self, x, weight=1):
         """
         Fill the histogram with data.
 
@@ -251,8 +253,8 @@ class histogram:
 
         def _insert(f, g):
             if f >= self._xup:
-                 self._values[self._nr_bins-1] += g
-                 self._hits[self._nr_bins-1] += 1
+                self._values[self._nr_bins - 1] += g
+                self._hits[self._nr_bins - 1] += 1
             elif f <= self._xlow:
                 self._values[0] += g
                 self._hits[0] += 1
@@ -268,7 +270,9 @@ class histogram:
                 for i in range(0, len(x)):
                     _insert(x[i], weight)
             elif len(x) != len(weight):
-                raise Exception(f"Weight needs to be as long as x. (x={len(x)}, weight={len(weight)})")
+                raise Exception(
+                    f"Weight needs to be as long as x. "
+                    f"(x={len(x)}, weight={len(weight)})")
             else:
                 for i in range(0, len(x)):
                     _insert(x[i], weight[i])
@@ -321,8 +325,8 @@ class histogram:
         else:
             plt.plot(xobj[:-1], wobj[:-1], color='k')
             plt.fill_between(xobj[:-1],
-                             wobj[:-1]-np.sqrt(self._hits),
-                             wobj[:-1]+np.sqrt(self._hits),
+                             wobj[:-1] - np.sqrt(self._hits),
+                             wobj[:-1] + np.sqrt(self._hits),
                              color='blue',
                              alpha=0.3
                              )
@@ -348,7 +352,12 @@ class histogram:
                                      **kwargs)
 
         if with_errors:
-            plt.errorbar(self.getBinCenters(), self._values, yerr=np.sqrt(self._hits), fmt='r.')
+            plt.errorbar(
+                self.getBinCenters(),
+                self._values,
+                yerr=np.sqrt(
+                    self._hits),
+                fmt='r.')
 
         return None
 
@@ -435,9 +444,9 @@ class histogram:
         assert isinstance(bin, np.integer), "Expected bin to be an integer."
         assert isinstance(bin, bool), "Expected log to be boolean."
         assert bin <= self.getNBins(), ("Expected bin to be a valid bin. "
-                                       f"There are {self.getNBins()} in this "
+                                        f"There are {self.getNBins()} in this "
                                         "histogram, and you have requested "
-                                       f"bin number {bin}.")
+                                        f"bin number {bin}.")
 
         if log:
             val = self.getLog(bin)
@@ -537,7 +546,7 @@ class histogram:
             The center of bin *i*
 
         """
-        return (self.upper_edges[i] + self.lower_edges[i])/2
+        return (self.upper_edges[i] + self.lower_edges[i]) / 2
 
     def getBin(self, x):
         """Returns the bin number at value **x**
@@ -573,7 +582,6 @@ class histogram:
         """
         return self._bin_edges
 
-
     def sum(self, x1, x2):
         """Performs a binwise summation between parameters **x1** and **x2**.
 
@@ -608,15 +616,17 @@ class histogram:
             total = 0
             # get lower bin part
             bin_width = self.getBinWidth(lower_bin)
-            total += self.getBinContent(lower_bin) * (self.upper_edges[lower_bin] - x1)/bin_width
+            total += self.getBinContent(lower_bin) * \
+                (self.upper_edges[lower_bin] - x1) / bin_width
 
             # get upper bin part
             bin_width = self.getBinWidth(upper_bin)
-            total += self.getBinContent(upper_bin) * (x2 - self.lower_edges[upper_bin])/bin_width
+            total += self.getBinContent(upper_bin) * \
+                (x2 - self.lower_edges[upper_bin]) / bin_width
 
             # get the parts in between if they are there
             if (lower_bin + 1) != upper_bin:
-                for i in range(lower_bin+1, upper_bin):
+                for i in range(lower_bin + 1, upper_bin):
                     total += self._values[i]
 
             return total
@@ -652,18 +662,21 @@ class histogram:
             total = 0
             # get lower bin part
             bin_width = self.getBinWidth(lower_bin)
-            total += self.getBinContent(lower_bin) * (self.upper_edges[lower_bin] - x1)
+            total += self.getBinContent(lower_bin) * \
+                (self.upper_edges[lower_bin] - x1)
 
             # get upper bin part
             bin_width = self.getBinWidth(upper_bin)
-            total += self.getBinContent(upper_bin) * (x2 - self.lower_edges[upper_bin])
+            total += self.getBinContent(upper_bin) * \
+                (x2 - self.lower_edges[upper_bin])
 
             # get the parts in between if they are there
             if (lower_bin + 1) != upper_bin:
-                for i in range(lower_bin+1, upper_bin):
+                for i in range(lower_bin + 1, upper_bin):
                     total += self._values[i] * self.getBinWidth(i)
 
             return total
+
 
 class histogram_2d:
     """A two-dimensional histogram which can contain data and be plotted.
@@ -681,12 +694,13 @@ class histogram_2d:
         edges_x {array}   -- An array defining the x-axis bin edges.
         edges_y {array}   -- An array defining the y-axis bin edges.
     """
+
     def __init__(self, x_range=None,
-                       y_range=None,
-                       nr_bins_x=0,
-                       nr_bins_y=0,
-                       edges_x=None,
-                       edges_y=None):
+                 y_range=None,
+                 nr_bins_x=0,
+                 nr_bins_y=0,
+                 edges_x=None,
+                 edges_y=None):
         """Creates the 2D histogram.
 
         Arguments:
@@ -707,19 +721,19 @@ class histogram_2d:
             nr_bins_y = len(edges_y)
             linspace = False
 
-        xlow, xup         = x_range[0], x_range[1]
-        ylow, yup         = y_range[0], y_range[1]
+        xlow, xup = x_range[0], x_range[1]
+        ylow, yup = y_range[0], y_range[1]
 
-        self._xlow        = xlow
-        self._xup         = xup
-        self._ylow        = ylow
-        self._yup         = yup
-        self._num_x       = nr_bins_x
-        self._num_y       = nr_bins_y
-        self._values      = np.zeros((nr_bins_x, nr_bins_y))
-        self._num_hits    = np.zeros((nr_bins_x, nr_bins_y))
+        self._xlow = xlow
+        self._xup = xup
+        self._ylow = ylow
+        self._yup = yup
+        self._num_x = nr_bins_x
+        self._num_y = nr_bins_y
+        self._values = np.zeros((nr_bins_x, nr_bins_y))
+        self._num_hits = np.zeros((nr_bins_x, nr_bins_y))
 
-        if linspace == True:
+        if linspace:
             self._bin_edges_x = np.linspace(xlow, xup, nr_bins_x)
             self._bin_edges_y = np.linspace(ylow, yup, nr_bins_y)
         else:
@@ -736,7 +750,8 @@ class histogram_2d:
             y {float} -- The y-coordinate to sample at
 
         Returns:
-            {float} -- The content of the bin corresponding to the coordinate (x, y)
+            {float} -- The content of the bin corresponding to the
+                       coordinate (x, y)
         """
         i, j = self.getBin(x, y)
         return self.getBinContent(i, j)
@@ -754,9 +769,9 @@ class histogram_2d:
         """
         assert self._values.shape == insertion_matrix.shape
 
-        self._values    = insertion_matrix
+        self._values = insertion_matrix
         # increment hits by 1 in every cell that contains a value:
-        self._num_hits += (insertion_matrix>0).astype(int)
+        self._num_hits += (insertion_matrix > 0).astype(int)
 
     def insert(self, bin_nr_x, bin_nr_y, value):
         """Inserts a value into a specific bin.
@@ -766,7 +781,7 @@ class histogram_2d:
             bin_nr_y {int}   -- The y-axis bin number to insert into.
             value {float}    -- The value to add to the bin.
         """
-        self._values[bin_nr_x][bin_nr_y]   += value
+        self._values[bin_nr_x][bin_nr_y] += value
         self._num_hits[bin_nr_x][bin_nr_y] += 1
 
     def getBin(self, x, y):
@@ -787,7 +802,7 @@ class histogram_2d:
         i = np.where(x >= self._bin_edges_x)[0][-1]
         j = np.where(y >= self._bin_edges_y)[0][-1]
 
-        return (i,j)
+        return (i, j)
 
     def getBinContent(self, bin_nr_x, bin_nr_y):
         """Returns the content of the given bin, with its uncertainty.
@@ -833,7 +848,7 @@ class histogram_2d:
         y = [self._ylow, self._yup]
 
         out = histogram_2d(x, y, self._num_x, self._num_y)
-        out._values   = self._values
+        out._values = self._values
         out._num_hits = self._num_hits
 
         return out
@@ -869,9 +884,9 @@ class histogram_2d:
         contents = {
             'build_params': {
                 'xlow': self._xlow,
-                'xup' : self._xup,
+                'xup': self._xup,
                 'ylow': self._ylow,
-                'yup' : self._yup,
+                'yup': self._yup,
                 'y_nr': self._num_x,
                 'x_nr': self._num_y,
             },
@@ -902,24 +917,25 @@ class histogram_2d:
         IQR_y = iqr(y_obs)
         IQR_x = iqr(x_obs)
 
-        m_y = min(np.sqrt(np.var(y_obs)), IQR_y/1.349)
-        m_x = min(np.sqrt(np.var(x_obs)), IQR_x/1.349)
+        m_y = min(np.sqrt(np.var(y_obs)), IQR_y / 1.349)
+        m_x = min(np.sqrt(np.var(x_obs)), IQR_x / 1.349)
 
-        b_y = 0.9 * m_y / (n**(1/5))
-        b_x = 0.9 * m_x / (n**(1/5))
+        b_y = 0.9 * m_y / (n**(1 / 5))
+        b_x = 0.9 * m_x / (n**(1 / 5))
 
         logL = None
 
         for i in range(len(x_obs)):
             w = self.getBin(x_obs[i], y_obs[i])
             w = self.getBinContent(w[0], w[1]) - 1
-            if w.n <= 0: w = 0.0001
+            if w.n <= 0:
+                w = 0.0001
 
             mu = np.array([x_obs[i], y_obs[i]])
             sigma = np.matrix([[b_x**2, 0], [0, b_y**2]])
             N = multivariate_normal(mu, sigma)
 
-            if logL == None:
+            if logL is None:
                 logL = ulog(w * N.pdf([x_obs[i], y_obs[i]]))
             else:
                 logL += ulog(w * N.pdf([x_obs[i], y_obs[i]]))
@@ -937,15 +953,16 @@ class histogram_2d:
                                     this histogram's bin edges.
         """
         assert isinstance(other, histogram_2d)
-        assert self._xlow        == other._xlow
-        assert self._xup         == other._xup
-        assert self._ylow        == other._ylow
-        assert self._yup         == other._yup
+        assert self._xlow == other._xlow
+        assert self._xup == other._xup
+        assert self._ylow == other._ylow
+        assert self._yup == other._yup
         assert self._bin_edges_x == other._bin_edges_x
         assert self._bin_edges_y == other._bin_edges_y
 
-        self._values   = self._values + other._values
+        self._values = self._values + other._values
         self._num_hits = self._num_hits + other._num_hits
+
 
 class pickledHistogram(histogram):
     """Represents a pickled version of a histogram.
@@ -953,6 +970,7 @@ class pickledHistogram(histogram):
     Extends:
         histogram
     """
+
     def __init__(self, pickle_path):
         """Reconstructs a histogram from a pickle file.
 
@@ -967,12 +985,14 @@ class pickledHistogram(histogram):
             self._values = contents['values']
             self.reregister_hits(contents['hits'])
 
+
 class pickled2dHistogram(histogram_2d):
     """Represents a pickled version of a histogram_2d.
 
     Extends:
         histogram_2d
     """
+
     def __init__(self, pickle_path):
         """Reconstructs a 2D histogram from a pickle file.
 
@@ -983,17 +1003,18 @@ class pickled2dHistogram(histogram_2d):
             contents = pickle.load(f)
 
             xlow = contents['build_params']['xlow']
-            xup  = contents['build_params']['xup']
+            xup = contents['build_params']['xup']
             ylow = contents['build_params']['ylow']
-            yup  = contents['build_params']['yup']
+            yup = contents['build_params']['yup']
 
             nr_x = contents['build_params']['x_nr']
             nr_y = contents['build_params']['y_nr']
 
-            super().__init__([xlow,xup], [ylow,yup], nr_x, nr_y)
+            super().__init__([xlow, xup], [ylow, yup], nr_x, nr_y)
 
-            self._values   = contents['values']
+            self._values = contents['values']
             self._num_hits = contents['hits']
+
 
 def from_pickle(pickle_path, is_2d=False):
     """Loads a pickled histogram from disk.

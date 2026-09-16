@@ -5,6 +5,7 @@ from scipy.special import gamma, gammainc
 import takahe
 from tqdm import tqdm
 
+
 def chirp_mass_distribution(input_dataframes,
                             transient_type='NSNS',
                             redshift=0):
@@ -45,11 +46,12 @@ def chirp_mass_distribution(input_dataframes,
     for Z, in_df in dataframes.items():
         df = filter_transients(in_df, transient_type)
         constrain_masses(df, transient_type)
-        df['M_chirp'] = (df['m1']*df['m2'])**(3/5) / (df['m1']+df['m2'])**(1/5)
+        df['M_chirp'] = (df['m1'] * df['m2'])**(3 / 5) / \
+            (df['m1'] + df['m2'])**(1 / 5)
         primed_dfs[Z] = df
 
     for i in tqdm(range(1, CMD.getNBins())):
-        low = chirp_mass_bins[i-1]
+        low = chirp_mass_bins[i - 1]
         high = chirp_mass_bins[i]
 
         true_primed_dfs = dict()
@@ -60,9 +62,11 @@ def chirp_mass_distribution(input_dataframes,
 
         events = composite_event_rates(true_primed_dfs, transient_type=None)
 
-        CMD.fill(chirp_mass_bins[i-1], events.getBinContent(events.getBin(tL)))
+        CMD.fill(chirp_mass_bins[i - 1],
+                 events.getBinContent(events.getBin(tL)))
 
     return CMD
+
 
 def filter_transients(in_df, transient_type):
     """Filters a dataset by transient type.
@@ -100,16 +104,17 @@ def filter_transients(in_df, transient_type):
         df = in_df[(in_df['m1'] > MASS_BH) & (in_df['m2'] > MASS_BH)].copy()
     elif transient_type == 'NSBH':
         df = in_df[
-            ( # M1 is an NS, and M2 is a BH
+            (  # M1 is an NS, and M2 is a BH
                 (in_df['m1'] < MASS_NS) & (in_df['m2'] > MASS_BH)
             )
-            | # Or
-            ( # M1 is a BH and M2 is an NS
+            |  # Or
+            (  # M1 is a BH and M2 is an NS
                 (in_df['m1'] > MASS_BH) & (in_df['m2'] < MASS_NS)
             )
         ].copy()
 
     return df
+
 
 @np.vectorize
 def _mass_worker_nsns(m, M):
@@ -126,16 +131,17 @@ def _mass_worker_nsns(m, M):
         {tuple} -- The (m, M) arrays, coerced to baryonic masses.
     """
     for i in range(len(m)):
-        mi = -1 + np.sqrt(1+4*0.084*m[i]) / (2*0.084)
-        Mi = -1 + np.sqrt(1+4*0.084*M[i]) / (2*0.084)
+        mi = -1 + np.sqrt(1 + 4 * 0.084 * m[i]) / (2 * 0.084)
+        Mi = -1 + np.sqrt(1 + 4 * 0.084 * M[i]) / (2 * 0.084)
 
-        mi = min(0.9*m[i], mi)
-        Mi = min(0.9*M[i], Mi)
+        mi = min(0.9 * m[i], mi)
+        Mi = min(0.9 * M[i], Mi)
 
         m[i] = mi
         M[i] = Mi
 
     return m, M
+
 
 @np.vectorize
 def _mass_worker_nsbh(m, M):
@@ -154,13 +160,14 @@ def _mass_worker_nsbh(m, M):
     """
     for i in range(len(m)):
         if m[i] < M[i]:
-            m[i] = -1 + np.sqrt(1+4*0.084*m[i]) / (2*0.084)
+            m[i] = -1 + np.sqrt(1 + 4 * 0.084 * m[i]) / (2 * 0.084)
             M[i] = 0.9 * M[i]
         else:
             m[i] = 0.9 * m[i]
-            M[i] = -1 + np.sqrt(1+4*0.084*M[i]) / (2*0.084)
+            M[i] = -1 + np.sqrt(1 + 4 * 0.084 * M[i]) / (2 * 0.084)
 
     return m, M
+
 
 def constrain_masses(df, transient_type):
     """Constrains the masses to be baryonic only
@@ -196,6 +203,7 @@ def constrain_masses(df, transient_type):
     elif transient_type == 'BHBH':
         df['m1'] = 0.9 * df['m1']
         df['m2'] = 0.9 * df['m2']
+
 
 def generate_sfrd(tL_edges, func=None, need_means=False, is_culmulative=False):
     """Generates the SFRD at every BPASS metallicity.
@@ -235,7 +243,7 @@ def generate_sfrd(tL_edges, func=None, need_means=False, is_culmulative=False):
                                               " ndarray in call to"
                                               " generate_sfrd()")
 
-    assert callable(func) or func == None, ("Expected func to be a"
+    assert callable(func) or func is None, ("Expected func to be a"
                                             " callable type in call to"
                                             " generate_sfrd()")
 
@@ -247,7 +255,7 @@ def generate_sfrd(tL_edges, func=None, need_means=False, is_culmulative=False):
                                               "to be boolean in call to "
                                               "generate_SFRD()")
 
-    if func == None:
+    if func is None:
         func = takahe.SFR.MadauDickinson
         need_means = True
         is_culmulative = True
@@ -256,17 +264,29 @@ def generate_sfrd(tL_edges, func=None, need_means=False, is_culmulative=False):
 
     SFRD = dict()
 
-    Z_fmts =takahe.constants.BPASS_METALLICITIES_F
+    Z_fmts = takahe.constants.BPASS_METALLICITIES_F
 
     if need_means:
         # Compute the array of means.
         # This sets means_arr[i] = np.mean(Z_fmts[i], Z_fmts[i+1])
-        means_arr = [np.mean([Z_fmts[i], Z_fmts[i+1]]) for i in range(12)]
-        means_arr = [5e-5, 5e-4, 0.0015, 0.0025, 0.0035, 0.005, 0.007, 0.009000000000000001, 0.012, 0.017, 0.025, 0.035]
+        means_arr = [np.mean([Z_fmts[i], Z_fmts[i + 1]]) for i in range(12)]
+        means_arr = [
+            5e-5,
+            5e-4,
+            0.0015,
+            0.0025,
+            0.0035,
+            0.005,
+            0.007,
+            0.009000000000000001,
+            0.012,
+            0.017,
+            0.025,
+            0.035]
 
         # Prepend 0 to the means array
         Z_compute = means_arr
-        Z_compute.append(1-sum(means_arr))
+        Z_compute.append(1 - sum(means_arr))
     else:
         Z_compute = Z_fmts
 
@@ -288,6 +308,7 @@ def generate_sfrd(tL_edges, func=None, need_means=False, is_culmulative=False):
         SFRD[Z] = list(SFRD_here)
 
     return SFRD
+
 
 def compute_dtd(in_df, extra_lt=None, transient_type='NSNS', bins=None):
     """Computes the DTD for a given transient type.
@@ -381,7 +402,10 @@ def compute_dtd(in_df, extra_lt=None, transient_type='NSNS', bins=None):
                                                                 row['e0'],
                                                                 1000)
 
-        # df['coal_time'] = df['circ'] * (1+0.27*df['e0']**10+0.33*df['e0']**20+0.2*df['e0']**1000) * (1-df['e0']**2)**(7/2) / (1e9 * 60 * 60 * 24 * 365.25)
+        # df['coal_time'] = df['circ'] * (1+0.27*df['e0']**10
+        #                   +0.33*df['e0']**20+0.2*df['e0']**1000)
+        #                   * (1-df['e0']**2)**(7/2)
+        #                   / (1e9 * 60 * 60 * 24 * 365.25)
         cols = ['coal_time', 'evolution_age', 'rejuvenation_age']
     else:
         cols = ['coal_time', 'evolution_age', 'rejuvenation_age']
@@ -421,7 +445,8 @@ def compute_dtd(in_df, extra_lt=None, transient_type='NSNS', bins=None):
 
     out_df = out_df.values.ravel() / 1e6 / np.diff(bins)
 
-    return out_df # events / Msun / Gyr
+    return out_df  # events / Msun / Gyr
+
 
 def single_event_rate(in_df,
                       Z,
@@ -431,7 +456,7 @@ def single_event_rate(in_df,
                       transient_type='NSNS',
                       as_hist=False,
                       ident=None
-                     ):
+                      ):
     """Computes the event rate of a single metallicity.
 
     Computes the event rate for metallicity Z, using Langer & Norman's [1]
@@ -479,11 +504,11 @@ def single_event_rate(in_df,
     LOG_edges = [0.0]
     LOG_edges.extend(10**np.linspace(6.05, 11.05, 51) / 1e9)
 
-    DTD    = takahe.histogram.histogram(edges=lin_edges)
-    SFRD   = takahe.histogram.histogram(edges=lin_edges)
+    DTD = takahe.histogram.histogram(edges=lin_edges)
+    SFRD = takahe.histogram.histogram(edges=lin_edges)
     events = takahe.histogram.histogram(edges=lin_edges)
 
-    DTDi   = compute_dtd(in_df, extra_lt, transient_type, bins=lin_edges)
+    DTDi = compute_dtd(in_df, extra_lt, transient_type, bins=lin_edges)
 
     DTD.fill(lin_edges[:-1], DTDi)               # events / M_sun / Gyr
     SFRD.fill(lin_edges, SFRDi)                  # M_sun / yr / Mpc^3
@@ -491,21 +516,21 @@ def single_event_rate(in_df,
     SFRD._values *= 1e9                          # M_sun / Gyr / Mpc^3
 
     for i in range(1, len(lin_edges)):
-        t1 = lin_edges[i-1]                      #  Gyr
-        t2 = lin_edges[i]                        #  Gyr
+        t1 = lin_edges[i - 1]  # Gyr
+        t2 = lin_edges[i]  # Gyr
 
         this_SFR = SFRD.integral(t1, t2)         # M_sun / Mpc^3
 
         # Convolve the SFH with the DTD to get the event rates
         for j in range(i):
             t1_prime = t2 - lin_edges[j]         # Gyr
-            t2_prime = t2 - lin_edges[j+1]       # Gyr
+            t2_prime = t2 - lin_edges[j + 1]       # Gyr
 
             events_in_bin = DTD.integral(t2_prime, t1_prime)
-                                                 # events / M_sun
+            # events / M_sun
 
             events.fill(lin_edges[j], events_in_bin * this_SFR)
-                                                 # events / Mpc^3
+            # events / Mpc^3
 
     # Normalise to years:
     events /= (np.diff(lin_edges) * 1e9)         # events / yr / Mpc^3
@@ -517,6 +542,7 @@ def single_event_rate(in_df,
         return events
     else:
         return events._values
+
 
 def composite_event_rates(dataframes, extra_lt=None,
                           transient_type='NSNS', SFRD_function=None):
@@ -573,10 +599,12 @@ def composite_event_rates(dataframes, extra_lt=None,
                                                     "to composite_event_rates")
 
     assert callable(SFRD_function) or SFRD_function is None, ("Expected "
-                                                    "SFRD_function "
-                                                    "to be callable or None "
-                                                    "in call to "
-                                                    "composite_event_rates")
+                                                              "SFRD_function "
+                                                              "to be callable "
+                                                              "or None in "
+                                                              "call to "
+                                                              "composite_event"
+                                                              "_rates")
 
     types = ['NSNS', 'NSBH', 'BHBH', None]
 
@@ -584,8 +612,8 @@ def composite_event_rates(dataframes, extra_lt=None,
                                      + (" or ".join(types))
                                      + "in call to composite_event_rates")
 
-    if extra_lt == None:
-        extra_lt = lambda lt, df: lt
+    if extra_lt is None:
+        def extra_lt(lt, df): return lt
 
     # lin_edges = [0.0]
     # lin_edges.extend(10**np.linspace(6.05, 11.05, 51) / 1e9)
@@ -594,7 +622,7 @@ def composite_event_rates(dataframes, extra_lt=None,
     total_event_rate = np.zeros(len(edges))
     SFRD = generate_sfrd(edges, SFRD_function)
 
-    N_datapoints = np.zeros(len(edges)-1)
+    N_datapoints = np.zeros(len(edges) - 1)
 
     for i in tqdm(range(13)):
         Z = takahe.constants.BPASS_METALLICITIES[i]
@@ -610,7 +638,7 @@ def composite_event_rates(dataframes, extra_lt=None,
                                        extra_lt,
                                        transient_type,
                                        as_hist=True
-                                      )
+                                       )
 
         total_event_rate = total_event_rate + event_rate._values
 
@@ -620,6 +648,7 @@ def composite_event_rates(dataframes, extra_lt=None,
     TER.fill(edges, total_event_rate)
     TER.reregister_hits(N_datapoints)
     return TER
+
 
 def single_event_rate_save_result(datafile, transient_type, output_dir):
     """Performs a single event rate calculation and stores the result.
@@ -675,7 +704,6 @@ def single_event_rate_save_result(datafile, transient_type, output_dir):
                                    None,
                                    transient_type,
                                    as_hist=True
-                                  )
+                                   )
 
     event_rate.to_pickle(f"{output_dir}/{kick}-{transient_type}-{Z}.p")
-

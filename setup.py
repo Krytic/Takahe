@@ -12,7 +12,7 @@ except FileNotFoundError:
 metadata = {"version": "",
             "author": "",
             "email": ""
-           }
+            }
 
 metadata_file = open("takahe/_metadata.py", "rt").read()
 
@@ -25,20 +25,20 @@ for item in metadata.keys():
         metadata[item] = match.group(1)
 
 setup(name='takahe',
-      license           = 'MIT License',
-      version           = metadata['version'],
-      description       = description,
-      long_description  = long_description,
-      author            = metadata['author'],
-      author_email      = metadata['email'],
-      packages          = ['takahe'],
-      zip_safe          = False,
-      homepage          = 'https://github.com/Krytic/Takahe',
-      install_requires  = ['numpy',
-                           'matplotlib',
-                           'numba',
-                           'pandas',
-                           'diffeqpy',
-                           'imageio'
-                          ]
-    )
+      license='MIT License',
+      version=metadata['version'],
+      description=description,
+      long_description=long_description,
+      author=metadata['author'],
+      author_email=metadata['email'],
+      packages=['takahe'],
+      zip_safe=False,
+      homepage='https://github.com/Krytic/Takahe',
+      install_requires=['numpy',
+                        'matplotlib',
+                        'numba',
+                        'pandas',
+                        'diffeqpy',
+                        'imageio'
+                        ]
+      )

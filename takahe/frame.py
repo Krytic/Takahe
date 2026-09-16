@@ -9,6 +9,7 @@ import numpy as np
 import takahe
 from tqdm import tqdm
 
+
 def _dt_from_unit(unit):
     """Infers the timestep based on the unit.
 
@@ -27,8 +28,10 @@ def _dt_from_unit(unit):
             'Myr': 1e6,
             'Gyr': 1e9}[unit]
 
+
 class Frame:
     """Represents a single x-y frame of data."""
+
     def __init__(self, time, z):
         """Creates the frame.
 
@@ -39,7 +42,7 @@ class Frame:
 
             z {np.matrix} -- The matrix corresponding to the z-axis.
         """
-        self.z    = z
+        self.z = z
         self.time = time
 
     def __cmp__(self, other):
@@ -55,12 +58,14 @@ class Frame:
         if self.time < other.time:
             return -1
         if self.time == other.time:
-            return  0
+            return 0
         if self.time > other.time:
-            return  1
+            return 1
+
 
 class FrameCollectionExtent:
     """Builds the (x, y) extent axes for a FrameCollection."""
+
     def __init__(self, x_from, x_to, nr_bins_x, y_from, y_to, nr_bins_y):
         """Creates the extent.
 
@@ -84,8 +89,10 @@ class FrameCollectionExtent:
         """
         return (self.__xaxis, self.__yaxis)
 
+
 class FrameCollection:
     """Represents a collection of Frames - an (x, y, z) cube of data."""
+
     def __init__(self, extent, time=None):
         """Creates the FrameCollection.
 
@@ -110,34 +117,41 @@ class FrameCollection:
             AssertionError -- on malformed input.
         """
 
-        assert isinstance(time, tuple) or time == None, ("Expected time "
+        assert isinstance(time, tuple) or time is None, ("Expected time "
                                                          "to be either a "
                                                          "tuple or None.")
         if isinstance(time, tuple):
-            assert (isinstance(time[0], np.int)
-                or  isinstance(time[0], np.float)), ("Expected time[0] to be "
-                                                     "a number.")
+            assert (
+                isinstance(
+                    time[0], np.int) or isinstance(
+                    time[0], np.float)), ("Expected time[0] to be "
+                                          "a number.")
 
             assert time[1] in ['yr', 'kyr', 'Myr', 'Gyr'], (f"{time[1]} "
                                                             "is not a valid "
                                                             "timestep.")
 
         if not isinstance(extent, FrameCollectionExtent):
-            assert isinstance(extent, tuple), "Expected extent to be a 2-tuple."
+            assert isinstance(
+                extent, tuple), "Expected extent to be a 2-tuple."
 
-            assert isinstance(extent[0], np.ndarray), ("Expected extent[0] to be "
-                                                     "an arraylike object.")
+            assert isinstance(
+                extent[0], np.ndarray), ("Expected extent[0] to be "
+                                         "an arraylike object.")
 
-            assert isinstance(extent[1], np.ndarray), ("Expected extent[1] to be "
-                                                     "an arraylike object.")
+            assert isinstance(
+                extent[1], np.ndarray), ("Expected extent[1] to be "
+                                         "an arraylike object.")
 
-            assert len(extent[0]) > 0 and len(extent[1]) > 0, ("Expected extent "
-                                                               "contents to be "
-                                                               "non-empty.")
+            assert len(
+                extent[0]) > 0 and len(
+                extent[1]) > 0, ("Expected extent "
+                                 "contents to be "
+                                 "non-empty.")
         else:
             extent = extent.fetch()
 
-        if time == None:
+        if time is None:
             self.__dt = 1e6
             self.__timeunit = "Myr"
         else:
@@ -145,15 +159,15 @@ class FrameCollection:
             self.__timeunit = time[1]
             self.__sniffed = _dt_from_unit(time[1])
 
-        self.__i       = 0
-        self.__frames  = []
-        self.__size    = 0
-        self.__xaxis   = extent[0]
-        self.__yaxis   = extent[1]
-        self.__times   = []
+        self.__i = 0
+        self.__frames = []
+        self.__size = 0
+        self.__xaxis = extent[0]
+        self.__yaxis = extent[1]
+        self.__times = []
 
-        self.__probability_map = takahe.histogram.histogram_2d(edges_x=self.__xaxis,
-                                                               edges_y=self.__yaxis)
+        self.__probability_map = takahe.histogram.histogram_2d(
+            edges_x=self.__xaxis, edges_y=self.__yaxis)
 
     # Iteration methods
     def __iter__(self):
@@ -291,7 +305,7 @@ class FrameCollection:
                overplot_data=None,
                xlabel="",
                ylabel=""
-        ):
+               ):
         """Generates a GIF of the given FrameCollection.
 
         Uses imageio to stich together multiple images into a single GIF.
@@ -326,7 +340,7 @@ class FrameCollection:
         assert isinstance(fps, np.int), "FPS must be an integer."
         assert isinstance(Z_Step, np.float), "Z_Step must be a float."
 
-        valid = (overplot_data == None or isinstance(overplot_data, dict))
+        valid = (overplot_data is None or isinstance(overplot_data, dict))
         assert valid, "overplot_data must be None or a dictionary type"
         if isinstance(overplot_data, dict):
             keys = ('x' in overplot_data.keys()
@@ -364,12 +378,17 @@ class FrameCollection:
                 all_prev += frame.z
 
                 plt.figure()
-                lev_exp = np.arange(np.log10(vmin+1), np.log10(vmax+1), Z_Step)
+                lev_exp = np.arange(
+                    np.log10(
+                        vmin + 1),
+                    np.log10(
+                        vmax + 1),
+                    Z_Step)
                 levels = np.power(10, lev_exp)
 
                 plt.contourf(X, Y, plot,
                              locator=ticker.LogLocator(),
-                             vmin=1+vmin, vmax=1+vmax,
+                             vmin=1 + vmin, vmax=1 + vmax,
                              levels=levels)
 
                 if overplot_data is not None:
@@ -377,9 +396,10 @@ class FrameCollection:
 
                     for data in observation_data:
                         plt.plot(data[1], data[2], color='red',
-                                                   marker='D')
+                                 marker='D')
 
-                plt.colorbar(ticks=[10**i for i in range(int(np.ceil(np.log10(vmax))))])
+                plt.colorbar(
+                    ticks=[10**i for i in range(int(np.ceil(np.log10(vmax))))])
                 plt.title(rf"$t={frame.time/unit_dt}${unit}")
                 plt.xlabel(xlabel)
                 plt.ylabel(ylabel)
@@ -421,12 +441,14 @@ class FrameCollection:
 
         self.__size += 1
 
+
 class pickledFrameCollection(FrameCollection):
     """Represents a pickled version of a FrameCollection.
 
     Extends:
         FrameCollection
     """
+
     def __init__(self, infile):
         """Reconstructs a FrameCollection from a pickle file.
 
@@ -449,6 +471,7 @@ class pickledFrameCollection(FrameCollection):
             for frame in contents['frames']:
                 frameobj = Frame(frame[0], frame[1])
                 self.insert(frameobj)
+
 
 def load(fname):
     """Loads a pickled FrameCollection.

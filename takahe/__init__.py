@@ -57,10 +57,10 @@ class Function(object):
             args = getfullargspec(self.fn).args
 
         return tuple([
-          self.fn.__module__,
-          self.fn.__class__,
-          self.fn.__name__,
-          len(args or []),
+            self.fn.__module__,
+            self.fn.__class__,
+            self.fn.__name__,
+            len(args or []),
         ])
 
 
@@ -127,7 +127,8 @@ def debug(msgtype, message, fatal=True):
     on production.
 
     Arguments:
-        msgtype {string} -- The message type to throw. Must be 'info', 'warning', or 'error'.
+        msgtype {string} -- The message type to throw. Must be 'info',
+                           'warning', or 'error'.
 
         message {string} -- The message to throw.
 
@@ -204,8 +205,10 @@ def integrate_eoms(a0, e0, p):
                  p[5] = Lifetime (evolution + rejuvenation)
 
     Returns:
-        A  - An array of the semimajor axes of the binary system over time. (Solar Mass)
-        E  - An array of the eccentricities of the binary system over time. (no dim.)
+        A  - An array of the semimajor axes of the binary system over
+             time. (Solar Mass)
+        E  - An array of the eccentricities of the binary system over
+             time. (no dim.)
     """
 
     Solar_Mass = 1.989e30       # kg
@@ -236,7 +239,7 @@ def integrate_eoms(a0, e0, p):
     ########################
 
     # Beta has units m^4 / s
-    beta = ((64/5) * G**3 * m1 * m2 * (m1 + m2) / (c**5))
+    beta = ((64 / 5) * G**3 * m1 * m2 * (m1 + m2) / (c**5))
 
     A = np.append(A, a)
     E = np.append(E, e)
@@ -247,29 +250,31 @@ def integrate_eoms(a0, e0, p):
 
     # Integrate until past the end of the universe, or a 10km orbit
     with tqdm(total=MAX_ATTEMPTS) as pbar:
-        while total_time/seconds_per_year + evotime < 1e11 and a > 1e4 and attempts < MAX_ATTEMPTS:
+        while total_time / seconds_per_year + \
+                evotime < 1e11 and a > 1e4 and attempts < MAX_ATTEMPTS:
             # an euler integrator: work out da/dt then times it by dt
             # to get da, which then we can work out as a = a + da/dt * dt.
-            initial_da = (- beta / ((a**3) * (1 - e**2)**(7/2)))
-            da = initial_da * (1 + (73/24) * e**2 + (37/96) * e**4)
+            initial_da = (- beta / ((a**3) * (1 - e**2)**(7 / 2)))
+            da = initial_da * (1 + (73 / 24) * e**2 + (37 / 96) * e**4)
 
-            intial_de = (((-19/12) * beta) / (a**4*(1-e**2)**(5/2)))
-            de = intial_de * (e + (121/304) * e**3)
+            intial_de = (((-19 / 12) * beta) / (a**4 * (1 - e**2)**(5 / 2)))
+            de = intial_de * (e + (121 / 304) * e**3)
             # Units: s^-1
 
-            timeA = abs(1e-2 * a/da)
+            timeA = abs(1e-2 * a / da)
 
             if e > 1e-10:
-                timeE = abs(1e-2 * e/de)
+                timeE = abs(1e-2 * e / de)
             else:
                 de = 0
                 e = 1e-10
                 timeE = timeA * 10
 
-            # maximum timestep is half of the width of the smallest BPASS time bin
-            conv_frac = 0.23076752*0.5*seconds_per_year
+            # maximum timestep is half of the width of the smallest BPASS time
+            # bin
+            conv_frac = 0.23076752 * 0.5 * seconds_per_year
 
-            dt2 = (evotime + total_time/seconds_per_year)*conv_frac
+            dt2 = (evotime + total_time / seconds_per_year) * conv_frac
 
             # Take a timestep that results in the smallest change: either a
             # change in E, a change in A, 1/2 the smallest BPASS bin.
@@ -291,7 +296,7 @@ def integrate_eoms(a0, e0, p):
     # "wrong".
     stop_reason = "flag_not_set"
 
-    if total_time/seconds_per_year + evotime >= 1e11:
+    if total_time / seconds_per_year + evotime >= 1e11:
         stop_reason = "out_of_time"
 
     if a <= 1e4:
@@ -342,24 +347,26 @@ def integrate_timescale(m1, m2, p0, e0, N):
     ##########################################
 
     # Use Kepler's Third Law to compute the semimajor axis, in meters
-    a0 = (p0**2.0 * (G * (m1+m2)) / (4.0 * np.pi**2.0))**(1.0/3.0)  # meters
+    a0 = (p0**2.0 * (G * (m1 + m2))
+          / (4.0 * np.pi**2.0))**(1.0 / 3.0)  # meters
 
     # Compute the constant beta
     beta = 64.0 / 5.0 * G**3.0 * m1 * m2 * (m1 + m2) / c**5.0
     # meters^4 / s
 
     # Circular binary coalescence time
-    tC = a0**4.0 / (4.0*beta)
+    tC = a0**4.0 / (4.0 * beta)
 
     if e0 != 0.0:
         # compute the constant c0
-        c0 = a0 * (1.0-e0**2.0) * e0**(-12.0/19.0) * (1.0+(121.0 / 304.0 * e0**2.0))**(-870.0/2299.0)  # meters
+        c0 = a0 * (1.0 - e0**2.0) * e0**(-12.0 / 19.0) * \
+            (1.0 + (121.0 / 304.0 * e0**2.0))**(-870.0 / 2299.0)  # meters
         if e0 < 0.01:
             # Low ecc - see eqn after eqn(5.14) of Peters, 1964
-            tC = c0**4.0 * e0**(48.0/19.0) / (4.0*beta)
+            tC = c0**4.0 * e0**(48.0 / 19.0) / (4.0 * beta)
         elif e0 > 0.99:
             # High ecc - see eqn after eqn after eqn(5.14) of Peters, 1964.
-            tC = tC * ((768.0 / 425.0) * (1.0-e0**2.0)**3.5)
+            tC = tC * ((768.0 / 425.0) * (1.0 - e0**2.0)**3.5)
         else:
             # Medium ecc - see eqn(5.14) of Peters, 1964
             e = 0.0
@@ -367,8 +374,9 @@ def integrate_timescale(m1, m2, p0, e0, N):
             summand = 0.0
 
             while e < e0:
-                this_integral = de * e**(29.0/19.0)
-                this_integral *= (1.0 + (121.0/304.0) * e**2.0)**(1181.0/2299.0)
+                this_integral = de * e**(29.0 / 19.0)
+                this_integral *= (1.0 + (121.0 / 304.0) *
+                                  e**2.0)**(1181.0 / 2299.0)
                 this_integral /= (1.0 - e**2.0)**(1.5)
 
                 summand = summand + this_integral
@@ -376,6 +384,6 @@ def integrate_timescale(m1, m2, p0, e0, N):
 
                 e = np.float64(e)
 
-            tC = (12.0/19.0) * (c0**4.0 / beta) * summand
+            tC = (12.0 / 19.0) * (c0**4.0 / beta) * summand
 
     return tC
