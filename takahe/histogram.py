@@ -204,7 +204,7 @@ class histogram:
 
         return None
 
-    def plot(self, with_errors=False, *argv, **kwargs):
+    def plot(self, with_errors=False, smooth=False, *argv, **kwargs):
         """
         Plot the histogram.
 
@@ -225,20 +225,33 @@ class histogram:
         # into having the right shape in this instance (and fail if it
         # still does not).
 
+        fixed = "None"
         if len(self._values) == len(xobj) - 1:
             wobj = np.append(wobj, wobj[-1])
+            fixed = 'RHS'
         elif len(self._values) - 1 == len(xobj):
             wobj = wobj[:-1]
+            fixed = 'LHS'
 
-        entries, edges, _ = plt.hist(xobj,
-                                     self._bin_edges,
-                                     weights=wobj,
-                                     histtype=u'step',
-                                     *argv,
-                                     **kwargs)
+        if not smooth:
+            entries, edges, _ = plt.hist(xobj,
+                                         self._bin_edges,
+                                         weights=wobj,
+                                         histtype=u'step',
+                                         *argv,
+                                         **kwargs)
 
-        if with_errors:
-            plt.errorbar(self.getBinCenters(), self._values, yerr=np.sqrt(self._hits), fmt='r.')
+            if with_errors:
+                plt.errorbar(self.getBinCenters(), wobj,
+                             yerr=np.sqrt(self._hits), fmt='r.')
+        else:
+            plt.plot(xobj[:-1], wobj[:-1], color='k')
+            plt.fill_between(xobj[:-1],
+                             wobj[:-1]-np.sqrt(self._hits),
+                             wobj[:-1]+np.sqrt(self._hits),
+                             color='blue',
+                             alpha=0.3
+                             )
 
         return None
 

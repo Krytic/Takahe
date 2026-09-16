@@ -303,11 +303,11 @@ def compute_dtd(in_df, extra_lt=None, transient_type='NSNS', bins=None):
         histogram_edges = np.linspace(6.05, 11.05, 51)
 
         bins = [0.0]
-        bins.extend(10**histogram_edges / 1e9) # Gyr bins
+        bins.extend(10**histogram_edges / 1e9)  # Gyr bins
 
     # Now we mask out what we're not interested in.
 
-    if transient_type != None:
+    if transient_type is not None:
         df = filter_transients(in_df, transient_type)
     else:
         df = in_df.copy()
@@ -319,14 +319,16 @@ def compute_dtd(in_df, extra_lt=None, transient_type='NSNS', bins=None):
     # Highly eccentric orbits lead to division by zero.
     df.drop(df[df['e0'] == 1].index, inplace=True)
 
-    df['p0'] = takahe.helpers.compute_period(df.a0.values, df.m1.values, df.m2.values)
+    df['p0'] = takahe.helpers.compute_period(df.a0.values,
+                                             df.m1.values,
+                                             df.m2.values)
 
     # # Unit Conversions:
     # df['a0'] *= takahe.constants.SOLAR_RADIUS # Solar Radius -> Metre
     # df['m1'] *= takahe.constants.SOLAR_MASS # Solar Mass -> Kilogram
     # df['m2'] *= takahe.constants.SOLAR_MASS # Solar Mass -> Kilogram
 
-    if 'coalescence_time' not in df.keys():
+    if 'coal_time' not in df.keys():
         # Introduce some temporary terms, to make computation easier
         # df['beta'] = ((64/5) * G**3 * df['m1'] * df['m2']
         #                      * (df['m1'] + df['m2'])
@@ -339,32 +341,34 @@ def compute_dtd(in_df, extra_lt=None, transient_type='NSNS', bins=None):
         # df['divisor'] = ((1 - df['e0'] ** (7/4)) ** (1/5)
         #               *  (1+121/304 * df['e0'] ** 2))
 
-        # df['coalescence_time'] = ((df['circ'] * (1-df['e0']**2)**(7/2)
+        # df['coal_time'] = ((df['circ'] * (1-df['e0']**2)**(7/2)
         #                        / df['divisor'])
         #                        / (1e9 * 60 * 60 * 24 * 365.25))
 
-        # cols = ['beta', 'coalescence_time', 'evolution_age',
+        # cols = ['beta', 'coal_time', 'evolution_age',
         #         'rejuvenation_age', 'circ', 'divisor']
 
-        df['coalescence_time'] = 0.0
+        df['coal_time'] = 0.0
         for i, row in tqdm(df.iterrows(), total=len(df)):
-            df.loc[i, 'coalescence_time'] = takahe.integrate_timescale(row['m1'],
-                                                                       row['m2'],
-                                                                       row['p0'],
-                                                                       row['e0'],
-                                                                       1000)
+            df.loc[i, 'coal_time'] = takahe.integrate_timescale(row['m1'],
+                                                                row['m2'],
+                                                                row['p0'],
+                                                                row['e0'],
+                                                                1000)
 
-        # df['coalescence_time'] = df['circ'] * (1+0.27*df['e0']**10+0.33*df['e0']**20+0.2*df['e0']**1000) * (1-df['e0']**2)**(7/2) / (1e9 * 60 * 60 * 24 * 365.25)
-        cols = ['coalescence_time', 'evolution_age', 'rejuvenation_age']
+        # df['coal_time'] = df['circ'] * (1+0.27*df['e0']**10+0.33*df['e0']**20+0.2*df['e0']**1000) * (1-df['e0']**2)**(7/2) / (1e9 * 60 * 60 * 24 * 365.25)
+        cols = ['coal_time', 'evolution_age', 'rejuvenation_age']
     else:
-        cols = ['coalescence_time', 'evolution_age', 'rejuvenation_age']
+        cols = ['coal_time', 'evolution_age', 'rejuvenation_age']
+
+    CSECYR = takahe.constants.SECONDS_PER_GYR
 
     df['lifetime'] = (df['evolution_age'] / 1e9
-                   +  df['rejuvenation_age'] / 1e9
-                   +  df['coalescence_time'] / takahe.constants.SECONDS_PER_GYR
-                     )
+                      + df['rejuvenation_age'] / 1e9
+                      + df['coal_time'] / CSECYR
+                      )
 
-    if extra_lt != None:
+    if extra_lt is not None:
         df['lifetime'] = df['lifetime'].apply(extra_lt, args=(df,))
 
     # Unit Conversions (back):
@@ -387,7 +391,8 @@ def compute_dtd(in_df, extra_lt=None, transient_type='NSNS', bins=None):
                                    bins,
                                    right=False)
 
-    out_df = population_at[["bins", "weight"]].groupby("bins").sum()
+    out_df = population_at[["bins", "weight"]].groupby("bins",
+                                                       observed=False).sum()
 
     out_df = out_df.values.ravel() / 1e6 / np.diff(bins)
 
@@ -438,8 +443,9 @@ def single_event_rate(in_df,
                               rate.
     """
 
-    if extra_lt == None:
-        extra_lt = lambda lt, df: lt
+    if extra_lt is None:
+        def extra_lt(lt, df):
+            return lt
 
     # Numexpr causes our computations to break.
     # This is a "feature" of numexpr as far as I can tell
